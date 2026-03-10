@@ -87,7 +87,7 @@ class TestAgrInit:
     def test_init_discovers_tools_and_syncs_instructions(self, agr, cli_project):
         """Onboarding flow discovers skills, configures tools, and syncs instructions."""
         claude_skill = cli_project / ".claude" / "skills" / "alpha"
-        codex_skill = cli_project / ".codex" / "skills" / "beta"
+        codex_skill = cli_project / ".agents" / "skills" / "beta"
         for skill_dir in [claude_skill, codex_skill]:
             skill_dir.mkdir(parents=True)
             (skill_dir / "SKILL.md").write_text(

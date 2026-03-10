@@ -23,6 +23,7 @@ class ToolConfig:
     global_config_dir: str | None = (
         None  # For tools where personal path differs (e.g., Copilot)
     )
+    legacy_config_dirs: tuple[str, ...] = ()  # Fallback config dirs for compatibility
     # CLI fields for running skills with the tool
     cli_command: str | None = None  # CLI executable name
     cli_prompt_flag: str | None = "-p"  # Flag to pass prompt (None = positional)
@@ -38,14 +39,31 @@ class ToolConfig:
     skill_prompt_prefix: str = "/"  # Prefix for invoking a skill
     install_hint: str | None = None  # Help text for installation
 
+    def _resolve_existing_base(self, root: Path, primary: str) -> str:
+        """Resolve config directory, preferring existing paths for compatibility."""
+        candidates = [primary, *self.legacy_config_dirs]
+
+        for base in candidates:
+            if (root / base / self.skills_subdir).exists():
+                return base
+
+        for base in candidates:
+            if (root / base).exists():
+                return base
+
+        return primary
+
     def get_skills_dir(self, repo_root: Path) -> Path:
         """Get the skills directory for this tool in a repo."""
-        return repo_root / self.config_dir / self.skills_subdir
+        base = self._resolve_existing_base(repo_root, self.config_dir)
+        return repo_root / base / self.skills_subdir
 
     def get_global_skills_dir(self) -> Path:
         """Get the global skills directory (in user home)."""
-        base = self.global_config_dir or self.config_dir
-        return Path.home() / base / self.skills_subdir
+        home = Path.home()
+        primary = self.global_config_dir or self.config_dir
+        base = self._resolve_existing_base(home, primary)
+        return home / base / self.skills_subdir
 
 
 # Claude Code tool configuration (flat naming: <skill-name>, fallback to user--repo--skill on collision)
@@ -78,11 +96,12 @@ CURSOR = ToolConfig(
 
 # OpenAI Codex tool configuration (flat naming: <skill-name>)
 # Skill paths based on OpenAI Codex documentation:
-# - Project: .codex/skills/
-# - Personal: ~/.codex/skills/
+# - Project: .agents/skills/ (legacy: .codex/skills/)
+# - Personal: ~/.agents/skills/ (legacy: ~/.codex/skills/)
 CODEX = ToolConfig(
     name="codex",
-    config_dir=".codex",
+    config_dir=".agents",
+    legacy_config_dirs=(".codex",),
     skills_subdir="skills",
     supports_nested=False,
     cli_command="codex",

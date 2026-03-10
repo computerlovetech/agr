@@ -34,7 +34,7 @@ That's it. The skill is now available in your configured tool (Claude Code, Code
 ## What is agr?
 
 **agr** installs agent skills from GitHub directly into your tool's skills folder
-(`.claude/skills/`, `.codex/skills/`, `.cursor/skills/`, `.opencode/skill/`, `.github/skills/`, or `.agent/skills/`).
+(`.claude/skills/`, `.agents/skills/ (legacy: .codex/skills/)`, `.cursor/skills/`, `.opencode/skill/`, `.github/skills/`, or `.agent/skills/`).
 
 **agrx** runs skills instantly from your terminal — download, run, then clean up.
 
@@ -151,7 +151,7 @@ agr init       # Auto-discover skills and create agr.toml
 agr init -i    # Guided setup
 ```
 
-Skills inside tool folders (e.g. `.claude/skills/`, `.codex/skills/`,
+Skills inside tool folders (e.g. `.claude/skills/`, `.agents/skills/ (legacy: .codex/skills/)`,
 `.cursor/skills/`, `.opencode/skill/`, `.github/skills/`, `.agent/skills/`) are ignored by default. To bring them into
 `./skills/`, run:
 

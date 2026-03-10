@@ -1,5 +1,7 @@
 """Tests for agr.tool module."""
 
+from pathlib import Path
+
 from agr.tool import (
     ANTIGRAVITY,
     CLAUDE,
@@ -104,6 +106,27 @@ class TestToolConfig:
         assert OPENCODE.install_hint is not None
         assert COPILOT.install_hint is not None
         assert ANTIGRAVITY.install_hint is None
+
+    def test_codex_uses_agents_directory_by_default(self, tmp_path):
+        """Codex installs to .agents/skills/ for new repos."""
+        assert CODEX.get_skills_dir(tmp_path) == tmp_path / ".agents" / "skills"
+
+    def test_codex_uses_legacy_codex_directory_when_present(self, tmp_path):
+        """Codex keeps using legacy .codex/skills/ when it already exists."""
+        legacy_dir = tmp_path / ".codex" / "skills"
+        legacy_dir.mkdir(parents=True)
+
+        assert CODEX.get_skills_dir(tmp_path) == legacy_dir
+
+    def test_codex_global_uses_legacy_codex_directory_when_present(
+        self, monkeypatch, tmp_path
+    ):
+        """Global Codex path falls back to ~/.codex/skills/ if already present."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        legacy_dir = tmp_path / ".codex" / "skills"
+        legacy_dir.mkdir(parents=True)
+
+        assert CODEX.get_global_skills_dir() == legacy_dir
 
     def test_all_tools_have_cli_config(self):
         """All registered tools have CLI configuration."""

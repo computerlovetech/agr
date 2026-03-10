@@ -136,7 +136,7 @@ agr init       # Auto-discover skills and create agr.toml
 agr init -i    # Guided setup
 ```
 
-By default, skills inside tool folders (e.g. `.claude/skills/`, `.codex/skills/`,
+By default, skills inside tool folders (e.g. `.claude/skills/`, `.agents/skills/ (legacy: .codex/skills/)`,
 `.cursor/skills/`, `.opencode/skill/`, `.github/skills/`, `.agent/skills/`) are ignored to avoid messy configs. To
 bring them into your repo, run:
 
