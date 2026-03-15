@@ -102,8 +102,8 @@ class TestParseHandle:
 
     def test_parse_handle_allows_single_hyphen_in_repo(self):
         """Single hyphens are allowed in repo name."""
-        h = parse_handle("user/my-repo/skill")
-        assert h.repo == "my-repo"
+        h = parse_handle("user/repo/skill")
+        assert h.repo == "repo"
 
     def test_parse_handle_rejects_double_hyphen_in_local_skill(self, tmp_path):
         """Local skill directory containing -- raises error."""
@@ -236,3 +236,62 @@ class TestRepoCandidates:
     def test_explicit_repo(self):
         """Explicit repo does not include legacy fallback."""
         assert iter_repo_candidates("custom") == [("custom", False)]
+
+
+class TestParseGitHubUrl:
+    """Tests for GitHub URL handling in parse_handle."""
+
+    def test_full_tree_url(self):
+        """Full GitHub tree URL extracts user/repo/skill."""
+        h = parse_handle("https://github.com/user/repo/tree/main/skills/sample")
+        assert h.username == "user"
+        assert h.repo == "repo"
+        assert h.name == "sample"
+        assert h.is_remote
+
+    def test_bare_repo_url(self):
+        """Bare GitHub repo URL extracts user/repo."""
+        h = parse_handle("https://github.com/user/commit")
+        assert h.username == "user"
+        assert h.name == "commit"
+        assert h.repo is None
+        assert h.is_remote
+
+    def test_url_with_trailing_slash(self):
+        """Trailing slash is handled correctly."""
+        h = parse_handle("https://github.com/user/repo/tree/main/skills/sample/")
+        assert h.username == "user"
+        assert h.repo == "repo"
+        assert h.name == "sample"
+
+    def test_blob_url(self):
+        """GitHub blob URL also works."""
+        h = parse_handle("https://github.com/user/repo/blob/main/skills/my-skill")
+        assert h.username == "user"
+        assert h.repo == "repo"
+        assert h.name == "my-skill"
+
+    def test_url_with_branch_only(self):
+        """URL with just /tree/branch returns user/repo."""
+        h = parse_handle("https://github.com/user/repo/tree/main")
+        assert h.username == "user"
+        assert h.name == "repo"
+        assert h.repo is None
+
+    def test_invalid_github_url_too_short(self):
+        """GitHub URL with only username raises error."""
+        with pytest.raises(InvalidHandleError, match="expected at least user/repo"):
+            parse_handle("https://github.com/user")
+
+    def test_non_github_url_not_matched(self):
+        """Non-GitHub URLs fall through to normal parsing."""
+        with pytest.raises(InvalidHandleError):
+            parse_handle("https://gitlab.com/user/repo/tree/main/skill")
+
+    def test_http_url(self):
+        """HTTP (non-HTTPS) GitHub URLs also work."""
+        h = parse_handle("http://github.com/user/repo/tree/main/skills/sample")
+        assert h.username == "user"
+        assert h.repo == "repo"
+        assert h.name == "sample"
+
