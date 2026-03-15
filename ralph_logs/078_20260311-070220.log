@@ -1,0 +1,14 @@
+Done. Here's a summary of what was improved:
+
+**agent_docs/ARCHITECTURE.md:**
+- Expanded ToolConfig documentation with all CLI fields (command, prompt flags, force flags, exec commands, etc.), detection signals, and instruction file mapping
+- Added new **Migrations** section documenting all three migration types (tool-specific, legacy separator, flat name simplification)
+- Added new **Instruction sync** section explaining how canonical instruction files are propagated across tools
+- Added new **agrx workflow** section with step-by-step lifecycle explanation
+
+**agent_docs/CONTRIBUTING.md:**
+- Added missing "Where to find things" entries for `instructions.py`, `migrations.py`, `exceptions.py`, and `sync.py`
+
+**MkDocs site:**
+- Added new `docs/docs/agrx.md` page covering the ephemeral runner: how it works, all options, examples for each use case, comparison with `agr add`, and tool CLI requirements
+- Updated `mkdocs.yml` navigation to include the new page

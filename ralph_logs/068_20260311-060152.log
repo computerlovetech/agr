@@ -1,0 +1,11 @@
+All 587 tests pass, no lint or type errors. Here's a summary of the improvements made in this iteration:
+
+1. **`agr/skill.py`** - Renamed `_iter_valid_skill_dirs` → `_find_skill_dirs` and `_iter_skill_dirs_in_listing` → `_find_skill_dirs_in_listing`. The `_iter_` prefix implied generators/iterators, but these functions return lists. The `_find_` prefix matches the module's existing naming convention.
+
+2. **`agr/handle.py`** - Fixed misleading docstring on `get_skill_name_for_tool` which described tool-specific behavior that no longer exists (both cases listed in the docstring were identical).
+
+3. **`agrx/main.py`** - Merged redundant `except InvalidHandleError` and `except AgrError` handlers (same body, and `InvalidHandleError` is a subclass of `AgrError`). Also removed the unnecessary `installed_path → temp_skill_path` variable alias.
+
+4. **`agr/commands/init.py`** - Merged duplicate `except ValueError` and `except FileExistsError` handlers with identical bodies into a single `except (ValueError, FileExistsError)`.
+
+5. **`agr/fetcher.py`** and **`agr/commands/list.py`** - Documented 6 parameters that were present in function signatures but missing from their `Args` docstring sections (`install_source`, `skill_source`, `source`, `skills_dir`, `skills_dirs`).

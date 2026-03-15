@@ -1,0 +1,1 @@
+Extracted `_update_dir_metadata` helper in `agr/commands/migrations.py` to deduplicate 4 identical blocks of `update_skill_md_name` + `write_skill_metadata` + `compute_content_hash` calls into a single reusable function. Net reduction of 8 lines while improving readability. All 576 tests pass.

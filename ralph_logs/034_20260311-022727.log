@@ -1,0 +1,7 @@
+Done. The change simplifies `agr/commands/add.py` by:
+
+1. **Removing the redundant `InvalidHandleError` catch** - it's a subclass of `AgrError` and had identical handling, so it's now caught by the combined `(FileExistsError, AgrError)` clause
+2. **Combining three identical except clauses** (`InvalidHandleError`, `FileExistsError`, `AgrError`) into one: `(FileExistsError, AgrError)`
+3. **Narrowing `except Exception`** to `except (OSError, ValueError)` - consistent with the pattern established in recent commits to `sync.py`, `_tool_helpers.py`, and `migrate_flat_installed_names`. This prevents actual bugs (TypeError, AttributeError, etc.) from being silently swallowed as "Unexpected error"
+
+All 576 tests pass (the single failure in `test_gh_issue_phase.py` is pre-existing and unrelated).

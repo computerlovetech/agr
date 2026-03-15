@@ -1,0 +1,5 @@
+Done. Two focused improvements in one commit:
+
+1. **`_tool_helpers.py`**: Narrowed `except Exception` to `(FileExistsError, AgrError)` and `(OSError, ValueError)`, matching the pattern established in `sync.py` by recent commits. This prevents accidentally swallowing unexpected exceptions like `KeyboardInterrupt` or `SystemExit`.
+
+2. **`config_cmd.py`**: Moved `DEFAULT_SOURCE_NAME` import from inside `run_config_unset()` to module level, where `SourceConfig` from the same `agr.source` module was already imported.

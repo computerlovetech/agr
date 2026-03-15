@@ -1,0 +1,1 @@
+Done. Extracted `_require_config_path()` in `config_cmd.py` to deduplicate the config-file-finding-and-error-handling pattern that was repeated in `_load_config`, `run_config_path`, and `run_config_edit`. Net result: -18 lines, consistent error messages, and a cleaner separation of "find path" from "load config". All 576 tests pass.

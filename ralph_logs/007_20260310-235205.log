@@ -1,0 +1,5 @@
+Done. Extracted a `_run_git` helper in `agr/fetcher.py` that:
+
+1. **Eliminates duplication** — 6 `subprocess.run` calls with identical boilerplate (`capture_output=True, text=True, check=False`) now go through one function
+2. **Fixes inconsistent error handling** — 4 of the 6 call sites were missing the `OSError → AgrError` wrapping that the other 2 had, meaning a missing `git` binary could raise an unhelpful `OSError` instead of a clear `AgrError`
+3. **Net reduction** of 8 lines (33 added, 41 removed)

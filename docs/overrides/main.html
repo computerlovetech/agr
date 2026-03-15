@@ -7,11 +7,13 @@
   <meta property="og:title" content="{{ page.title }} - Agent Resources" />
   <meta property="og:description" content="{{ config.site_description }}" />
   <meta property="og:site_name" content="Agent Resources" />
+  <meta property="og:image" content="{{ config.site_url }}images/og-image.png" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{{ page.title }} - Agent Resources" />
   <meta name="twitter:description" content="{{ config.site_description }}" />
+  <meta name="twitter:image" content="{{ config.site_url }}images/og-image.png" />
 
   <!-- Additional SEO -->
   <meta name="author" content="Kasper Junge" />
@@ -25,12 +27,11 @@
     "@type": "SoftwareApplication",
     "name": "Agent Resources",
     "alternateName": "agr",
-    "description": "A package manager for Claude Code. Share and install skills, commands, and subagents.",
+    "description": "A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Cross-platform",
-    "url": "https://kasperjunge.github.io/agent-resources/site/",
+    "url": "https://kasperjunge.github.io/agent-resources/",
     "downloadUrl": "https://pypi.org/project/agr/",
-    "softwareVersion": "1.0",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -44,17 +45,23 @@
       "priceCurrency": "USD"
     },
     "featureList": [
-      "Install Claude Code skills from GitHub",
-      "Share skills, commands, and subagents",
-      "Cross-platform compatibility"
+      "Install AI agent skills from GitHub with one command",
+      "Multi-tool support: Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity",
+      "Team sync via agr.toml",
+      "Ephemeral skill runner (agrx)",
+      "Python SDK for programmatic access"
     ],
     "keywords": [
       "AI agent",
       "package manager",
       "Claude Code",
+      "Cursor",
+      "OpenAI Codex",
+      "OpenCode",
+      "GitHub Copilot",
+      "Antigravity",
       "skills",
-      "commands",
-      "subagents"
+      "developer tools"
     ]
   }
   </script>
@@ -65,11 +72,11 @@
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Agent Resources Documentation",
-    "url": "https://kasperjunge.github.io/agent-resources/site/",
-    "description": "Documentation for Agent Resources - a package manager for Claude Code",
+    "url": "https://kasperjunge.github.io/agent-resources/",
+    "description": "Documentation for agr - a package manager for AI agent skills",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://kasperjunge.github.io/agent-resources/site/?q={search_term_string}",
+      "target": "https://kasperjunge.github.io/agent-resources/?q={search_term_string}",
       "query-input": "required name=search_term_string"
     }
   }

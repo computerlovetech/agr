@@ -1,0 +1,1 @@
+Removed the unused `ResourceType` enum from `agr/skill.py`. It was a single-value enum (`SKILL = "skill"`) with a "Future" comment, never imported or used anywhere in the codebase. Also removed the now-unnecessary `from enum import Enum` import. All 576 tests pass.

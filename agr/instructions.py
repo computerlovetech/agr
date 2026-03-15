@@ -2,16 +2,16 @@
 
 from pathlib import Path
 
+from agr.tool import TOOLS
 
 INSTRUCTION_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
 
 
 def canonical_instruction_file(tool_name: str) -> str:
     """Resolve the canonical instruction file for a tool."""
-    if tool_name == "claude":
-        return "CLAUDE.md"
-    if tool_name == "antigravity":
-        return "GEMINI.md"
+    tool = TOOLS.get(tool_name)
+    if tool is not None:
+        return tool.instruction_file
     return "AGENTS.md"
 
 

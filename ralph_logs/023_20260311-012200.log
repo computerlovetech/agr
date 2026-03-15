@@ -1,0 +1,1 @@
+Done. The change replaces 13 lines of duplicated handle-parsing and source-resolution logic in `_sync_dependencies_to_tools` with 2 lines that call the existing `Dependency.to_parsed_handle()` and `Dependency.resolve_source_name()` methods. This is the same pattern already used by the sync command, making the codebase more consistent and eliminating the duplication.

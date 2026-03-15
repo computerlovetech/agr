@@ -1,0 +1,1 @@
+Fixed the `ty` type-check error. The issue was that `[None] * len(config.dependencies)` gets inferred as `list[None]`, which isn't assignable to `list[tuple[str, str | None] | None]`. Changed it to `[None for _ in config.dependencies]` which allows proper type inference. All type checks pass now.

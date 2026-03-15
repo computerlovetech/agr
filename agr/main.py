@@ -29,7 +29,7 @@ from agr.commands.tools import (
     run_tools_remove,
     run_tools_set,
 )
-from agr.console import set_quiet
+from agr.console import print_deprecation, set_quiet
 
 GlobalScope = Annotated[
     bool,
@@ -197,7 +197,7 @@ def main(
 @tools_app.callback(invoke_without_command=True)
 def tools_default(ctx: typer.Context) -> None:
     """Deprecated alias callback for agr tools commands."""
-    typer.echo("Warning: 'agr tools' is deprecated. Use 'agr config tools' instead.")
+    print_deprecation("agr tools", "agr config tools")
     if ctx.invoked_subcommand is None:
         run_tools_list()
 
@@ -235,18 +235,14 @@ def tools_remove(
 def config_tools_default(ctx: typer.Context) -> None:
     """List configured tools (default behavior)."""
     if ctx.invoked_subcommand is None:
-        typer.echo(
-            "Warning: 'agr config tools' is deprecated. Use 'agr config get tools'."
-        )
+        print_deprecation("agr config tools", "agr config get tools")
         run_tools_list()
 
 
 @config_tools_app.command("list")
 def config_tools_list() -> None:
     """List configured tools."""
-    typer.echo(
-        "Warning: 'agr config tools list' is deprecated. Use 'agr config get tools'."
-    )
+    print_deprecation("agr config tools list", "agr config get tools")
     run_tools_list()
 
 
@@ -258,9 +254,7 @@ def config_tools_add(
     ],
 ) -> None:
     """Add tools and sync existing dependencies to them."""
-    typer.echo(
-        f"Warning: 'agr config tools add' is deprecated. Use 'agr config add tools {' '.join(names)}'."
-    )
+    print_deprecation("agr config tools add", f"agr config add tools {' '.join(names)}")
     run_tools_add(names)
 
 
@@ -272,9 +266,7 @@ def config_tools_set(
     ],
 ) -> None:
     """Replace configured tools with the provided list."""
-    typer.echo(
-        f"Warning: 'agr config tools set' is deprecated. Use 'agr config set tools {' '.join(names)}'."
-    )
+    print_deprecation("agr config tools set", f"agr config set tools {' '.join(names)}")
     run_tools_set(names)
 
 
@@ -286,9 +278,8 @@ def config_tools_remove(
     ],
 ) -> None:
     """Remove tools and delete their installed skills."""
-    typer.echo(
-        f"Warning: 'agr config tools remove' is deprecated. Use 'agr config remove tools {' '.join(names)}'."
-    )
+    new_cmd = f"agr config remove tools {' '.join(names)}"
+    print_deprecation("agr config tools remove", new_cmd)
     run_tools_remove(names)
 
 
@@ -300,9 +291,8 @@ def config_tools_unset(
     ],
 ) -> None:
     """Alias of remove."""
-    typer.echo(
-        f"Warning: 'agr config tools unset' is deprecated. Use 'agr config remove tools {' '.join(names)}'."
-    )
+    new_cmd = f"agr config remove tools {' '.join(names)}"
+    print_deprecation("agr config tools unset", new_cmd)
     run_tools_remove(names)
 
 
@@ -314,18 +304,15 @@ def default_tool_set(
     ],
 ) -> None:
     """Set the default tool used by agrx."""
-    typer.echo(
-        f"Warning: 'agr config default-tool set' is deprecated. Use 'agr config set default_tool {name}'."
-    )
+    new_cmd = f"agr config set default_tool {name}"
+    print_deprecation("agr config default-tool set", new_cmd)
     run_default_tool_set(name)
 
 
 @default_tool_app.command("unset")
 def default_tool_unset() -> None:
     """Unset the default tool (agrx falls back to first configured tool)."""
-    typer.echo(
-        "Warning: 'agr config default-tool unset' is deprecated. Use 'agr config unset default_tool'."
-    )
+    print_deprecation("agr config default-tool unset", "agr config unset default_tool")
     run_default_tool_unset()
 
 
@@ -362,7 +349,7 @@ def init(
         Optional[str],
         typer.Option(
             "--canonical-instructions",
-            help="Canonical instruction file (AGENTS.md or CLAUDE.md).",
+            help="Canonical instruction file (AGENTS.md, CLAUDE.md, or GEMINI.md).",
         ),
     ] = None,
 ) -> None:
@@ -435,7 +422,8 @@ def add(
         typer.Option(
             "--global",
             "-g",
-            help="Install globally using ~/.agr/agr.toml and per-tool global skill directories.",
+            help="Install globally using ~/.agr/agr.toml "
+            "and per-tool global skill directories.",
         ),
     ] = False,
 ) -> None:

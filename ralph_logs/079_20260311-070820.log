@@ -1,0 +1,10 @@
+Done. Here's what was improved:
+
+**agent_docs/CONTRIBUTING.md** — Added 3 new sections (~140 lines):
+- **Testing patterns**: Available fixtures, mocking git operations, testing with skill directories, testing exceptions, and test directory layout
+- **Error handling patterns**: Exception hierarchy table, how to add new exceptions, how errors are surfaced in CLI commands
+- **Recipes**: Step-by-step guides for adding a new AI tool, adding a new CLI command, and adding a new config key
+
+**agr/git.py** — Added inline comments to non-obvious logic:
+- `_partial_clone_unsupported()`: Explained why each error string variant is checked
+- `_raise_clone_error()`: Numbered each classification step with comments explaining the logic, especially the heuristic for missing tokens where GitHub returns 404 for private repos

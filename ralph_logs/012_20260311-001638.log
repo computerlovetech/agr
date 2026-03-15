@@ -1,0 +1,1 @@
+Done. I extracted `to_parsed_handle()` and `resolve_source_name()` methods onto the `Dependency` class in `config.py`, replacing 3 duplicated blocks in `sync.py` that each manually parsed a dependency into a `ParsedHandle` and resolved its source name. All 576 tests pass, linting clean.

@@ -1,0 +1,1 @@
+Committed. The change deduplicates `get_github_token()` which was identically defined in both `agr/git.py` and `agr/sdk/hub.py`. Now it lives as a single public function in `agr.git` and is imported where needed. Also cleaned up the import organization in `hub.py` (removed unused `os` import, sorted imports properly). All 587 tests pass.

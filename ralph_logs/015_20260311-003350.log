@@ -1,0 +1,1 @@
+Extracted the `_resolve_skills_dir` helper in `fetcher.py` to deduplicate the 4-line skills directory resolution pattern that was repeated in `fetch_and_install`, `uninstall_skill`, and `is_skill_installed`. All 576 tests pass, linter and formatter clean.

@@ -1,0 +1,5 @@
+Done. Here's what I changed:
+
+**Bug fix in `agr/skill.py`**: `_is_excluded_path` was checking `path.parts` on the full absolute path, which includes directories outside the repo. If the repository happened to be inside a directory named `build`, `dist`, `vendor`, or any other entry in `EXCLUDED_DIRS`, all skills would be incorrectly excluded from discovery. Fixed by using `path.relative_to(repo_dir)` to only check path components within the repo.
+
+**Tests added in `tests/test_skill.py`**: Two new tests for `find_skill_in_repo` and `discover_skills_in_repo` that verify skills are correctly found when the repo root is inside a directory matching an excluded name (e.g., `build/project/` or `dist/project/`).

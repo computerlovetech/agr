@@ -1,0 +1,1 @@
+Committed. The change replaces raw string status values in `SyncResult` with a `SyncStatus` enum, eliminating the risk of silent bugs from string typos in status comparisons. All 576 tests pass.

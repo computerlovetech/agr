@@ -61,7 +61,8 @@ class CLIAssertions:
     def stdout_equals(self, expected: str) -> CLIAssertions:
         """Assert stdout equals text exactly."""
         assert self.result.stdout == expected, self._format_error(
-            f"Expected stdout to equal:\n{expected!r}\n\nActual:\n{self.result.stdout!r}"
+            f"Expected stdout to equal:\n{expected!r}"
+            f"\n\nActual:\n{self.result.stdout!r}"
         )
         return self
 

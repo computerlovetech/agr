@@ -1,0 +1,17 @@
+Done. Here's a summary of the change:
+
+**Extracted duplicated exception handling into `format_install_error` helper**
+
+The same two-tier exception pattern was repeated 7 times across 3 files:
+```python
+except (FileExistsError, AgrError) as e:
+    # handle with str(e)
+except (OSError, ValueError) as e:
+    # handle with f"Unexpected: {e}"
+```
+
+Consolidated into:
+- `INSTALL_ERROR_TYPES` tuple in `agr/exceptions.py` — single source of truth for caught exception types
+- `format_install_error()` function — consistent formatting logic (expected errors shown directly, unexpected ones prefixed)
+
+Each call site now uses a single `except INSTALL_ERROR_TYPES as e:` block, reducing duplication and ensuring consistent error formatting across `sync.py`, `add.py`, and `_tool_helpers.py`. Also fixed a minor inconsistency where `add.py` used "Unexpected error:" while all other files used "Unexpected:".

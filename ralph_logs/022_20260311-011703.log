@@ -1,0 +1,6 @@
+Done. The duplicated skill-not-found error message was defined in two places:
+
+1. **`agr/fetcher.py:609-612`** — inline string in `install_skill_from_repo`
+2. **`agr/commands/sync.py:227-232`** — nested function `_skill_not_found_message` inside `run_sync`
+
+I consolidated them into a single `skill_not_found_message()` function in `fetcher.py` and imported it in `sync.py`. This also improves `sync.py` by extracting a nested function (that had no closure dependencies) to module level.

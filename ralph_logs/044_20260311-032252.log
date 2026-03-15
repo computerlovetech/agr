@@ -1,0 +1,7 @@
+Committed. Three small focused improvements in `fetcher.py`:
+
+1. **Fixed stdlib import order** - `warnings` was out of alphabetical order among the stdlib imports
+2. **Modernized path containment check** - replaced `try/except ValueError` with `Path.is_relative_to()` in `_cleanup_empty_parents` (available since Python 3.9, project requires 3.10+)
+3. **Removed unnecessary `else` branch** - in `get_installed_skills`, the `else` after an `if` block that returns was flattened for cleaner control flow
+
+All 472 tests pass (the 1 failure in `test_gh_issue_phase.py` is a pre-existing bash substitution bug).

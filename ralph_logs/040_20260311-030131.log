@@ -1,0 +1,6 @@
+Done. The change aligns `remove.py`'s error handling with `add.py` and `sync.py`:
+
+- **Before**: Caught `(AgrError, OSError)` and used raw `str(e)` formatting
+- **After**: Uses shared `INSTALL_ERROR_TYPES` (which also catches `FileExistsError` and `ValueError`) and `format_install_error()` for consistent "Unexpected: ..." prefixing on non-standard errors
+
+All 472 tests pass (the 1 failure in `test_gh_issue_phase.py` is a pre-existing bash substitution bug unrelated to this change).

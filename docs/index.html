@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>agent-resources | Share Claude Code Skills, Commands & Agents</title>
-    
+    <title>agr — A Package Manager for AI Agent Skills</title>
+
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Share and install Claude Code skills, commands, and subagents with a single command. Like pip, but for Claude Code resources. Open source package manager for Anthropic AI agent tools.">
-    <meta name="keywords" content="Claude Code, Anthropic, AI agents, MCP, Claude skills, developer tools, CLI, Python, automation, agent resources">
+    <meta name="description" content="Install, share, and manage AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command. Open source package manager for AI coding agents.">
+    <meta name="keywords" content="agr, agent skills, Claude Code, Cursor, Codex, OpenCode, Copilot, AI agents, developer tools, CLI, Python, package manager">
     <meta name="author" content="Kasper Junge">
     <meta name="robots" content="index, follow">
-    
+
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://kasperjunge.github.io/agent-resources/">
-    <meta property="og:title" content="agent-resources | Share Claude Code Skills & Agents">
-    <meta property="og:description" content="Share and install Claude Code skills, commands, and subagents with a single command. Like pip for AI agent resources.">
+    <meta property="og:title" content="agr — A Package Manager for AI Agent Skills">
+    <meta property="og:description" content="Install, share, and manage AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.">
     <meta property="og:image" content="https://raw.githubusercontent.com/kasperjunge/agent-resources/main/docs/images/og-image.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://kasperjunge.github.io/agent-resources/">
-    <meta property="twitter:title" content="agent-resources | Share Claude Code Skills & Agents">
-    <meta property="twitter:description" content="Share and install Claude Code skills, commands, and subagents with a single command.">
+    <meta property="twitter:title" content="agr — A Package Manager for AI Agent Skills">
+    <meta property="twitter:description" content="Install, share, and manage AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.">
     <meta property="twitter:image" content="https://raw.githubusercontent.com/kasperjunge/agent-resources/main/docs/images/og-image.png">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://kasperjunge.github.io/agent-resources/">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --bg-primary: #0a0a0f;
@@ -46,17 +46,17 @@
             --border: #27272a;
             --success: #22c55e;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         html {
             scroll-behavior: smooth;
         }
-        
+
         body {
             font-family: 'Outfit', system-ui, sans-serif;
             background: var(--bg-primary);
@@ -64,7 +64,7 @@
             line-height: 1.6;
             overflow-x: hidden;
         }
-        
+
         /* Animated background */
         .bg-pattern {
             position: fixed;
@@ -73,12 +73,12 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: 
+            background:
                 radial-gradient(ellipse 80% 50% at 50% -20%, rgba(249, 115, 22, 0.15), transparent),
                 radial-gradient(ellipse 60% 40% at 80% 60%, rgba(168, 85, 247, 0.08), transparent),
                 radial-gradient(ellipse 50% 30% at 20% 80%, rgba(249, 115, 22, 0.05), transparent);
         }
-        
+
         .grid-overlay {
             position: fixed;
             top: 0;
@@ -86,13 +86,13 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background-image: 
+            background-image:
                 linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
             background-size: 60px 60px;
             mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent);
         }
-        
+
         /* Navigation */
         nav {
             position: fixed;
@@ -108,7 +108,7 @@
             border-bottom: 1px solid var(--border);
             z-index: 100;
         }
-        
+
         .logo {
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.1rem;
@@ -119,17 +119,17 @@
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .logo-icon {
             font-size: 1.3rem;
         }
-        
+
         .nav-links {
             display: flex;
             gap: 2rem;
             list-style: none;
         }
-        
+
         .nav-links a {
             color: var(--text-secondary);
             text-decoration: none;
@@ -137,11 +137,11 @@
             font-weight: 500;
             transition: color 0.2s;
         }
-        
+
         .nav-links a:hover {
             color: var(--accent);
         }
-        
+
         .github-btn {
             display: flex;
             align-items: center;
@@ -156,12 +156,12 @@
             font-weight: 500;
             transition: all 0.2s;
         }
-        
+
         .github-btn:hover {
             border-color: var(--accent);
             box-shadow: 0 0 20px var(--accent-glow);
         }
-        
+
         /* Hero */
         .hero {
             min-height: 100vh;
@@ -174,7 +174,7 @@
             max-width: 900px;
             margin: 0 auto;
         }
-        
+
         .badge {
             display: inline-flex;
             align-items: center;
@@ -188,7 +188,7 @@
             margin-bottom: 2rem;
             animation: fadeInUp 0.6s ease-out;
         }
-        
+
         .badge::before {
             content: '';
             width: 6px;
@@ -197,12 +197,12 @@
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
-        
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
-        
+
         h1 {
             font-size: clamp(2.5rem, 8vw, 4.5rem);
             font-weight: 700;
@@ -210,14 +210,14 @@
             margin-bottom: 1.5rem;
             animation: fadeInUp 0.6s ease-out 0.1s both;
         }
-        
+
         h1 .highlight {
             background: linear-gradient(135deg, var(--accent), #fb923c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .subtitle {
             font-size: 1.25rem;
             color: var(--text-secondary);
@@ -225,7 +225,7 @@
             margin-bottom: 3rem;
             animation: fadeInUp 0.6s ease-out 0.2s both;
         }
-        
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -236,7 +236,7 @@
                 transform: translateY(0);
             }
         }
-        
+
         /* Terminal */
         .terminal {
             background: var(--bg-secondary);
@@ -244,14 +244,14 @@
             border-radius: 12px;
             overflow: hidden;
             width: 100%;
-            max-width: 550px;
+            max-width: 620px;
             text-align: left;
             animation: fadeInUp 0.6s ease-out 0.3s both;
-            box-shadow: 
+            box-shadow:
                 0 4px 6px -1px rgba(0, 0, 0, 0.3),
                 0 0 40px -10px var(--accent-glow);
         }
-        
+
         .terminal-header {
             display: flex;
             align-items: center;
@@ -260,63 +260,64 @@
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
         }
-        
+
         .terminal-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
         }
-        
+
         .terminal-dot.red { background: #ff5f57; }
         .terminal-dot.yellow { background: #febc2e; }
         .terminal-dot.green { background: #28c840; }
-        
+
         .terminal-body {
             padding: 1.5rem;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
-        
+
         .terminal-line {
             margin-bottom: 0.75rem;
             opacity: 0;
             animation: typeIn 0.3s ease-out forwards;
         }
-        
+
         .terminal-line:nth-child(1) { animation-delay: 0.8s; }
-        .terminal-line:nth-child(2) { animation-delay: 1.2s; }
-        .terminal-line:nth-child(3) { animation-delay: 1.6s; }
-        
+        .terminal-line:nth-child(2) { animation-delay: 1.4s; }
+        .terminal-line:nth-child(3) { animation-delay: 2.0s; }
+        .terminal-line:nth-child(4) { animation-delay: 2.6s; }
+
         @keyframes typeIn {
             from { opacity: 0; transform: translateX(-10px); }
             to { opacity: 1; transform: translateX(0); }
         }
-        
+
         .prompt {
             color: var(--success);
         }
-        
+
         .command {
             color: var(--text-primary);
         }
-        
+
         .comment {
             color: var(--text-muted);
         }
-        
+
         /* Features */
         .features {
             padding: 6rem 2rem;
             max-width: 1200px;
             margin: 0 auto;
         }
-        
+
         .section-title {
             text-align: center;
             font-size: 2rem;
             margin-bottom: 1rem;
         }
-        
+
         .section-subtitle {
             text-align: center;
             color: var(--text-secondary);
@@ -325,13 +326,13 @@
             margin-left: auto;
             margin-right: auto;
         }
-        
+
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
-        
+
         .feature-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -339,28 +340,56 @@
             padding: 2rem;
             transition: all 0.3s;
         }
-        
+
         .feature-card:hover {
             border-color: var(--accent);
             transform: translateY(-4px);
             box-shadow: 0 20px 40px -20px var(--accent-glow);
         }
-        
+
         .feature-icon {
             font-size: 2.5rem;
             margin-bottom: 1rem;
         }
-        
+
         .feature-card h3 {
             font-size: 1.25rem;
             margin-bottom: 0.75rem;
         }
-        
+
         .feature-card p {
             color: var(--text-secondary);
             font-size: 0.95rem;
         }
-        
+
+        /* Tool logos */
+        .tools-strip {
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .tools-strip p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-list {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            flex-wrap: wrap;
+            list-style: none;
+        }
+
+        .tool-list li {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
         /* How it works */
         .how-it-works {
             padding: 6rem 2rem;
@@ -368,7 +397,7 @@
             border-top: 1px solid var(--border);
             border-bottom: 1px solid var(--border);
         }
-        
+
         .steps {
             max-width: 800px;
             margin: 0 auto;
@@ -376,13 +405,13 @@
             flex-direction: column;
             gap: 2rem;
         }
-        
+
         .step {
             display: flex;
             gap: 1.5rem;
             align-items: flex-start;
         }
-        
+
         .step-number {
             flex-shrink: 0;
             width: 48px;
@@ -395,16 +424,16 @@
             font-weight: 700;
             font-size: 1.25rem;
         }
-        
+
         .step-content h3 {
             font-size: 1.2rem;
             margin-bottom: 0.5rem;
         }
-        
+
         .step-content p {
             color: var(--text-secondary);
         }
-        
+
         .step-content code {
             display: inline-block;
             margin-top: 0.75rem;
@@ -416,31 +445,31 @@
             font-size: 0.85rem;
             color: var(--accent);
         }
-        
+
         /* CTA */
         .cta {
             padding: 8rem 2rem;
             text-align: center;
         }
-        
+
         .cta h2 {
             font-size: 2.5rem;
             margin-bottom: 1rem;
         }
-        
+
         .cta p {
             color: var(--text-secondary);
             margin-bottom: 2rem;
             font-size: 1.1rem;
         }
-        
+
         .cta-buttons {
             display: flex;
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
         }
-        
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -452,27 +481,27 @@
             text-decoration: none;
             transition: all 0.2s;
         }
-        
+
         .btn-primary {
             background: linear-gradient(135deg, var(--accent), #fb923c);
             color: white;
         }
-        
+
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px -10px var(--accent-glow);
         }
-        
+
         .btn-secondary {
             background: var(--bg-card);
             border: 1px solid var(--border);
             color: var(--text-primary);
         }
-        
+
         .btn-secondary:hover {
             border-color: var(--text-muted);
         }
-        
+
         /* Footer */
         footer {
             padding: 3rem 2rem;
@@ -481,38 +510,42 @@
             color: var(--text-muted);
             font-size: 0.9rem;
         }
-        
+
         footer a {
             color: var(--text-secondary);
             text-decoration: none;
         }
-        
+
         footer a:hover {
             color: var(--accent);
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             nav {
                 padding: 1rem;
             }
-            
+
             .nav-links {
                 display: none;
             }
-            
+
             .hero {
                 padding: 6rem 1.5rem 3rem;
             }
-            
+
             .features, .how-it-works, .cta {
                 padding: 4rem 1.5rem;
             }
-            
+
             .step {
                 flex-direction: column;
                 text-align: center;
                 align-items: center;
+            }
+
+            .tool-list {
+                gap: 1.5rem;
             }
         }
     </style>
@@ -520,34 +553,35 @@
 <body>
     <div class="bg-pattern"></div>
     <div class="grid-overlay"></div>
-    
+
     <nav>
         <a href="#" class="logo">
-            <span class="logo-icon">🧩</span>
-            agent-resources
+            <span class="logo-icon">&#x1F9E9;</span>
+            agr
         </a>
         <ul class="nav-links">
-            <li><a href="site/">Docs</a></li>
+            <li><a href="https://kasperjunge.github.io/agent-resources/">Docs</a></li>
+            <li><a href="skills/">Skills</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="https://pypi.org/project/agent-resources/">PyPI</a></li>
+            <li><a href="https://pypi.org/project/agr/">PyPI</a></li>
         </ul>
-        <a href="https://github.com/kasperjunge/agent-resources-project" class="github-btn">
+        <a href="https://github.com/kasperjunge/agent-resources" class="github-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
             </svg>
             Star on GitHub
         </a>
     </nav>
-    
+
     <section class="hero">
         <div class="badge">Open Source Package Manager for AI Agents</div>
-        <h1>Share <span class="highlight">Claude Code</span> Resources Instantly</h1>
+        <h1>A Package Manager for <span class="highlight">Agent Skills</span></h1>
         <p class="subtitle">
-            Install skills, commands, and subagents with a single command. 
-            Like uv add, but for Claude Code.
+            Install, share, and sync AI agent skills across tools with a single command.
+            Works with Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.
         </p>
-        
+
         <div class="terminal">
             <div class="terminal-header">
                 <div class="terminal-dot red"></div>
@@ -555,115 +589,132 @@
                 <div class="terminal-dot green"></div>
             </div>
             <div class="terminal-body">
-                <div class="terminal-line">kasperjunge/hello-world
-                    <span class="prompt">$</span>
-                    <span class="command">uvx agr add kasperjunge/hello-world</span>
+                <div class="terminal-line">
+                    <span class="comment"># Install agr (or: pipx install agr)</span>
                 </div>
                 <div class="terminal-line">
                     <span class="prompt">$</span>
-                    <span class="command">uvx agr add kasperjunge/hello-world</span>
+                    <span class="command"> uv tool install agr</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="comment"># Add a skill from GitHub</span>
                 </div>
                 <div class="terminal-line">
                     <span class="prompt">$</span>
-                    <span class="command">uvx agr add kasperjunge/hello-world</span>
+                    <span class="command"> agr add anthropics/skills/frontend-design</span>
                 </div>
             </div>
         </div>
     </section>
-    
+
+    <div class="tools-strip">
+        <p>Works with your tools</p>
+        <ul class="tool-list">
+            <li>Claude Code</li>
+            <li>Cursor</li>
+            <li>OpenAI Codex</li>
+            <li>OpenCode</li>
+            <li>GitHub Copilot</li>
+            <li>Antigravity</li>
+        </ul>
+    </div>
+
     <section id="features" class="features">
-        <h2 class="section-title">Why agent-resources?</h2>
+        <h2 class="section-title">Why agr?</h2>
         <p class="section-subtitle">
-            Stop copying files manually. Share your Claude Code toolkit with the community in seconds.
+            Stop copying skill files manually. Install from GitHub, sync across your team, and run skills instantly.
         </p>
-        
+
         <div class="feature-grid">
             <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h3>Zero Friction Install</h3>
-                <p>One command to install any skill, command, or agent. No dependencies to manage, no config files to edit.</p>
+                <div class="feature-icon">&#x26A1;</div>
+                <h3>One Command Install</h3>
+                <p><code>agr add user/skill</code> fetches from GitHub and installs into your tool's skills folder. Done.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🌍</div>
-                <h3>GitHub-Powered</h3>
-                <p>Your GitHub repo is your registry. Push changes, they're instantly available to everyone. No publishing step needed.</p>
+                <div class="feature-icon">&#x1F310;</div>
+                <h3>GitHub Is Your Registry</h3>
+                <p>Your GitHub repo is your package registry. Push a skill, anyone can install it. No publishing step needed.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🧩</div>
-                <h3>Three Resource Types</h3>
-                <p>Skills for domain knowledge, commands for quick actions, and subagents for specialized tasks. Mix and match freely.</p>
+                <div class="feature-icon">&#x1F504;</div>
+                <h3>Team Sync</h3>
+                <p>Track dependencies in <code>agr.toml</code>. Teammates run <code>agr sync</code> and get everything. Like a lockfile for skills.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🚀</div>
-                <h3>Create in 30 Seconds</h3>
-                <p>Run one command to scaffold your own agent-resources repo. Start sharing your Claude Code toolkit immediately.</p>
+                <div class="feature-icon">&#x1F3AF;</div>
+                <h3>Multi-Tool Support</h3>
+                <p>Install skills into Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity simultaneously. One config, all tools.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🔓</div>
-                <h3>Fully Open Source</h3>
-                <p>MIT licensed. No vendor lock-in. Fork it, extend it, make it yours. Built for the Claude Code community.</p>
+                <div class="feature-icon">&#x1F680;</div>
+                <h3>Run Without Installing</h3>
+                <p><code>agrx user/skill</code> downloads, runs, and cleans up. Try any skill instantly without committing to it.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">📦</div>
-                <h3>Works with uvx</h3>
-                <p>Use uvx for instant execution. Available on PyPI. Cross-platform support out of the box.</p>
+                <div class="feature-icon">&#x1F4E6;</div>
+                <h3>Python SDK</h3>
+                <p>Use <code>agr</code> as a library. Load skills programmatically, inspect metadata, manage the cache. Build on top of it.</p>
             </div>
         </div>
     </section>
-    
+
     <section id="how-it-works" class="how-it-works">
         <h2 class="section-title">Get Started in Minutes</h2>
-        <p class="section-subtitle">From zero to sharing your own resources in three simple steps.</p>
-        
+        <p class="section-subtitle">From zero to sharing your own skills in three steps.</p>
+
         <div class="steps">
             <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <h3>Try an existing skill</h3>
-                    <p>No installation needed. Just run this command to add your first skill:</p>
-                    <code>uvx agr add kasperjunge/hello-world</code>
+                    <h3>Install a skill</h3>
+                    <p>Install agr and add your first skill from GitHub:</p>
+                    <code>uv tool install agr && agr add anthropics/skills/frontend-design</code>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h3>Create your own repo</h3>
-                    <p>Scaffold your personal agent-resources repository with one command:</p>
-                    <code>agr init repo --github</code>
+                    <h3>Create your own</h3>
+                    <p>Scaffold a new skill with one command, then write your instructions:</p>
+                    <code>agr init my-skill</code>
                 </div>
             </div>
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
                     <h3>Share with the community</h3>
-                    <p>Push to GitHub and share your resources. Others can install with:</p>
-                    <code>agr add your-username/your-skill</code>
+                    <p>Push to GitHub. Others install with a single command:</p>
+                    <code>agr add your-username/my-skill</code>
                 </div>
             </div>
         </div>
     </section>
-    
+
     <section class="cta">
-        <h2>Ready to supercharge your Claude Code?</h2>
-        <p>Join the growing community of developers sharing AI agent resources.</p>
+        <h2>Ready to manage your agent skills?</h2>
+        <p>Install agr and start sharing skills across your tools and team.</p>
         <div class="cta-buttons">
-            <a href="https://github.com/kasperjunge/agent-resources-project" class="btn btn-primary">
+            <a href="https://kasperjunge.github.io/agent-resources/" class="btn btn-primary">
+                Read the Docs
+            </a>
+            <a href="skills/" class="btn btn-secondary">
+                Browse Skills
+            </a>
+            <a href="https://github.com/kasperjunge/agent-resources" class="btn btn-secondary">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
                 View on GitHub
             </a>
-            <a href="https://pypi.org/project/agent-resources/" class="btn btn-secondary">
-                View on PyPI →
-            </a>
         </div>
     </section>
-    
+
     <footer>
         <p>
-            <strong>MIT License</strong> · Made for the <a href="https://claude.ai/code">Claude Code</a> community
+            <strong>MIT License</strong> &middot; Built for the AI agent community
             <br><br>
-            Built by <a href="https://github.com/kasperjunge">Kasper Junge</a> and <a href="https://github.com/jkhkyhse">Jonas Høgh Kyhse-Andersen</a>
+            Built by <a href="https://github.com/kasperjunge">Kasper Junge</a> and <a href="https://github.com/jkhkyhse">Jonas H&oslash;gh Kyhse-Andersen</a>
         </p>
     </footer>
 
@@ -672,9 +723,9 @@
     {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "agent-resources",
-        "description": "Share and install Claude Code skills, commands, and subagents with a single command. A package manager for Anthropic Claude Code resources.",
-        "url": "https://github.com/kasperjunge/agent-resources-project",
+        "name": "agr",
+        "description": "A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
+        "url": "https://github.com/kasperjunge/agent-resources",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Cross-platform",
         "offers": {
@@ -688,8 +739,8 @@
             "url": "https://github.com/kasperjunge"
         },
         "license": "https://opensource.org/licenses/MIT",
-        "programmingLanguage": ["Python", "TypeScript"],
-        "keywords": "Claude Code, Anthropic, AI agents, MCP, developer tools"
+        "programmingLanguage": "Python",
+        "keywords": "agr, agent skills, Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity, AI agents, package manager"
     }
     </script>
 </body>

@@ -1,0 +1,5 @@
+Done. Two improvements in `agrx/main.py`:
+
+1. **Narrowed `except Exception` to `except OSError`** in `_cleanup_skill` — `shutil.rmtree` only raises `OSError` (and subclasses like `PermissionError`), so the catch-all was unnecessarily broad. This continues the pattern from recent commits narrowing exception handlers.
+
+2. **Moved `_build_temp_skill_name`** from after the `if __name__ == "__main__"` guard to before the `main()` function — helper functions should be defined before their usage and above the module entry point guard.

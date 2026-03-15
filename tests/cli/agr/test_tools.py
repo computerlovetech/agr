@@ -204,7 +204,7 @@ class TestAgrToolsRemove:
         """agr tools remove keeps tool in config if skill deletion fails."""
         import shutil
 
-        from agr.commands import tools as tools_module
+        from agr.commands import _tool_helpers as helpers_module
         from agr.commands.add import run_add
         from agr.commands.tools import run_tools_add, run_tools_remove
         from agr.config import AgrConfig
@@ -226,8 +226,8 @@ class TestAgrToolsRemove:
                 raise OSError("Permission denied")
             return original_rmtree(path, *args, **kwargs)
 
-        # Patch in the module where it's used
-        monkeypatch.setattr(tools_module.shutil, "rmtree", failing_rmtree)
+        # Patch in the module where delete_tool_skills is defined
+        monkeypatch.setattr(helpers_module.shutil, "rmtree", failing_rmtree)
 
         # Try to remove cursor
         run_tools_remove(["cursor"])

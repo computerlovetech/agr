@@ -1,0 +1,1 @@
+Done. The change extracts a `_iter_skill_cache_dirs` generator from the `clear_cache` function in `agr/sdk/cache.py`, eliminating duplication between two deeply nested (4-level) loop branches that walked the same cache directory structure. The `clear_cache` function is now a simple 5-line loop instead of two separate 30-line nested blocks. All 587 tests pass.

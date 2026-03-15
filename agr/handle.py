@@ -32,6 +32,12 @@ LOCAL_PREFIX = "local"
 LEGACY_SEPARATOR = ":"
 DEFAULT_REPO_NAME = "skills"
 LEGACY_DEFAULT_REPO_NAME = "agent-resources"
+LEGACY_REPO_DEPRECATION_WARNING = (
+    "Deprecated: owner-only handles now default to the 'skills' "
+    "repo. Falling back to the legacy 'agent-resources' repo. "
+    "Use an explicit handle like 'owner/agent-resources/skill' "
+    "or move/rename your repo to 'skills'."
+)
 
 
 def iter_repo_candidates(repo: str | None) -> list[tuple[str, bool]]:
@@ -137,16 +143,24 @@ class ParsedHandle:
             return Path(self.username or "") / self.name
         return Path(self.name)
 
-    def get_skill_name_for_tool(self, tool: "ToolConfig") -> str:
-        """Get the default SKILL.md name field value for a tool.
-
-        Args:
-            tool: Tool configuration determining naming convention
+    def resolve_local_path(self) -> Path:
+        """Resolve local_path to an absolute path.
 
         Returns:
-            Name to use in SKILL.md frontmatter by default.
-            - Flat tools (Claude): Skill name (e.g., "bluesky")
-            - Nested tools (Cursor): Skill name (e.g., "bluesky")
+            The resolved absolute path.
+
+        Raises:
+            InvalidHandleError: If this is not a local handle or has no path.
+        """
+        if not self.is_local or self.local_path is None:
+            raise InvalidHandleError("Cannot resolve path for non-local handle")
+        return self.local_path.resolve()
+
+    def get_skill_name_for_tool(self, tool: "ToolConfig") -> str:
+        """Get the skill name to use in SKILL.md frontmatter.
+
+        Currently returns the skill name for all tools. The ``tool``
+        parameter is accepted for future extensibility.
         """
         return self.name
 
@@ -157,7 +171,8 @@ def parse_handle(ref: str, *, prefer_local: bool = True) -> ParsedHandle:
     Args:
         ref: Handle string. Examples:
             - "kasperjunge/commit" -> remote, user=kasperjunge, name=commit
-            - "maragudk/skills/collaboration" -> remote, user=maragudk, repo=skills, name=collaboration
+            - "maragudk/skills/collaboration" -> remote,
+              user=maragudk, repo=skills, name=collaboration
             - "./my-skill" -> local, name=my-skill
             - "../other/skill" -> local, name=skill
         prefer_local: Prefer local paths when the ref exists on disk.
@@ -232,7 +247,8 @@ def parse_handle(ref: str, *, prefer_local: bool = True) -> ParsedHandle:
         )
 
     raise InvalidHandleError(
-        f"Invalid handle '{ref}': too many path segments (expected user/name or user/repo/name)"
+        f"Invalid handle '{ref}': too many path segments "
+        "(expected user/name or user/repo/name)"
     )
 
 
@@ -300,7 +316,9 @@ def _validate_no_separator_in_name(ref: str, name: str) -> None:
     """
     if INSTALLED_NAME_SEPARATOR in name:
         raise InvalidHandleError(
-            f"Invalid handle '{ref}': name '{name}' contains reserved sequence '{INSTALLED_NAME_SEPARATOR}'"
+            f"Invalid handle '{ref}': name '{name}' "
+            f"contains reserved sequence "
+            f"'{INSTALLED_NAME_SEPARATOR}'"
         )
 
 
@@ -330,14 +348,18 @@ def _validate_no_separator_in_components(
     ]:
         if name and sep in name:
             raise InvalidHandleError(
-                f"Invalid handle '{ref}': {component} '{name}' contains reserved sequence '{sep}'"
+                f"Invalid handle '{ref}': "
+                f"{component} '{name}' "
+                f"contains reserved sequence "
+                f"'{sep}'"
             )
 
 
 def installed_name_to_toml_handle(installed_name: str) -> str:
     """Convert installed directory name back to agr.toml handle.
 
-    Supports both new separator format and legacy colon format for backward compatibility.
+    Supports both new separator format and legacy colon format
+    for backward compatibility.
 
     Args:
         installed_name: Directory name like "kasperjunge--commit" or "local--my-skill"

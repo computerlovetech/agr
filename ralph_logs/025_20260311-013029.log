@@ -1,0 +1,1 @@
+Done. Merged the duplicate exception handlers in `_sync_dependencies_to_tools` (`agr/commands/tools.py`). The `AgrError` handler was identical to the `Exception` handler and redundant since `AgrError` is a subclass of `Exception`. Removed the unnecessary `AgrError` import as well. All 472 tests pass.

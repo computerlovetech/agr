@@ -1,0 +1,7 @@
+Done. The refactoring:
+
+- **Extracted `_print_results_and_summary`** — a shared function that prints per-dependency results (installed/up-to-date/error) and the summary line, replacing duplicated logic in both `_run_global_sync` and `run_sync`
+- **Unified `_run_global_sync`** to use `SyncResult`/`SyncStatus` instead of ad-hoc counter variables, making it consistent with the local sync path
+- Net result: ~48 lines removed, ~53 added (the new function is slightly more documented), eliminating the duplicated result-printing pattern across both sync paths
+
+All 587 tests pass, linter clean.

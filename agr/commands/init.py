@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agr.console import get_console
+from agr.console import get_console, print_error
 from agr.config import (
     VALID_CANONICAL_INSTRUCTIONS,
     AgrConfig,
@@ -14,7 +14,7 @@ from agr.config import (
 from agr.detect import detect_tools
 from agr.instructions import canonical_instruction_file
 from agr.skill import create_skill_scaffold
-from agr.tool import TOOLS
+from agr.tool import TOOLS, available_tools_string
 
 
 def init_config(path: Path | None = None) -> tuple[Path, bool]:
@@ -68,8 +68,9 @@ def _parse_tools_flag(value: str | None) -> list[str] | None:
 def _validate_tools(tools: list[str]) -> None:
     for name in tools:
         if name not in TOOLS:
-            available = ", ".join(TOOLS.keys())
-            raise ValueError(f"Unknown tool '{name}'. Available: {available}")
+            raise ValueError(
+                f"Unknown tool '{name}'. Available: {available_tools_string()}"
+            )
 
 
 def run_init(
@@ -95,11 +96,8 @@ def run_init(
             console.print(
                 f"  [dim]Edit {skill_path}/SKILL.md to customize your skill[/dim]"
             )
-        except ValueError as e:
-            console.print(f"[red]Error:[/red] {e}")
-            raise SystemExit(1)
-        except FileExistsError as e:
-            console.print(f"[red]Error:[/red] {e}")
+        except (ValueError, FileExistsError) as e:
+            print_error(str(e))
             raise SystemExit(1)
         return
 
@@ -125,7 +123,7 @@ def run_init(
         try:
             _validate_tools(tools_override)
         except ValueError as exc:
-            console.print(f"[red]Error:[/red] {exc}")
+            print_error(str(exc))
             raise SystemExit(1)
         config.tools = tools_override
         tools_display = tools_override
@@ -144,9 +142,8 @@ def run_init(
     # Default tool
     if default_tool:
         if default_tool not in TOOLS:
-            available = ", ".join(TOOLS.keys())
-            console.print(
-                f"[red]Error:[/red] Unknown tool '{default_tool}'. Available: {available}"
+            print_error(
+                f"Unknown tool '{default_tool}'. Available: {available_tools_string()}"
             )
             raise SystemExit(1)
         config.default_tool = default_tool
@@ -154,10 +151,7 @@ def run_init(
             changed = True
 
     if config.default_tool and config.default_tool not in config.tools:
-        console.print(
-            "[red]Error:[/red] default_tool must be listed in tools. "
-            "Use --tools to include it."
-        )
+        print_error("default_tool must be listed in tools. Use --tools to include it.")
         raise SystemExit(1)
 
     # Instruction sync
@@ -168,9 +162,8 @@ def run_init(
 
     if canonical_instructions:
         if canonical_instructions not in VALID_CANONICAL_INSTRUCTIONS:
-            console.print(
-                "[red]Error:[/red] canonical instructions must be AGENTS.md or CLAUDE.md"
-            )
+            valid = ", ".join(sorted(VALID_CANONICAL_INSTRUCTIONS))
+            print_error(f"canonical_instructions must be one of: {valid}")
             raise SystemExit(1)
         config.canonical_instructions = canonical_instructions
         if config.canonical_instructions != original_canonical_instructions:

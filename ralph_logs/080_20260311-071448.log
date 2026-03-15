@@ -1,0 +1,20 @@
+Done. Here's a summary of what was improved:
+
+**Documentation accuracy fixes:**
+- Fixed `canonical_instructions` docs and CLI help to list all 3 valid options (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) — previously only mentioned 2
+- Fixed hardcoded error message in `init.py` to dynamically use `VALID_CANONICAL_INSTRUCTIONS`
+
+**Agent docs (ARCHITECTURE.md):**
+- Added detection signals table (per-tool paths used by `agr init` auto-detection)
+- Added CLI command mapping table (what agrx runs for each tool)
+- Documented skill destination resolution algorithm (`_resolve_skill_destination`)
+- Documented `format_install_error()` and `INSTALL_ERROR_TYPES` in error handling section
+- Added self-install edge case documentation for local installs
+
+**Agent docs (CONTRIBUTING.md):**
+- Expanded test directory layout from a 15-line summary to a full 50+ file tree showing all CLI, SDK, and unit test files
+
+**Inline comments (fetcher.py):**
+- Added docstring explaining the 3-step resolution strategy in `_resolve_skill_destination`
+- Added comment explaining the self-install case in `install_local_skill`
+- Added comment explaining the multi-tool download optimization in `fetch_and_install_to_tools`

@@ -1,0 +1,21 @@
+Done. Here's what I did:
+
+1. **Filled in the Architecture section** in both `CLAUDE.md` and `AGENTS.md` (previously just `...`). Added a module map table and a data flow summary for the core `agr add` workflow.
+
+2. **Created `agent_docs/ARCHITECTURE.md`** — comprehensive architecture reference covering:
+   - Project structure with all modules
+   - Key types (ParsedHandle, ToolConfig, AgrConfig, Dependency, SourceConfig) with fields and methods
+   - Detailed install/uninstall/sync workflow traces
+   - Naming conventions (flat vs nested tools)
+   - Metadata format
+   - Error handling hierarchy
+   - Testing patterns
+   - SDK overview
+
+3. **Created `agent_docs/CONTRIBUTING.md`** — practical quick-reference for agents working in the codebase:
+   - Commands for tests, lint, format
+   - "Where to find things" lookup table
+   - Code style and testing conventions
+   - Common patterns (context managers, handle resolution, config discovery, rollback)
+
+All 587 tests pass.

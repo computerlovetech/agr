@@ -1,0 +1,1 @@
+Done. Extracted a `print_error()` helper into `agr/console.py` and replaced 30+ scattered `console.print("[red]Error:[/red] ...")` calls across 8 files with the new helper. All 576 tests pass, linting is clean, and the change is purely internal — no public API changes.

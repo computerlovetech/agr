@@ -4,17 +4,81 @@ title: Reference
 
 # Reference
 
-## Common Workflows
+## Quick Reference
 
-| Goal | Command(s) |
-|------|------------|
-| Install a skill for your tool | `agr add <handle>` |
-| Run a skill once | `agrx <handle>` |
-| Team sync | Add to `agr.toml`, then `agr sync` |
-| Configure tool targets | `agr config set tools claude codex` |
-| Interactive guided setup | `agr onboard` |
-| Create a new skill | `agr init <name>` |
-| Migrate old rules/commands | `agrx kasperjunge/migrate-to-skills` |
+### Install & Remove
+
+```bash
+agr add user/skill                     # Install from GitHub
+agr add user/repo/skill                # Install from a specific repo
+agr add ./path/to/skill                # Install from local directory
+agr add user/skill user/other-skill    # Install multiple at once
+agr add user/skill --overwrite         # Update to latest version
+agr remove user/skill                  # Uninstall a skill
+```
+
+### Global Skills
+
+```bash
+agr add -g user/skill                  # Install globally (all projects)
+agr list -g                            # List global skills
+agr sync -g                            # Sync global dependencies
+agr remove -g user/skill               # Remove a global skill
+```
+
+### Team Sync
+
+```bash
+agr sync                               # Install all skills from agr.toml
+agr list                               # Show skills and install status
+```
+
+### Try Without Installing
+
+```bash
+agrx user/skill                        # Run once, then clean up
+agrx user/skill -p "Extract tables"    # Pass a prompt
+agrx user/skill -i                     # Interactive: skill + chat
+agrx user/skill --tool cursor          # Use a specific tool
+```
+
+### Create & Share
+
+```bash
+agr init my-skill                      # Scaffold a new skill
+agr add ./my-skill                     # Test locally
+agr add ./my-skill -o                  # Reinstall after editing
+```
+
+### Configuration
+
+```bash
+agr init                               # Create agr.toml (auto-detects tools)
+agr onboard                            # Interactive guided setup
+agr config show                        # View current config
+agr config set tools claude cursor     # Target multiple tools
+agr config set default_tool claude     # Set default for agrx
+agr config add tools codex             # Add a tool without replacing
+agr config remove tools codex          # Stop syncing to a tool
+```
+
+### Sources & Private Repos
+
+```bash
+export GITHUB_TOKEN="ghp_..."                    # Authenticate for private repos
+agr config add sources gitlab \
+  --type git --url "https://gitlab.com/{owner}/{repo}.git"   # Custom source
+agr add user/skill --source gitlab               # Use a specific source
+agr config set default_source gitlab             # Change default source
+```
+
+### Instruction Syncing
+
+```bash
+agr config set sync_instructions true             # Enable syncing
+agr config set canonical_instructions CLAUDE.md   # Set source of truth
+agr sync                                          # Copies to AGENTS.md, GEMINI.md
+```
 
 ## Global Options
 
@@ -26,8 +90,11 @@ title: Reference
 ### agr add
 
 Install skills from GitHub or local paths. Skills are installed into your tool's
-skills folder (e.g. `.claude/skills/`, `.codex/skills/`, `.cursor/skills/`,
-`.opencode/skill/`, `.github/skills/`, `.agent/skills/`).
+skills folder (e.g. `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`,
+`.opencode/skills/`, `.github/skills/`, `.agent/skills/`).
+
+If no `agr.toml` exists, `agr add` creates one automatically and detects which
+tools you use from repo signals. You don't need to run `agr init` first.
 
 ```bash
 agr add <handle>...
@@ -40,7 +107,7 @@ agr add <handle>...
 **Options:**
 
 - `--overwrite`, `-o` — Replace existing skills
-- `--source <name>` — Use a specific source from `agr.toml`
+- `--source`, `-s` `<name>` — Use a specific source from `agr.toml`
 - `--global`, `-g` — Install globally using `~/.agr/agr.toml` and tool global directories
 
 **Examples:**
@@ -116,7 +183,7 @@ discovery and migration.
 - `--tools` — Comma-separated tool list (e.g., `claude,codex,opencode`)
 - `--default-tool` — Default tool for `agrx` and instruction sync
 - `--sync-instructions/--no-sync-instructions` — Sync instruction files on `agr sync`
-- `--canonical-instructions` — Canonical instruction file (`AGENTS.md` or `CLAUDE.md`)
+- `--canonical-instructions` — Canonical instruction file (`AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`)
 
 **Examples:**
 
@@ -205,7 +272,7 @@ Downloads the skill, runs it with the selected tool, and cleans up afterwards.
 - `--interactive`, `-i` — Run skill, then continue in interactive mode
 - `--prompt`, `-p` — Prompt to pass to the skill
 - `--global`, `-g` — Install to the global tool skills directory instead of the repo-local one
-- `--source <name>` — Use a specific source from `agr.toml`
+- `--source`, `-s` `<name>` — Use a specific source from `agr.toml`
 
 **Examples:**
 
@@ -252,46 +319,10 @@ Note: `dependencies` must appear before any `[[source]]` blocks in `agr.toml`.
 - `tools` — List of tools to sync instructions/skills to
 - `default_tool` — Default tool used by `agrx`
 - `sync_instructions` — Sync instruction files on `agr sync`
-- `canonical_instructions` — Canonical instruction file (`AGENTS.md` or `CLAUDE.md`)
+- `canonical_instructions` — Canonical instruction file (`AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`)
 
 ## Troubleshooting
 
-### Skill not found
-
-Check that the skill exists in the repository. agr searches:
-
-- `resources/skills/{name}/SKILL.md`
-- `skills/{name}/SKILL.md`
-- `{name}/SKILL.md`
-
-### Skill already exists
-
-Use `--overwrite`:
-
-```bash
-agr add user/skill --overwrite
-```
-
-### Repository not found
-
-Check:
-
-- Username and repo name are correct
-- Repository is public
-- Default branch is `main`
-
-### Git not installed
-
-Remote installs require `git` to be available on your system.
-
-### Not in a git repository
-
-`agrx` requires a git repository (or use `--global`):
-
-```bash
-agrx user/skill --global
-```
-
-### Network errors
-
-Ensure the repository is public and you have internet access.
+See the [Troubleshooting](troubleshooting.md) page for solutions to common
+errors — installation failures, handle format issues, authentication problems,
+and more.

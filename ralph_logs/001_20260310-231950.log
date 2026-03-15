@@ -1,0 +1,4 @@
+Done. Two small improvements committed:
+
+1. **`agr/metadata.py`** - Narrowed `except Exception` to `except (json.JSONDecodeError, OSError, UnicodeDecodeError)` so unexpected errors in `read_skill_metadata` aren't silently swallowed.
+2. **`agr/fetcher.py`** - Removed unreachable `return installed` statement after `raise SkillNotFoundError(...)` in `fetch_and_install_to_tools`.

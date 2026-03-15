@@ -1,0 +1,1 @@
+Done. Deduplicated the identical `AddResult` and `RemoveResult` dataclasses into a single shared `CommandResult` in `agr/commands/__init__.py`, reducing 7 lines of duplicated code. All 576 tests pass.

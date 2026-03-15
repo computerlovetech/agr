@@ -1,0 +1,1 @@
+Narrowed all 5 `except Exception` handlers in `sync.py` to `except (OSError, ValueError)`, continuing the pattern from commit `8ceb38a` which did the same in `migrations.py`. This prevents programming bugs (TypeError, AttributeError, etc.) from being silently swallowed during sync operations. All 576 tests pass.

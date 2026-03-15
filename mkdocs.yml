@@ -1,0 +1,92 @@
+site_name: Agent Resources
+site_url: https://kasperjunge.github.io/agent-resources/
+site_description: A package manager for AI agent skills.
+site_author: Kasper Junge
+repo_url: https://github.com/kasperjunge/agent-resources
+repo_name: kasperjunge/agent-resources
+edit_uri: edit/main/docs/docs/
+
+docs_dir: docs/docs
+site_dir: docs/site
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+  font:
+    code: Roboto Mono
+
+  logo: images/puzzle.png
+
+  favicon: images/puzzle.png
+
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - content.code.copy
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+    - toc.follow
+  custom_dir: docs/overrides
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kasperjunge/agent-resources
+      name: Agent Resources on GitHub
+  generator: false
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables
+  - attr_list
+  - meta
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Tutorial: tutorial.md
+    - Core Concepts: concepts.md
+  - Guides:
+    - Supported Tools: tools.md
+    - Skill Directory: skills.md
+    - Teams: teams.md
+    - Configuration: configuration.md
+    - "agrx — Try Without Installing": agrx.md
+  - Building Skills:
+    - Creating Skills: creating.md
+    - Python SDK: sdk.md
+  - Reference:
+    - CLI Reference: reference.md
+    - Troubleshooting: troubleshooting.md
+    - What's New: changelog.md

@@ -1,0 +1,7 @@
+Done. Simplified `run_tool_migrations` in `agr/commands/migrations.py` by:
+
+- **Removed two thin wrapper functions** (`migrate_codex_skills_directory`, `migrate_opencode_skills_directory`) that only checked `tool.name` and delegated to `_migrate_skills_directory`
+- **Replaced the loop-over-all-tools pattern** with direct membership checks (`"codex" in tool_by_name`, `"opencode" in tool_by_name`), calling the shared helper inline
+- **Net result**: -42 lines, +13 lines. The migration logic is now more direct and avoids O(n*2) function calls where at most 2 do actual work
+
+All 535 tests pass, linting clean.

@@ -86,4 +86,3 @@ dependencies = []
         assert_cli(result).succeeded()
         assert (cli_project / "AGENTS.md").exists()
         assert (cli_project / "AGENTS.md").read_text() == "Claude instructions\n"
-

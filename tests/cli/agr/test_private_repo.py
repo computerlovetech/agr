@@ -56,7 +56,7 @@ class TestAuthErrorMessages:
     def test_nonexistent_repo_without_token_mentions_token(
         self, agr, cli_config, monkeypatch
     ):
-        """When accessing a potentially private repo without token, mention GITHUB_TOKEN."""
+        """Private repo without token should mention GITHUB_TOKEN."""
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         monkeypatch.delenv("GH_TOKEN", raising=False)
         cli_config("dependencies = []")
@@ -98,12 +98,9 @@ class TestPrivateRepoRealNetwork:
 
     def test_sync_with_private_dependency_succeeds(self, agr, cli_project, cli_config):
         """agr sync with private dependency succeeds."""
+        handle = "kasperjunge/agent-resources-private-test-repo/test-skill"
         cli_config(
-            """
-dependencies = [
-    { handle = "kasperjunge/agent-resources-private-test-repo/test-skill", type = "skill" },
-]
-"""
+            f'dependencies = [\n    {{ handle = "{handle}", type = "skill" }},\n]\n'
         )
 
         result = agr("sync")

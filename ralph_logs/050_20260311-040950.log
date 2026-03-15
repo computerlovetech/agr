@@ -1,0 +1,1 @@
+Done. Extracted git operations from `fetcher.py` (1158 lines) into a new `agr/git.py` module (283 lines), bringing `fetcher.py` down to 897 lines. The git module contains all clone, checkout, token handling, and error classification logic - a cohesive unit with no dependency on skill-specific code. All 586 tests pass, no lint errors.

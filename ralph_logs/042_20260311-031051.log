@@ -1,0 +1,1 @@
+Refactored `prepare_repo_for_skill` to delegate to `prepare_repo_for_skills`, removing 19 lines of duplicated logic (git listing, sparse checkout, and full-checkout fallback) and the now-unnecessary `_checkout_sparse` wrapper. All 576 tests pass.

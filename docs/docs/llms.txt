@@ -2,6 +2,8 @@
 
 > A package and project manager for AI agent skills.
 
+For the complete documentation in a single file, see [llms-full.txt](https://kasperjunge.github.io/agent-resources/llms-full.txt).
+
 ## What This Is
 
 agr is a CLI tool that lets developers install, share, and manage AI agent skills from GitHub.
@@ -21,9 +23,9 @@ agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
 
 ## Key Pages
 
-- [Home](https://kasperjunge.github.io/agent-resources/site/) - Install and use skills
-- [Creating Skills](https://kasperjunge.github.io/agent-resources/site/creating/) - Author your own
-- [Reference](https://kasperjunge.github.io/agent-resources/site/reference/) - CLI commands and troubleshooting
+- [Home](https://kasperjunge.github.io/agent-resources/) - Install and use skills
+- [Creating Skills](https://kasperjunge.github.io/agent-resources/creating/) - Author your own
+- [Reference](https://kasperjunge.github.io/agent-resources/reference/) - CLI commands and troubleshooting
 
 ## Common Commands
 

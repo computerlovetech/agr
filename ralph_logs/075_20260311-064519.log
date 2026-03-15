@@ -1,0 +1,9 @@
+Done. Here's what I did:
+
+1. **New MkDocs page: `docs/docs/configuration.md`** — Covers multi-tool setup, custom git sources, per-dependency source pinning, instruction file syncing, global installs, and the full `agr.toml` format with examples. This was the biggest documentation gap — the site had no page explaining these features.
+
+2. **Added docstring to `_sync_instructions_if_configured`** in `agr/commands/sync.py` — This was the only non-obvious function in the codebase missing a docstring.
+
+3. **Updated `docs/mkdocs.yml`** — Added "Configuration" to the nav between "Creating Skills" and "Python SDK".
+
+All 595 tests pass, linting clean.

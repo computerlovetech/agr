@@ -136,7 +136,7 @@ class TestGitHubApiRequest:
         with pytest.raises(RepoNotFoundError):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub._get_github_token")
+    @patch("agr.sdk.hub.get_github_token")
     @patch("agr.sdk.hub.urllib.request.urlopen")
     def test_includes_auth_header(
         self, mock_urlopen: MagicMock, mock_get_token: MagicMock

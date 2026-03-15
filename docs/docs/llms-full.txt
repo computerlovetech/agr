@@ -1,0 +1,585 @@
+# Agent Resources (agr) — Complete Documentation
+
+> A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
+
+- Source: https://github.com/kasperjunge/agent-resources
+- PyPI: https://pypi.org/project/agr/
+- Docs: https://kasperjunge.github.io/agent-resources/
+- Skills Specification: https://agentskills.io/specification
+- Example Skills: https://github.com/anthropics/skills
+
+## Install
+
+```bash
+uv tool install agr       # recommended
+pipx install agr           # alternative
+pip install agr            # if you prefer pip
+```
+
+This installs two CLI commands:
+- `agr` — the main CLI for installing, managing, and syncing skills
+- `agrx` — an ephemeral runner that downloads a skill, runs it once, and cleans up
+
+## Core Concepts
+
+A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and markdown instructions for an AI agent. Skills can include supporting files (scripts, templates, references).
+
+A **handle** identifies a skill:
+- `user/skill` — from user's "skills" repo on GitHub
+- `user/repo/skill` — from a specific repo
+- `./path/to/skill` — local directory
+
+**agr.toml** tracks dependencies and configuration, similar to package.json or Cargo.toml.
+
+## Commands
+
+### agr add
+
+Install skills from GitHub or local paths into your tool's skills folder.
+
+```bash
+agr add <handle>...
+```
+
+Options:
+- `--overwrite`, `-o` — replace existing skills
+- `--source`, `-s <name>` — use a specific source from agr.toml
+- `--global`, `-g` — install globally using ~/.agr/agr.toml
+
+Examples:
+```bash
+agr add anthropics/skills/frontend-design
+agr add -g anthropics/skills/frontend-design
+agr add kasperjunge/commit kasperjunge/pr
+agr add ./my-skill
+agr add anthropics/skills/pdf --overwrite
+```
+
+### agr remove
+
+Uninstall skills and remove from agr.toml.
+
+```bash
+agr remove <handle>...
+```
+
+Options:
+- `--global`, `-g` — remove from global skills directory
+
+### agr sync
+
+Install all dependencies from agr.toml.
+
+```bash
+agr sync
+agr sync -g
+```
+
+Performs four stages: instruction file sync, directory migrations, dependency installation, and status report.
+
+### agr list
+
+Show all skills and their installation status.
+
+```bash
+agr list
+agr list -g
+```
+
+### agr init
+
+Create agr.toml or scaffold a new skill.
+
+```bash
+agr init              # create agr.toml (auto-detects tools)
+agr init <name>       # create skill scaffold
+```
+
+Options:
+- `--tools` — comma-separated tool list
+- `--default-tool` — default tool for agrx
+- `--sync-instructions/--no-sync-instructions` — sync instruction files
+- `--canonical-instructions` — canonical instruction file (CLAUDE.md, AGENTS.md, or GEMINI.md)
+
+### agr onboard
+
+Interactive guided setup — walks through tool selection, skill discovery, migration from tool folders into ./skills/, and configuration.
+
+```bash
+agr onboard
+agr onboard --no-migrate
+```
+
+### agr config
+
+Manage agr.toml configuration.
+
+```bash
+agr config show               # view formatted config
+agr config path               # print agr.toml path
+agr config edit               # open in $EDITOR
+agr config get <key>           # read a value
+agr config set <key> <values>  # write scalar or replace list
+agr config add <key> <values>  # append to list
+agr config remove <key> <values>  # remove from list
+agr config unset <key>         # clear to default
+```
+
+Valid keys: tools, default_tool, default_source, sync_instructions, canonical_instructions, sources
+
+Add `-g` to operate on global config (~/.agr/agr.toml).
+
+Examples:
+```bash
+agr config set tools claude codex opencode
+agr config set default_tool claude
+agr config add tools cursor
+agr config remove tools cursor
+agr config set sync_instructions true
+agr config set canonical_instructions CLAUDE.md
+agr config add sources gitlab --type git --url "https://gitlab.com/{owner}/{repo}.git"
+```
+
+### agrx
+
+Run a skill temporarily without adding to agr.toml.
+
+```bash
+agrx <handle> [options]
+```
+
+Downloads the skill, runs it with the selected tool's CLI, and cleans up.
+
+Options:
+- `--tool`, `-t` — tool CLI (claude, cursor, codex, opencode, copilot, antigravity)
+- `--interactive`, `-i` — run skill, then continue in interactive mode
+- `--prompt`, `-p` — prompt to pass to the skill
+- `--global`, `-g` — install to global skills directory
+- `--source`, `-s <name>` — use a specific source
+
+Examples:
+```bash
+agrx anthropics/skills/pdf
+agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
+agrx kasperjunge/commit -i
+agrx kasperjunge/commit --tool codex
+```
+
+### Global Options
+
+- `--quiet`, `-q` — suppress non-error output
+- `--version`, `-v` — show version and exit
+
+## Supported Tools
+
+agr installs skills into 6 AI coding tools simultaneously.
+
+| Tool | Config name | Project skills dir | Global skills dir | CLI | Instruction file |
+|------|-------------|-------------------|-------------------|-----|-----------------|
+| Claude Code | claude | .claude/skills/ | ~/.claude/skills/ | claude | CLAUDE.md |
+| Cursor | cursor | .cursor/skills/ | ~/.cursor/skills/ | agent | AGENTS.md |
+| OpenAI Codex | codex | .agents/skills/ | ~/.agents/skills/ | codex | AGENTS.md |
+| OpenCode | opencode | .opencode/skills/ | ~/.config/opencode/skills/ | opencode | AGENTS.md |
+| GitHub Copilot | copilot | .github/skills/ | ~/.copilot/skills/ | copilot | AGENTS.md |
+| Antigravity | antigravity | .agent/skills/ | ~/.gemini/antigravity/skills/ | (none) | GEMINI.md |
+
+Configure tools:
+```bash
+agr config set tools claude cursor codex
+```
+
+Claude Code is the default. When multiple tools are configured, `agr add` and `agr sync` install into all of them.
+
+### Tool Detection
+
+`agr init` and `agr onboard` auto-detect tools from repo signals:
+
+| Tool | Detection signals |
+|------|-------------------|
+| Claude Code | .claude/, CLAUDE.md |
+| Cursor | .cursor/, .cursorrules |
+| OpenAI Codex | .agents/, .codex |
+| OpenCode | .opencode/ |
+| GitHub Copilot | .github/copilot, .github/skills |
+| Antigravity | .agent/ |
+
+### Instruction File Syncing
+
+Keep CLAUDE.md, AGENTS.md, and GEMINI.md in sync:
+
+```bash
+agr config set sync_instructions true
+agr config set canonical_instructions CLAUDE.md
+agr sync   # copies CLAUDE.md content to AGENTS.md, GEMINI.md as needed
+```
+
+### Skill Naming
+
+Flat tools (Claude, Codex, OpenCode, Copilot, Antigravity) install as `<skills-dir>/<skill-name>/`. On name collision, falls back to `<skills-dir>/<user>--<repo>--<skill>/`.
+
+Cursor uses nested directories: `<skills-dir>/<user>/<repo>/<skill>/`.
+
+## Configuration (agr.toml)
+
+```toml
+default_source = "github"
+tools = ["claude", "codex", "opencode"]
+default_tool = "claude"
+sync_instructions = true
+canonical_instructions = "CLAUDE.md"
+
+dependencies = [
+    {handle = "anthropics/skills/frontend-design", type = "skill"},
+    {handle = "kasperjunge/commit", type = "skill"},
+    {handle = "team/internal-tool", type = "skill", source = "my-server"},
+    {path = "./skills/local-skill", type = "skill"},
+]
+
+[[source]]
+name = "github"
+type = "git"
+url = "https://github.com/{owner}/{repo}.git"
+
+[[source]]
+name = "my-server"
+type = "git"
+url = "https://git.example.com/{owner}/{repo}.git"
+```
+
+Note: `dependencies` must appear before any `[[source]]` blocks.
+
+### Custom Sources
+
+```bash
+agr config add sources gitlab --type git --url "https://gitlab.com/{owner}/{repo}.git"
+agr config set default_source gitlab
+agr add user/skill --source gitlab
+```
+
+### Private Repositories
+
+Set a GitHub token for private repos:
+```bash
+export GITHUB_TOKEN="ghp_your_token_here"
+# or
+export GH_TOKEN="$(gh auth token)"
+```
+
+The token needs Contents: Read-only access. agr checks GITHUB_TOKEN first, then GH_TOKEN.
+
+### Global vs Local
+
+Local skills (default) are project-specific, stored in `./agr.toml` and `.tool/skills/`.
+Global skills (with `-g`) are user-wide, stored in `~/.agr/agr.toml` and each tool's global skills dir.
+
+```bash
+agr add -g anthropics/skills/skill-creator    # install globally
+agr sync -g                                    # sync global deps
+agr list -g                                    # list global skills
+```
+
+## Handle Format
+
+```
+user/skill              → github.com/user/skills repo, "skill" directory
+user/repo/skill         → github.com/user/repo repo, "skill" directory
+./path/to/skill         → local directory on disk
+```
+
+Two-part handles (`user/skill`) default to a repo named `skills`. During a deprecation period, agr falls back to `agent-resources` if the skill isn't found in `skills`.
+
+### Skill Discovery
+
+agr recursively searches the repo for any directory named `<skill>` containing `SKILL.md`. Common locations include `skills/{skill}/SKILL.md`, `{skill}/SKILL.md`, or any nesting depth. The shallowest match wins.
+
+## Creating Skills
+
+### Quick Start
+
+```bash
+agr init my-skill
+```
+
+Creates `my-skill/SKILL.md`:
+
+```markdown
+---
+name: my-skill
+description: What this skill does.
+---
+
+# My Skill
+
+Instructions for the agent.
+```
+
+### SKILL.md Format
+
+Required fields:
+- `name` — max 64 chars, lowercase letters, numbers, hyphens, must match directory name
+- `description` — max 1024 chars, describes what the skill does and when to use it
+
+Optional fields:
+- `license` — license name or reference
+- `compatibility` — environment requirements
+- `metadata` — key-value pairs (author, version, etc.)
+
+### Skill Structure
+
+```
+my-skill/
+├── SKILL.md          # required — skill instructions
+├── scripts/          # optional — helper scripts
+│   └── validate.sh
+├── references/       # optional — documentation the agent reads
+│   └── style-guide.md
+└── assets/           # optional — templates, data files
+    └── template.json
+```
+
+### Testing Locally
+
+```bash
+agr add ./my-skill              # install from local path
+# test in your AI tool
+agr add ./my-skill --overwrite  # reinstall after changes
+```
+
+### Sharing
+
+Push to GitHub (recommended repo name: `skills`), then others install with:
+```bash
+agr add your-username/my-skill
+```
+
+### Writing Effective Instructions
+
+- Be specific about steps, not vague
+- Write descriptions that clearly trigger the skill at the right time
+- Give input/output examples
+- Set boundaries for what the skill should NOT do
+- Use structured output formats for consistency
+- Keep SKILL.md under 500 lines; use references/ for extra detail
+
+## Team Workflows
+
+### Setup
+
+```bash
+agr init --tools claude,cursor
+agr add anthropics/skills/frontend-design
+git add agr.toml && git commit -m "Add agr skill dependencies"
+```
+
+### Teammates
+
+```bash
+uv tool install agr
+agr sync
+```
+
+### CI/CD (GitHub Actions)
+
+```yaml
+- name: Install agr
+  run: uv tool install agr
+
+- name: Sync skills
+  run: agr sync
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Python SDK
+
+Use agr as a library:
+
+```bash
+pip install agr
+```
+
+### Loading Skills
+
+```python
+from agr import Skill
+
+# From GitHub (cached locally)
+skill = Skill.from_git("anthropics/skills/code-review")
+print(skill.prompt)   # SKILL.md contents
+print(skill.files)    # files in skill directory
+print(skill.path)     # local path
+
+# Force re-download
+skill = Skill.from_git("kasperjunge/commit", force_download=True)
+
+# From local directory
+skill = Skill.from_local("./my-skill")
+```
+
+### Discovering Skills
+
+```python
+from agr import list_skills, skill_info
+
+# List all skills in a repo
+for info in list_skills("anthropics/skills"):
+    print(f"{info.handle}: {info.description}")
+
+# Get details about one skill
+info = skill_info("anthropics/skills/code-review")
+print(info.name, info.owner, info.repo, info.description)
+```
+
+### Cache Management
+
+```python
+from agr import cache
+
+cache.path                          # ~/.cache/agr
+cache.info()                        # {"skills_count": N, "size_bytes": N}
+cache.clear()                       # clear all
+cache.clear("anthropics/skills/*")  # clear by pattern
+```
+
+### Error Handling
+
+```python
+from agr.exceptions import (
+    AgrError,              # base class
+    InvalidHandleError,    # unparseable handle
+    InvalidLocalPathError, # missing path or SKILL.md
+    SkillNotFoundError,    # skill not in repo
+    RepoNotFoundError,     # repo doesn't exist
+    AuthenticationError,   # private repo, no token
+    RateLimitError,        # GitHub API rate limit
+    CacheError,            # cache failures
+)
+```
+
+### Skill Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| name | str | Skill name |
+| path | Path | Local path to skill directory |
+| prompt | str | Contents of SKILL.md (lazy-loaded) |
+| files | list[str] | Relative file paths (lazy-loaded) |
+| metadata | dict | Skill metadata (name, path, source, revision, handle) |
+| content_hash | str or None | SHA-256 hash from .agr.json |
+
+### Reading Files
+
+```python
+content = skill.read_file("scripts/lint.sh")
+# Path traversal is blocked — paths with .. raise ValueError
+```
+
+## Updating Skills
+
+agr has no dedicated update command. Reinstall to get the latest version:
+
+```bash
+agr add user/skill --overwrite
+```
+
+## Skill Directory
+
+### Official (Anthropic)
+
+Documents & data:
+- pdf — Read, extract, create, and modify PDF files: `agr add anthropics/skills/pdf`
+- docx — Create, read, edit, and manipulate Word documents: `agr add anthropics/skills/docx`
+- pptx — Create and work with PowerPoint slide decks: `agr add anthropics/skills/pptx`
+- xlsx — Create and manipulate spreadsheet files: `agr add anthropics/skills/xlsx`
+- doc-coauthoring — Structured workflow for co-authoring documentation: `agr add anthropics/skills/doc-coauthoring`
+
+Design & frontend:
+- frontend-design — Build distinctive, production-grade frontend interfaces: `agr add anthropics/skills/frontend-design`
+- canvas-design — Create visual art in PNG and PDF: `agr add anthropics/skills/canvas-design`
+- algorithmic-art — Create algorithmic art with p5.js: `agr add anthropics/skills/algorithmic-art`
+- theme-factory — Style artifacts with themes: `agr add anthropics/skills/theme-factory`
+- brand-guidelines — Apply Anthropic's brand colors and typography: `agr add anthropics/skills/brand-guidelines`
+
+Development:
+- claude-api — Build apps with the Claude API and Anthropic SDKs: `agr add anthropics/skills/claude-api`
+- mcp-builder — Create MCP servers for LLM-to-service interaction: `agr add anthropics/skills/mcp-builder`
+- web-artifacts-builder — Create multi-component HTML artifacts: `agr add anthropics/skills/web-artifacts-builder`
+- webapp-testing — Test local web applications using Playwright: `agr add anthropics/skills/webapp-testing`
+
+Productivity:
+- skill-creator — Create, modify, and improve skills: `agr add anthropics/skills/skill-creator`
+- internal-comms — Write internal communications: `agr add anthropics/skills/internal-comms`
+- slack-gif-creator — Create animated GIFs optimized for Slack: `agr add anthropics/skills/slack-gif-creator`
+
+Browse full list: https://github.com/anthropics/skills
+
+### Community
+
+```bash
+# Go — @dsjacobsen
+agr add dsjacobsen/agent-resources/golang-pro
+
+# Drupal — @madsnorgaard
+agr add madsnorgaard/drupal-agent-resources/drupal-expert
+agr add madsnorgaard/drupal-agent-resources/drupal-security
+agr add madsnorgaard/drupal-agent-resources/drupal-migration
+agr add madsnorgaard/drupal-agent-resources/ddev-expert
+agr add madsnorgaard/drupal-agent-resources/docker-local
+
+# Workflow — @kasperjunge, @maragudk
+agr add maragudk/skills/collaboration
+agr add kasperjunge/commit-work
+agr add kasperjunge/agent-resources/migrate-to-skills
+```
+
+Search GitHub for more: https://github.com/search?q=filename%3ASKILL.md&type=code
+
+## Troubleshooting
+
+### "Repository not found"
+The repo doesn't exist or is private. Check the handle for typos, set GITHUB_TOKEN for private repos, or use the three-part handle format for non-default repo names.
+
+### "Skill not found in repository"
+The repo exists but has no matching skill directory with SKILL.md. Check the repo on GitHub. agr suggests correct handles when it can.
+
+### "Skill already exists"
+Use `--overwrite`: `agr add user/skill --overwrite`
+
+### "Authentication failed"
+Token missing, expired, or wrong permissions. Export GITHUB_TOKEN or GH_TOKEN with Contents: Read-only access.
+
+### "Invalid handle"
+Single words are treated as local paths. For remote skills, include the username: `agr add kasperjunge/commit` not `agr add commit`. Max three parts: `user/repo/skill`.
+
+### "No agr.toml found"
+Run `agr init` first.
+
+### "Not in a git repository"
+Run inside a git repo, or use `--global` for agrx.
+
+### Sync shows "Up to date" but skill seems outdated
+Remove and re-add: `agr remove user/skill && agr add user/skill`
+
+## Migrating
+
+### From Manual Skill Management
+
+```bash
+agr onboard    # interactive migration of existing skills
+```
+
+### From npx skills
+
+agr handles point to a specific skill, not a repo:
+- npx: `npx skills add owner/repo`
+- agr: `agr add owner/repo/skill-name`
+
+### Old Rules or Commands to Skills
+
+```bash
+agrx kasperjunge/migrate-to-skills
+```
+
+## License
+
+MIT License

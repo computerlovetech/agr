@@ -1,0 +1,1 @@
+Done. The change replaces the standalone `Console()` instance and 6 manually-formatted `[red]Error:[/red]` messages in `agrx/main.py` with the shared `get_console()` and `print_error()` from `agr.console`. This unifies error output between `agr` and `agrx`, as CLAUDE.md specifies they should be "unified and synced." All 587 tests pass.

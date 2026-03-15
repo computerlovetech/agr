@@ -1,0 +1,15 @@
+Done. Here's what this iteration accomplished:
+
+1. **Created `docs/docs/sdk.md`** — A new MkDocs page documenting the Python SDK, covering:
+   - `Skill.from_git()` and `Skill.from_local()` for loading skills
+   - All `Skill` properties (`prompt`, `files`, `metadata`, `content_hash`)
+   - `list_skills()` and `skill_info()` for discovery
+   - `cache` object for inspection and cleanup
+   - Error handling with the full exception hierarchy
+   - `SkillInfo` type reference
+
+2. **Fixed `agent_docs/ARCHITECTURE.md`** — The SDK section had incorrect API examples (`Skill("user/skill")` and `skill.content` instead of `Skill.from_git()` and `skill.prompt`). Expanded it with accurate cache management examples and cache architecture details.
+
+3. **Updated `mkdocs.yml`** — Added "Python SDK" to navigation between "Creating Skills" and "Reference".
+
+4. **Updated `docs/docs/index.md`** — Added SDK link to the "Next Steps" section.

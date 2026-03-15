@@ -1,0 +1,1 @@
+Done. Extracted `_iter_valid_skill_dirs()` helper in `agr/skill.py` to deduplicate the `rglob(SKILL_MARKER)` + exclusion filtering pattern that was repeated across three functions: `find_skill_in_repo`, `discover_skills_in_repo`, and `discover_all_skill_dirs`. All 587 tests pass.

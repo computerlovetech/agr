@@ -1,0 +1,1 @@
+Done. Extracted a `_walk_ancestors` generator in `agr/config.py` that deduplicates the "walk up directory tree" loop shared by `find_config` and `find_repo_root`. Both functions now iterate over this generator instead of manually managing the `current`/`parent` loop. All 587 tests pass, linter is clean.

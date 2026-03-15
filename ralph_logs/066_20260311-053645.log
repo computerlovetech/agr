@@ -1,0 +1,1 @@
+Done. Replaced two instances of inline skills directory resolution logic in `fetcher.py` with calls to the existing `_resolve_skills_dir()` helper, removing 10 lines and adding 3. Both `install_skill_from_repo_to_tools` and the remote branch of `fetch_and_install_to_tools` now use the centralized helper instead of duplicating the resolution + error handling. All 587 tests pass.

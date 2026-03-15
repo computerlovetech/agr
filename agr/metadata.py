@@ -43,7 +43,7 @@ def read_skill_metadata(skill_dir: Path) -> dict[str, Any] | None:
         return None
     try:
         data = json.loads(metadata_path.read_text())
-    except Exception:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return None
     if not isinstance(data, dict):
         return None

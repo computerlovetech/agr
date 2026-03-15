@@ -1,0 +1,14 @@
+Done. Here's what was fixed:
+
+1. **agent_docs/ARCHITECTURE.md** — Corrected `cache.py` description from "GitHub API caching (skill listings, metadata)" to "Disk cache for downloaded skills (file locking, atomic writes)"; added missing `InvalidLocalPathError` to the error hierarchy
+
+2. **docs/sdk.md** — Added `is_local` to the `metadata` property description; added `InvalidLocalPathError` usage example in the error handling section
+
+3. **docs/reference.md** — Documented the `-s` short flag for `--source` on both `agr add` and `agrx` commands
+
+4. **Inline comments** — Added explanatory comments on:
+   - Repo candidate iteration and error tracking strategy in `agr/sdk/skill.py`
+   - Cache counting heuristic in `agr/sdk/cache.py`
+   - Legacy fallback reasoning in `agr/fetcher.py`
+
+All 591 tests pass, linting clean.

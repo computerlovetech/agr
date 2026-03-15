@@ -2,20 +2,27 @@
 
 from pathlib import Path
 
-from agr.commands.sync import migrate_codex_skills_directory
+from agr.commands import CommandResult
+from agr.commands.migrations import run_tool_migrations
 from agr.config import (
     AgrConfig,
     Dependency,
     find_config,
-    find_repo_root,
     get_or_create_global_config,
+    require_repo_root,
 )
 from agr.console import get_console
 from agr.detect import detect_tools
-from agr.exceptions import AgrError, InvalidHandleError, SkillNotFoundError
+from agr.exceptions import (
+    INSTALL_ERROR_TYPES,
+    AgrError,
+    SkillNotFoundError,
+    format_install_error,
+)
 from agr.fetcher import fetch_and_install_to_tools, list_remote_repo_skills
 from agr.handle import ParsedHandle, parse_handle
 from agr.source import SourceResolver
+from agr.tool import build_global_skills_dirs
 
 
 def run_add(
@@ -36,11 +43,7 @@ def run_add(
         repo_root = None
         config_path, config = get_or_create_global_config()
     else:
-        # Find repo root
-        repo_root = find_repo_root()
-        if repo_root is None:
-            console.print("[red]Error:[/red] Not in a git repository")
-            raise SystemExit(1)
+        repo_root = require_repo_root()
 
         # Find or create config
         config_path = find_config()
@@ -57,23 +60,11 @@ def run_add(
     tools = config.get_tools()
     resolver = config.get_source_resolver()
     if global_install:
-        skills_dirs = {tool.name: tool.get_global_skills_dir() for tool in tools}
-        for tool in tools:
-            migrate_codex_skills_directory(
-                Path.home() / ".codex" / "skills",
-                Path.home() / ".agents" / "skills",
-                tool,
-            )
-    elif repo_root:
-        for tool in tools:
-            migrate_codex_skills_directory(
-                repo_root / ".codex" / "skills",
-                repo_root / ".agents" / "skills",
-                tool,
-            )
+        skills_dirs = build_global_skills_dirs(tools)
+    run_tool_migrations(tools, repo_root, global_install=global_install)
 
     # Track results for summary
-    results: list[tuple[str, bool, str]] = []  # (ref, success, message)
+    results: list[CommandResult] = []
 
     for ref in refs:
         try:
@@ -105,10 +96,7 @@ def run_add(
             if handle.is_local:
                 path_value = ref
                 if global_install and handle.local_path is not None:
-                    if handle.local_path.is_absolute():
-                        path_value = str(handle.local_path.resolve())
-                    else:
-                        path_value = str((Path.cwd() / handle.local_path).resolve())
+                    path_value = str(handle.resolve_local_path())
                 config.add_dependency(
                     Dependency(
                         type="skill",
@@ -124,33 +112,27 @@ def run_add(
                     )
                 )
 
-            results.append((ref, True, ", ".join(installed_paths)))
+            results.append(CommandResult(ref, True, ", ".join(installed_paths)))
 
         except SkillNotFoundError as e:
             message = _maybe_suggest_repo_skills(ref, handle, resolver, source)
-            results.append((ref, False, message or str(e)))
-        except InvalidHandleError as e:
-            results.append((ref, False, str(e)))
-        except FileExistsError as e:
-            results.append((ref, False, str(e)))
-        except AgrError as e:
-            results.append((ref, False, str(e)))
-        except Exception as e:
-            results.append((ref, False, f"Unexpected error: {e}"))
+            results.append(CommandResult(ref, False, message or str(e)))
+        except INSTALL_ERROR_TYPES as e:
+            results.append(CommandResult(ref, False, format_install_error(e)))
 
     # Save config if any successes
-    successes = [r for r in results if r[1]]
+    successes = [r for r in results if r.success]
     if successes:
         config.save(config_path)
 
     # Print results
-    for ref, success, message in results:
-        if success:
-            console.print(f"[green]Added:[/green] {ref}")
-            console.print(f"  [dim]Installed to {message}[/dim]")
+    for result in results:
+        if result.success:
+            console.print(f"[green]Added:[/green] {result.ref}")
+            console.print(f"  [dim]Installed to {result.message}[/dim]")
         else:
-            console.print(f"[red]Failed:[/red] {ref}")
-            console.print(f"  [dim]{message}[/dim]")
+            console.print(f"[red]Failed:[/red] {result.ref}")
+            console.print(f"  [dim]{result.message}[/dim]")
 
     # Summary
     if len(refs) > 1:
@@ -160,7 +142,7 @@ def run_add(
         )
 
     # Exit with error if any failures
-    failures = [r for r in results if not r[1]]
+    failures = [r for r in results if not r.success]
     if failures:
         raise SystemExit(1)
 
@@ -191,19 +173,23 @@ def _maybe_suggest_repo_skills(
 
     try:
         skills = list_remote_repo_skills(owner, repo_name, resolver, source)
-    except Exception:
+    except (AgrError, OSError):
         return None
 
     if not skills:
         return None
 
+    cleaned_skills = sorted({skill for skill in skills if skill})
+    if not cleaned_skills:
+        return None
+
     lines = [
         f"Skill '{repo_name}' not found. "
         f"However, '{owner}/{repo_name}' exists as a repository "
-        f"with {len(skills)} skill(s):",
+        f"with {len(cleaned_skills)} skill(s):",
         "",
     ]
-    for skill in skills:
+    for skill in cleaned_skills:
         lines.append(f"  agr add {owner}/{repo_name}/{skill}")
     lines.append("")
     lines.append("Hint: agr handles use the format: owner/repo/skill-name")

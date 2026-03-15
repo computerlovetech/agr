@@ -1,0 +1,9 @@
+Done. Here's what I changed:
+
+**Added `ParsedHandle.resolve_local_path()`** in `agr/handle.py` — a method that resolves a local handle's path to an absolute path using `Path.resolve()`.
+
+**Simplified 3 call sites:**
+- **`add.py`**: Replaced 4-line `is_absolute()` check + conditional `Path.cwd()` join with a single `handle.resolve_local_path()` call
+- **`remove.py`**: Computed the resolved path once at the top of the loop instead of duplicating the same 8-line resolution block in two places (dependency lookup and config removal)
+
+The `is_absolute()` guard was also unnecessary since `Path.resolve()` already handles both relative and absolute paths correctly.

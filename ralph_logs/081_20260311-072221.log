@@ -1,0 +1,12 @@
+Done. Here's what I did:
+
+1. **Fixed agrx.md**: Added Antigravity to the CLI Requirements table with a note that it has no CLI and users should use `agr add` instead. This was the only tool missing from that table.
+
+2. **Added `TestToolDocumentation` tests** in `test_docs.py` with 3 targeted tests:
+   - `test_configuration_mentions_all_tools` — checks the Multi-Tool Setup section of configuration.md
+   - `test_agrx_cli_table_mentions_all_tools` — checks specifically the CLI Requirements section of agrx.md (not just any mention on the page)
+   - `test_reference_agrx_section_mentions_all_tools` — checks reference.md
+
+These tests import `TOOLS` from the codebase directly, so if a new tool is added to `agr/tool.py` in the future, the tests will fail until the docs are updated to match — preventing documentation drift.
+
+All 602 tests pass including the 3 new ones.

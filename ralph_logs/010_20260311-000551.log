@@ -1,0 +1,1 @@
+Extracted the `_sync_entries()` helper in `agr/commands/sync.py` to deduplicate the identical `pending_local` and `pending_remote_default` sync loops, removing 17 lines of duplicated code. All 576 tests pass, linter clean.

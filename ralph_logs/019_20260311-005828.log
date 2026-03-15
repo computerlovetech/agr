@@ -1,0 +1,5 @@
+Done. Two small but clear improvements:
+
+1. **`list.py`**: Renamed `source` variable to `kind` — it held "local"/"remote" for the table's "Type" column, but `source` in this codebase means a named Git source configuration (like `github`). Having both `source` and `source_name` in the same function was confusing.
+
+2. **`sync.py`**: Replaced an inline `{tool.name: tool.get_global_skills_dir() for tool in tools}` dict comprehension with the existing `build_global_skills_dirs(tools)` helper from `agr.tool`, which all other command files already use.

@@ -1,0 +1,6 @@
+Replaced the confusing `list[tuple[str, str | None] | None]` result tracking in `sync.py` with a proper `SyncResult` dataclass. This eliminates:
+- The `None` sentinel values (replaced with explicit `"pending"` status)
+- The `results[index] or ("error", "Unexpected error")` workaround  
+- Anonymous tuple indexing (`status, error = ...`) in favor of named fields (`result.status`, `result.error`)
+
+All 472 passing tests continue to pass (the 1 failure in `test_gh_issue_phase.py` is a pre-existing bash compatibility issue).

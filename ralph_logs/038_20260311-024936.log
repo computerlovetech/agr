@@ -1,0 +1,1 @@
+Committed. The change replaces raw `tuple[str, bool, str]` with a `RemoveResult` dataclass in `remove.py`, making it consistent with the `AddResult` and `SyncResult` dataclasses already used in the add and sync commands. All 37 remove-related tests pass.

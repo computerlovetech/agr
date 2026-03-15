@@ -118,7 +118,7 @@ class TestCodexMigration:
     def test_sync_migration_conflict_preserves_old_skill(
         self, agr, cli_project, cli_skill, cli_config
     ):
-        """When both .codex/skills/foo and .agents/skills/foo exist, old is preserved."""
+        """Old is preserved when both .codex and .agents dirs exist."""
         cli_config(
             """
 tools = ["codex"]
@@ -237,7 +237,7 @@ dependencies = [
         agr("sync")
         assert (cli_project / ".agents" / "skills" / "test-skill").exists()
 
-        # Simulate: move the installed skill back to .codex/ (as if it was installed by old codex)
+        # Simulate: move skill back to .codex/ (old codex install)
         old_skills_dir = cli_project / ".codex" / "skills"
         old_skills_dir.mkdir(parents=True)
         new_skill = cli_project / ".agents" / "skills" / "test-skill"
@@ -246,7 +246,7 @@ dependencies = [
         result = agr("remove", "./skills/test-skill")
 
         assert_cli(result).succeeded()
-        # Migration should have moved it to .agents/ and then remove should have cleaned it up
+        # Migration moved to .agents/, then remove cleaned up
         assert not (cli_project / ".agents" / "skills" / "test-skill").exists()
         assert not (old_skills_dir / "test-skill").exists()
 

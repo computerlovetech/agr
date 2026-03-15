@@ -11,7 +11,7 @@ from pathlib import Path
 from rich.prompt import Confirm, Prompt
 
 from agr.config import AgrConfig, Dependency, find_config, find_repo_root
-from agr.console import get_console
+from agr.console import get_console, print_error
 from agr.detect import detect_tools
 from agr.instructions import canonical_instruction_file, detect_instruction_files
 from agr.metadata import read_skill_metadata
@@ -127,7 +127,7 @@ def run_onboard(*, no_migrate: bool = False) -> None:
 
     # TTY check (bypass with _AGR_FORCE_TTY=1 for testing)
     if not sys.stdin.isatty() and not os.environ.get("_AGR_FORCE_TTY"):
-        console.print("[red]Error:[/red] agr onboard requires an interactive terminal.")
+        print_error("agr onboard requires an interactive terminal.")
         console.print("[dim]Use 'agr init' for non-interactive setup.[/dim]")
         raise SystemExit(1)
 
@@ -238,7 +238,9 @@ def run_onboard(*, no_migrate: bool = False) -> None:
         if tool_folder_skills and not no_migrate:
             console.print()
             console.print(
-                f"[yellow]Note:[/yellow] {len(tool_folder_skills)} skill(s) are in tool folders "
+                f"[yellow]Note:[/yellow] "
+                f"{len(tool_folder_skills)} skill(s) "
+                "are in tool folders "
                 "(e.g. .claude/skills/)."
             )
             should_migrate = Confirm.ask(
@@ -256,7 +258,10 @@ def run_onboard(*, no_migrate: bool = False) -> None:
                         dest_dir = migrate_skill(skill, skills_root)
                         if dest_dir is None:
                             console.print(
-                                f"  [yellow]Skipping:[/yellow] {skills_root / skill.name} exists and is not a valid skill"
+                                f"  [yellow]Skipping:[/yellow] "
+                                f"{skills_root / skill.name} "
+                                "exists and is not a "
+                                "valid skill"
                             )
                             migrated_skills.append(skill)
                             continue
@@ -275,7 +280,8 @@ def run_onboard(*, no_migrate: bool = False) -> None:
                                 shutil.rmtree(old_path)
                             except OSError:
                                 console.print(
-                                    f"  [yellow]Warning:[/yellow] Failed to remove {old_path}"
+                                    "  [yellow]Warning:[/yellow] "
+                                    f"Failed to remove {old_path}"
                                 )
                     else:
                         migrated_skills.append(skill)

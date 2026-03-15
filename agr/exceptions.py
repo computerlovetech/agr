@@ -35,3 +35,20 @@ class CacheError(AgrError):
 
 class RateLimitError(AgrError):
     """Raised when GitHub API rate limit is exceeded."""
+
+
+# Exception types commonly caught during install/sync operations.
+# FileExistsError (subclass of OSError) must be listed so that
+# format_install_error can distinguish it from unexpected OS errors.
+INSTALL_ERROR_TYPES = (FileExistsError, AgrError, OSError, ValueError)
+
+
+def format_install_error(exc: Exception) -> str:
+    """Format an install/sync exception for user-facing output.
+
+    Expected errors (AgrError and its subclasses, FileExistsError) are
+    shown directly.  Other errors get an 'Unexpected: ' prefix.
+    """
+    if isinstance(exc, (AgrError, FileExistsError)):
+        return str(exc)
+    return f"Unexpected: {exc}"

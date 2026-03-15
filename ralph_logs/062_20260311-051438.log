@@ -1,0 +1,5 @@
+Done. I extracted a `require_config()` function into `agr/config.py` that follows the same pattern as the existing `require_repo_root()`. This eliminated duplicated "find config or exit with error" logic from both `config_cmd.py` and `tools.py`:
+
+- `tools.py:_load_required_config` reduced from 7 lines to 2
+- `config_cmd.py:_require_config_path` simplified by delegating the local case to `require_config()`
+- Removed unused `find_config` import from `config_cmd.py`

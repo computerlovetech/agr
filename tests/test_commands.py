@@ -171,10 +171,10 @@ class TestMaybeSuggestRepoSkills:
         """Suggests three-part handles when two-part handle matches a repo."""
         from agr.commands.add import _maybe_suggest_repo_skills
         from agr.handle import ParsedHandle
-        from agr.source import SourceResolver, default_sources, DEFAULT_SOURCE_NAME
+        from agr.source import SourceResolver
 
         handle = ParsedHandle(username="remorses", name="playwriter")
-        resolver = SourceResolver(default_sources(), DEFAULT_SOURCE_NAME)
+        resolver = SourceResolver.default()
 
         monkeypatch.setattr(
             "agr.commands.add.list_remote_repo_skills",
@@ -191,14 +191,41 @@ class TestMaybeSuggestRepoSkills:
         assert "agr add remorses/playwriter/playwright-test" in result
         assert "owner/repo/skill-name" in result
 
+    def test_suggests_sorted_unique_skills(self, monkeypatch):
+        """Suggestions should be sorted and unique."""
+        from agr.commands.add import _maybe_suggest_repo_skills
+        from agr.handle import ParsedHandle
+        from agr.source import SourceResolver
+
+        handle = ParsedHandle(username="owner", name="repo")
+        resolver = SourceResolver.default()
+
+        monkeypatch.setattr(
+            "agr.commands.add.list_remote_repo_skills",
+            lambda *args, **kwargs: ["beta", "alpha", "beta", ""],
+        )
+
+        result = _maybe_suggest_repo_skills("owner/repo", handle, resolver, None)
+        assert result is not None
+
+        lines = [
+            line.strip()
+            for line in result.splitlines()
+            if line.strip().startswith("agr add")
+        ]
+        assert lines == [
+            "agr add owner/repo/alpha",
+            "agr add owner/repo/beta",
+        ]
+
     def test_returns_none_for_three_part_handle(self):
         """Returns None for three-part handles (explicit repo)."""
         from agr.commands.add import _maybe_suggest_repo_skills
         from agr.handle import ParsedHandle
-        from agr.source import SourceResolver, default_sources, DEFAULT_SOURCE_NAME
+        from agr.source import SourceResolver
 
         handle = ParsedHandle(username="owner", repo="repo", name="skill")
-        resolver = SourceResolver(default_sources(), DEFAULT_SOURCE_NAME)
+        resolver = SourceResolver.default()
 
         result = _maybe_suggest_repo_skills("owner/repo/skill", handle, resolver, None)
         assert result is None
@@ -207,10 +234,10 @@ class TestMaybeSuggestRepoSkills:
         """Returns None for local handles."""
         from agr.commands.add import _maybe_suggest_repo_skills
         from agr.handle import ParsedHandle
-        from agr.source import SourceResolver, default_sources, DEFAULT_SOURCE_NAME
+        from agr.source import SourceResolver
 
         handle = ParsedHandle(is_local=True, name="my-skill")
-        resolver = SourceResolver(default_sources(), DEFAULT_SOURCE_NAME)
+        resolver = SourceResolver.default()
 
         result = _maybe_suggest_repo_skills("./my-skill", handle, resolver, None)
         assert result is None
@@ -219,10 +246,10 @@ class TestMaybeSuggestRepoSkills:
         """Returns None when the probed repo has no skills."""
         from agr.commands.add import _maybe_suggest_repo_skills
         from agr.handle import ParsedHandle
-        from agr.source import SourceResolver, default_sources, DEFAULT_SOURCE_NAME
+        from agr.source import SourceResolver
 
         handle = ParsedHandle(username="owner", name="empty-repo")
-        resolver = SourceResolver(default_sources(), DEFAULT_SOURCE_NAME)
+        resolver = SourceResolver.default()
 
         monkeypatch.setattr(
             "agr.commands.add.list_remote_repo_skills",
@@ -236,13 +263,13 @@ class TestMaybeSuggestRepoSkills:
         """Returns None when probing the repo raises an exception."""
         from agr.commands.add import _maybe_suggest_repo_skills
         from agr.handle import ParsedHandle
-        from agr.source import SourceResolver, default_sources, DEFAULT_SOURCE_NAME
+        from agr.source import SourceResolver
 
         handle = ParsedHandle(username="owner", name="broken")
-        resolver = SourceResolver(default_sources(), DEFAULT_SOURCE_NAME)
+        resolver = SourceResolver.default()
 
         def raise_error(*args, **kwargs):
-            raise RuntimeError("network error")
+            raise OSError("network error")
 
         monkeypatch.setattr(
             "agr.commands.add.list_remote_repo_skills",
@@ -305,7 +332,7 @@ class TestSyncCommand:
         captured: dict[str, str | None] = {}
 
         def fake_fetch_and_install(
-            handle, repo_root, tools, overwrite, resolver, source
+            handle, repo_root, tools, overwrite, resolver, source, skills_dirs=None
         ) -> None:
             captured["source"] = source
 
@@ -313,7 +340,7 @@ class TestSyncCommand:
             "agr.commands.sync.fetch_and_install_to_tools", fake_fetch_and_install
         )
         monkeypatch.setattr(
-            "agr.commands.sync.is_skill_installed", lambda *args, **kwargs: False
+            "agr.fetcher.is_skill_installed", lambda *args, **kwargs: False
         )
 
         run_sync()

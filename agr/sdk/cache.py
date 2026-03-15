@@ -16,7 +16,7 @@ import os
 import re
 import shutil
 import tempfile
-from typing import Any, TextIO, cast
+from typing import Any, Generator, TextIO, cast
 from pathlib import Path
 
 from agr.exceptions import CacheError
@@ -223,6 +223,30 @@ def cache_skill(
     return cache_path
 
 
+def _iter_skill_cache_dirs(
+    skills_cache: Path,
+) -> Generator[tuple[Path, str], None, None]:
+    """Yield ``(skill_dir, skill_id)`` for every cached skill.
+
+    Walks the cache tree: ``<skills_cache>/<source>/<owner>/<repo>/<skill>``.
+    ``skill_id`` is formatted as ``owner/repo/skill``.
+    """
+    for source_dir in skills_cache.iterdir():
+        if not source_dir.is_dir():
+            continue
+        for owner_dir in source_dir.iterdir():
+            if not owner_dir.is_dir():
+                continue
+            for repo_dir in owner_dir.iterdir():
+                if not repo_dir.is_dir():
+                    continue
+                for skill_dir in repo_dir.iterdir():
+                    if not skill_dir.is_dir():
+                        continue
+                    skill_id = f"{owner_dir.name}/{repo_dir.name}/{skill_dir.name}"
+                    yield skill_dir, skill_id
+
+
 def clear_cache(pattern: str | None = None) -> int:
     """Clear cached skills.
 
@@ -238,40 +262,11 @@ def clear_cache(pattern: str | None = None) -> int:
         return 0
 
     count = 0
-
-    if pattern is None:
-        # Clear all
-        for source_dir in skills_cache.iterdir():
-            if source_dir.is_dir():
-                for owner_dir in source_dir.iterdir():
-                    if owner_dir.is_dir():
-                        for repo_dir in owner_dir.iterdir():
-                            if repo_dir.is_dir():
-                                for skill_dir in repo_dir.iterdir():
-                                    if skill_dir.is_dir():
-                                        shutil.rmtree(skill_dir)
-                                        count += 1
-    else:
-        # Pattern matching: owner/repo/skill
-        github_dir = skills_cache / "github"
-        if not github_dir.exists():
-            return 0
-
-        for owner_dir in github_dir.iterdir():
-            if not owner_dir.is_dir():
-                continue
-            for repo_dir in owner_dir.iterdir():
-                if not repo_dir.is_dir():
-                    continue
-                for skill_dir in repo_dir.iterdir():
-                    if not skill_dir.is_dir():
-                        continue
-                    # Match pattern against owner/repo/skill
-                    skill_id = f"{owner_dir.name}/{repo_dir.name}/{skill_dir.name}"
-                    if fnmatch.fnmatch(skill_id, pattern):
-                        shutil.rmtree(skill_dir)
-                        count += 1
-
+    for skill_dir, skill_id in _iter_skill_cache_dirs(skills_cache):
+        if pattern is not None and not fnmatch.fnmatch(skill_id, pattern):
+            continue
+        shutil.rmtree(skill_dir)
+        count += 1
     return count
 
 
@@ -301,6 +296,8 @@ class _CacheManager:
                 if path.is_file():
                     size_bytes += path.stat().st_size
                 elif path.is_dir() and (path / "SKILL.md").exists():
+                    # Each revision directory containing SKILL.md is one cached skill.
+                    # Intermediate directories (source/owner/repo) are not counted.
                     skills_count += 1
 
         return {

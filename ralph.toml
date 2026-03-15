@@ -1,0 +1,4 @@
+[agent]
+command = "claude"
+args = ["-p", "--dangerously-skip-permissions"]
+prompt = "PROMPT.md"

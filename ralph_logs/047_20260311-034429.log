@@ -1,0 +1,10 @@
+Done. Here's a summary of the change:
+
+**Moved detection signals into `ToolConfig`** to co-locate related configuration and eliminate cross-module coupling:
+
+- Added `detection_signals: tuple[str, ...]` field to `ToolConfig` in `tool.py`
+- Set signals on each tool constant (e.g., Claude gets `(".claude", "CLAUDE.md")`)
+- Simplified `detect.py` by removing the standalone `_TOOL_SIGNALS` dict — now iterates `TOOLS.values()` and reads `tool.detection_signals` directly
+- Updated the guard test from "check two dicts have matching keys" to "every tool has at least one signal" — a stronger invariant that's impossible to violate by forgetting to update a separate registry
+
+All 584 tests pass, linting and type checking clean.

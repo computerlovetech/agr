@@ -1,0 +1,7 @@
+Done. The change moves the `instruction_file` mapping from a hardcoded if/elif chain in `instructions.py` into a field on `ToolConfig`, following the same pattern as the recent `detection_signals` migration (commit `3d8141e`). This:
+
+- **Co-locates tool configuration** in `ToolConfig` where it belongs
+- **Eliminates the hardcoded if/elif** that needed updating whenever a new tool was added
+- **Simplifies `sync.py`** by using `tool.instruction_file` directly instead of calling `canonical_instruction_file(tool.name)` when the `ToolConfig` is already available
+
+All 578 tests pass (the 1 failure in `test_gh_issue_phase.py` is pre-existing).

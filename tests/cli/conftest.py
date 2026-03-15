@@ -16,7 +16,8 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
-        "network: marks tests as requiring network access (deselect with '-m \"not network\"')",
+        "network: marks tests as requiring network access "
+        "(deselect with '-m \"not network\"')",
     )
 
 

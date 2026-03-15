@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.7.10] - 2026-03-10
+### Changed
+- Codex skills directory from `.codex/skills/` to `.agents/skills/` (following Codex upstream change)
+- OpenCode skills directory from `.opencode/skill/` to `.opencode/skills/` (following OpenCode upstream change)
+
+### Added
+- Auto-migration from `.codex/skills/` to `.agents/skills/` during `agr sync`
+- Auto-migration from `.opencode/skill/` to `.opencode/skills/` during `agr sync`, `agr add`, and `agr remove`
+- Backwards-compatible detection of both `.agents/` and `.codex/` for Codex
+
+
 ## [0.7.9] - 2026-03-05
 
 ### Added

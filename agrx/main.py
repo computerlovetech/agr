@@ -9,13 +9,19 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
-from rich.console import Console
 
 from agr.config import AgrConfig, find_config, find_repo_root
-from agr.exceptions import AgrError, InvalidHandleError
+from agr.console import get_console, print_error
+from agr.exceptions import AgrError
 from agr.fetcher import install_remote_skill
 from agr.handle import parse_handle
-from agr.tool import DEFAULT_TOOL_NAMES, TOOLS, ToolConfig, get_tool
+from agr.tool import (
+    DEFAULT_TOOL_NAMES,
+    TOOLS,
+    ToolConfig,
+    available_tools_string,
+    get_tool,
+)
 
 app = typer.Typer(
     name="agrx",
@@ -23,8 +29,6 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
-
-console = Console()
 
 AGRX_PREFIX = "_agrx_"  # Prefix for temporary resources
 AGRX_SUFFIX_LEN = 8
@@ -51,14 +55,13 @@ def _check_tool_cli(tool_config: ToolConfig) -> None:
     Raises:
         typer.Exit: If CLI is not found
     """
+    console = get_console()
     cli_cmd = tool_config.cli_command
     if not cli_cmd:
-        console.print(
-            f"[red]Error:[/red] {tool_config.name} has no CLI command configured"
-        )
+        print_error(f"{tool_config.name} has no CLI command configured")
         raise typer.Exit(1)
     if shutil.which(cli_cmd) is None:
-        console.print(f"[red]Error:[/red] {cli_cmd} CLI not found.")
+        print_error(f"{cli_cmd} CLI not found.")
         if tool_config.install_hint:
             console.print(f"[dim]{tool_config.install_hint}[/dim]")
         raise typer.Exit(1)
@@ -69,7 +72,7 @@ def _cleanup_skill(skill_path: Path) -> None:
     if skill_path.exists():
         try:
             shutil.rmtree(skill_path)
-        except Exception:
+        except OSError:
             pass  # Best effort cleanup
 
 
@@ -110,7 +113,8 @@ def main(
             "--tool",
             "-t",
             help=(
-                "Tool CLI to use (claude, cursor, codex, opencode, copilot, antigravity)."
+                "Tool CLI to use (claude, cursor, codex, "
+                "opencode, copilot, antigravity)."
             ),
         ),
     ] = None,
@@ -160,14 +164,15 @@ def main(
         agrx kasperjunge/commit --tool codex
         agrx kasperjunge/commit --tool opencode
     """
+    console = get_console()
+
     # Determine which tool to use
     tool_name = tool or _get_default_tool()
 
     # Validate tool name
     if tool_name not in TOOLS:
-        available = ", ".join(TOOLS.keys())
-        console.print(f"[red]Error:[/red] Unknown tool '{tool_name}'")
-        console.print(f"[dim]Available tools: {available}[/dim]")
+        print_error(f"Unknown tool '{tool_name}'")
+        console.print(f"[dim]Available tools: {available_tools_string()}[/dim]")
         raise typer.Exit(1)
 
     tool_config = get_tool(tool_name)
@@ -179,9 +184,10 @@ def main(
     else:
         repo_root = find_repo_root()
         if repo_root is None:
-            console.print("[red]Error:[/red] Not in a git repository")
+            print_error("Not in a git repository")
             console.print(
-                f"[dim]Use --global to install to {tool_config.get_global_skills_dir()}[/dim]"
+                f"[dim]Use --global to install to "
+                f"{tool_config.get_global_skills_dir()}[/dim]"
             )
             raise typer.Exit(1)
         skills_dir = tool_config.get_skills_dir(repo_root)
@@ -191,7 +197,7 @@ def main(
         parsed = parse_handle(handle)
 
         if parsed.is_local:
-            console.print("[red]Error:[/red] agrx only works with remote handles")
+            print_error("agrx only works with remote handles")
             console.print("[dim]Use 'agr add' for local skills[/dim]")
             raise typer.Exit(1)
 
@@ -209,8 +215,8 @@ def main(
         # Create prefixed name for temporary skill
         prefixed_name = _build_temp_skill_name(parsed.name)
 
-        # Download and install
-        installed_path = install_remote_skill(
+        # Download and install to a temporary location
+        temp_skill_path = install_remote_skill(
             parsed,
             repo_root,
             tool_config,
@@ -220,9 +226,6 @@ def main(
             source=source,
             install_name=prefixed_name,
         )
-
-        # For consistency, update temp_skill_path to match
-        temp_skill_path = installed_path
 
         # Set up cleanup handlers
         cleanup_done = False
@@ -295,19 +298,16 @@ def main(
                 cleanup_done = True
                 _cleanup_skill(temp_skill_path)
 
-    except InvalidHandleError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
     except AgrError as e:
-        console.print(f"[red]Error:[/red] {e}")
+        print_error(str(e))
         raise typer.Exit(1)
-
-
-if __name__ == "__main__":
-    app()
 
 
 def _build_temp_skill_name(skill_name: str) -> str:
     """Build a unique temp skill name to avoid collisions."""
     suffix = uuid.uuid4().hex[:AGRX_SUFFIX_LEN]
     return f"{AGRX_PREFIX}{skill_name}-{suffix}"
+
+
+if __name__ == "__main__":
+    app()

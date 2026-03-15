@@ -1,0 +1,1 @@
+Committed. The change simplifies `_parse_default_tool_from_doc` in `agr/config.py:40-53` by replacing the confusing `result = default_tool or None` indirection with explicit early returns, making the function's control flow immediately clear. All 587 tests pass.

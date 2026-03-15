@@ -1,0 +1,1 @@
+Done. Removed the `_dedupe_preserve_order` utility function from `tools.py` and replaced all 6 call sites with the idiomatic `list(dict.fromkeys(...))` pattern that was already used elsewhere in the codebase. Also consolidated a duplicate `from agr.config import find_repo_root` into the existing `agr.config` import block in `config_cmd.py`.

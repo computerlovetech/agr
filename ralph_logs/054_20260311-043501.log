@@ -1,0 +1,1 @@
+Fixed the bash 3.2 compatibility issue in `gh_issue_phase.sh`. The `${phase^}` parameter expansion (bash 4.0+) was replaced with a portable `tr`-based capitalization that works on macOS's default bash 3.2. All 587 tests now pass.

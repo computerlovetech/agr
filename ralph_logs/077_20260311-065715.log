@@ -1,0 +1,14 @@
+Done. Here's what I improved:
+
+1. **Fixed inaccurate skill discovery docs** (`docs/docs/index.md`, `docs/docs/reference.md`) — The docs incorrectly stated agr searches specific hardcoded paths. Updated to accurately describe the recursive search algorithm with shallowest-match-wins behavior.
+
+2. **Added inline comments to `agr/fetcher.py`** — Clarified non-obvious logic in:
+   - `_find_local_name_conflicts` — why certain paths are skipped or flagged
+   - `_find_existing_skill_dir` — the flat vs nested path resolution strategy
+   - `_build_handle_ids` — why legacy ID variants are generated
+   - `prepare_repo_for_skills` — fast path (sparse checkout) vs slow fallback
+   - `_locate_remote_skill` — two-level search ordering rationale
+
+3. **Added inline comments to `agr/commands/sync.py`** — Documented the batch grouping logic and repo-level error handling.
+
+4. **Updated `agent_docs/ARCHITECTURE.md`** — Added a new "Skill discovery algorithm" section explaining the recursive search, exclusion rules, and shallowest-match behavior.

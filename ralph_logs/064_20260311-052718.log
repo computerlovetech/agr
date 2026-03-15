@@ -1,0 +1,1 @@
+Fixed the `ty` type-check error. The issue was that `install_kwargs: dict[str, object]` lost type information when unpacked with `**`, so `skills_dirs` appeared as `object` instead of `dict[str, Path] | None`. Replaced the indirect kwargs pattern with a direct `skills_dirs=skills_dirs` argument, which is both simpler and type-safe.

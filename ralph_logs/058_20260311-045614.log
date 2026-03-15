@@ -1,0 +1,1 @@
+Done. Extracted `available_tools_string()` helper in `agr/tool.py` to replace 7 duplicate occurrences of `", ".join(TOOLS.keys())` across 5 files (`config.py`, `_tool_helpers.py`, `init.py`, `tool.py`, `agrx/main.py`). All 379 tests pass, linting clean.

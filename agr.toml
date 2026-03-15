@@ -12,6 +12,7 @@ dependencies = [
     {path = "./skills/agr/migrate-to-skills", type = "skill"},
     {path = "./skills/skill-development/refactor-for-determinism", type = "skill"},
     {path = "./skills/development/workflow/research-codebase", type = "skill"},
+    {handle = "kasperjunge/agent-resources/skriv-som-kasper", type = "skill"},
 ]
 
 [[source]]

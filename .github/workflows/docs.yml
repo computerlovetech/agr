@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -33,19 +34,12 @@ jobs:
         run: pip install mkdocs-material
 
       - name: Build docs
-        working-directory: docs
         run: mkdocs build
-
-      - name: Prepare deploy directory
-        run: |
-          mkdir -p deploy/site
-          cp docs/index.html deploy/
-          cp -r docs/site/* deploy/site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./deploy
+          path: ./docs/site
 
   deploy:
     environment:

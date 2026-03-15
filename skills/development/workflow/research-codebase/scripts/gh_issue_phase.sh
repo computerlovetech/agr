@@ -87,8 +87,10 @@ action_post_phase() {
   local marker="<!-- agr-phase:${phase} -->"
   local content
   content=$(cat)
+  local phase_title
+  phase_title="$(printf '%s' "${phase:0:1}" | tr '[:lower:]' '[:upper:]')${phase:1}"
   local body="${marker}
-## ${phase^} Phase
+## ${phase_title} Phase
 
 ${content}"
 

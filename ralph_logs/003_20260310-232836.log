@@ -1,0 +1,9 @@
+Done. Here's a summary of what I changed:
+
+**Refactored migration code duplication across 3 files:**
+
+1. **Extracted `_migrate_skills_directory`** in `sync.py` — a shared helper that replaces the nearly-identical 60-line implementations of `migrate_codex_skills_directory` and `migrate_opencode_skills_directory`. Those two public functions now delegate to this shared helper (keeping the same public API).
+
+2. **Added `run_tool_migrations`** in `sync.py` — consolidates the repeated pattern of calling both migration functions for each tool, handling global vs local path differences. This replaced 6 copies of the same migration loop across `sync.py`, `add.py`, and `remove.py`.
+
+**Net result:** -48 lines, zero behavior changes, all 576 tests pass.

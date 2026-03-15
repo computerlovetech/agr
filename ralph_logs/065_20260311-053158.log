@@ -1,0 +1,1 @@
+Committed. The refactor replaced 3 duplicated try/except rollback patterns in `fetcher.py` with a single `_rollback_on_failure()` context manager that handles tracking installed paths and rolling them back on failure. All 587 tests pass, linting and type checking are clean.

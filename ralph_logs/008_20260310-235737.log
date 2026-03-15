@@ -1,0 +1,7 @@
+Done. I extracted two helper functions to eliminate duplicated boilerplate across 4 command files:
+
+1. **`require_repo_root()`** in `config.py` — wraps `find_repo_root()` with the error message + `SystemExit(1)` that was copy-pasted in `add.py`, `remove.py`, `list.py`, and `sync.py`.
+
+2. **`build_global_skills_dirs()`** in `tool.py` — replaces the `{tool.name: tool.get_global_skills_dir() for tool in tools}` dict comprehension duplicated in `add.py`, `remove.py`, and `list.py`.
+
+This follows the same refactoring pattern as the recent commits (extracting helpers to deduplicate).

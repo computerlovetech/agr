@@ -13,8 +13,14 @@ from agr.exceptions import (
     RepoNotFoundError,
     SkillNotFoundError,
 )
-from agr.fetcher import downloaded_repo, prepare_repo_for_skill
-from agr.handle import ParsedHandle, iter_repo_candidates, parse_handle
+from agr.fetcher import prepare_repo_for_skill
+from agr.git import downloaded_repo
+from agr.handle import (
+    LEGACY_REPO_DEPRECATION_WARNING,
+    ParsedHandle,
+    iter_repo_candidates,
+    parse_handle,
+)
 from agr.metadata import compute_content_hash, read_skill_metadata
 from agr.sdk.cache import cache_skill, get_skill_cache_path, is_cached
 from agr.skill import SKILL_MARKER, is_valid_skill_dir
@@ -113,7 +119,10 @@ class Skill:
             )
         )
 
-        # Download and cache
+        # Try each repo candidate (e.g. "skills", then legacy "agent-resources").
+        # Track errors separately: SkillNotFoundError means the repo exists but
+        # the skill isn't in it; RepoNotFoundError means the repo doesn't exist.
+        # We re-raise the most specific error after exhausting all candidates.
         last_error: SkillNotFoundError | None = None
         last_repo_error: RepoNotFoundError | None = None
         for repo_name, is_legacy in repo_candidates:
@@ -131,10 +140,7 @@ class Skill:
                         )
                         if is_legacy:
                             warnings.warn(
-                                "Deprecated: owner-only handles now default to the 'skills' "
-                                "repo. Falling back to the legacy 'agent-resources' repo. "
-                                "Use an explicit handle like 'owner/agent-resources/skill' "
-                                "or move/rename your repo to 'skills'.",
+                                LEGACY_REPO_DEPRECATION_WARNING,
                                 UserWarning,
                                 stacklevel=2,
                             )
@@ -150,7 +156,9 @@ class Skill:
                     skill_path = prepare_repo_for_skill(repo_dir, parsed.name)
                     if skill_path is None:
                         last_error = SkillNotFoundError(
-                            f"Skill '{parsed.name}' not found in repository '{owner}/{repo_name}'."
+                            f"Skill '{parsed.name}' not found "
+                            f"in repository "
+                            f"'{owner}/{repo_name}'."
                         )
                         continue
 
@@ -161,10 +169,7 @@ class Skill:
 
                     if is_legacy:
                         warnings.warn(
-                            "Deprecated: owner-only handles now default to the 'skills' "
-                            "repo. Falling back to the legacy 'agent-resources' repo. "
-                            "Use an explicit handle like 'owner/agent-resources/skill' "
-                            "or move/rename your repo to 'skills'.",
+                            LEGACY_REPO_DEPRECATION_WARNING,
                             UserWarning,
                             stacklevel=2,
                         )
@@ -188,7 +193,9 @@ class Skill:
         if last_repo_error:
             raise last_repo_error
         raise SkillNotFoundError(
-            f"Skill '{parsed.name}' not found in repository '{owner}/{repo_candidates[0][0]}'."
+            f"Skill '{parsed.name}' not found in "
+            f"repository "
+            f"'{owner}/{repo_candidates[0][0]}'."
         )
 
     @classmethod

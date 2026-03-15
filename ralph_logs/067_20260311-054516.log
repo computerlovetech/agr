@@ -1,0 +1,9 @@
+Done. The refactoring extracted three focused helper functions from the 150-line `run_sync` function:
+
+- **`_sync_individual_entries`** — syncs entries one at a time (used for local installs and default-repo remotes)
+- **`_sync_batched_repo_entries`** — groups entries by (source, owner, repo) and downloads each repo only once
+- **`_install_one_from_repo`** — installs a single skill from an already-downloaded repo (extracted from the deeply nested inner loop)
+
+This reduces `run_sync` from 150 lines to ~92 lines, eliminates the inner closure that captured 4 variables from the outer scope, and makes the batch install logic independently testable. Also added a missing docstring to `SyncEntry`.
+
+All 587 tests pass, linting and type checking clean.

@@ -14,8 +14,6 @@ from agr.exceptions import (
 )
 from agr.fetcher import (
     _cleanup_empty_parents,
-    _get_github_token,
-    downloaded_repo,
     fetch_and_install_to_tools,
     get_installed_skills,
     install_local_skill,
@@ -24,6 +22,7 @@ from agr.fetcher import (
     list_remote_repo_skills,
     uninstall_skill,
 )
+from agr.git import get_github_token, downloaded_repo
 from agr.handle import ParsedHandle
 from agr.metadata import build_handle_id, read_skill_metadata
 from agr.source import SourceConfig
@@ -38,25 +37,25 @@ class TestGitAuthentication:
         """Token is returned when GITHUB_TOKEN is set."""
         monkeypatch.setenv("GITHUB_TOKEN", "ghp_test123")
         monkeypatch.delenv("GH_TOKEN", raising=False)
-        assert _get_github_token() == "ghp_test123"
+        assert get_github_token() == "ghp_test123"
 
     def test_get_github_token_returns_none_when_unset(self, monkeypatch):
         """None returned when no token env vars are set."""
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         monkeypatch.delenv("GH_TOKEN", raising=False)
-        assert _get_github_token() is None
+        assert get_github_token() is None
 
     def test_get_github_token_prefers_github_token(self, monkeypatch):
         """GITHUB_TOKEN takes precedence over GH_TOKEN."""
         monkeypatch.setenv("GITHUB_TOKEN", "primary")
         monkeypatch.setenv("GH_TOKEN", "fallback")
-        assert _get_github_token() == "primary"
+        assert get_github_token() == "primary"
 
     def test_get_github_token_falls_back_to_gh_token(self, monkeypatch):
         """GH_TOKEN used when GITHUB_TOKEN is not set."""
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         monkeypatch.setenv("GH_TOKEN", "fallback")
-        assert _get_github_token() == "fallback"
+        assert get_github_token() == "fallback"
 
 
 class TestDownloadedRepoE2E:
@@ -535,7 +534,7 @@ class TestDownloadedRepo:
     @pytest.mark.e2e
     def test_download_existing_repo(self):
         """Download a real repository."""
-        from agr.fetcher import downloaded_repo
+        from agr.git import downloaded_repo
         from agr.source import SourceConfig
         import subprocess
 
@@ -560,7 +559,7 @@ class TestDownloadedRepo:
     def test_download_nonexistent_raises(self):
         """Downloading nonexistent repo raises."""
         from agr.exceptions import RepoNotFoundError
-        from agr.fetcher import downloaded_repo
+        from agr.git import downloaded_repo
         from agr.source import SourceConfig
 
         source = SourceConfig(

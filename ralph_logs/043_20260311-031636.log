@@ -1,0 +1,9 @@
+Done. Here's what I did:
+
+**Extracted `_locate_remote_skill` context manager** in `agr/fetcher.py` to deduplicate the remote skill search pattern.
+
+Both `install_remote_skill` and `fetch_and_install_to_tools` were independently implementing the same nested loop: iterate over repo candidates × sources → download repo → prepare skill → handle `RepoNotFoundError` → raise `SkillNotFoundError` at the end. This was ~50 lines of identical logic duplicated across both functions.
+
+The new `_locate_remote_skill` context manager encapsulates this search pattern and yields a `_RemoteSkillLocation` named tuple with `(repo_dir, skill_source, source_config, is_legacy)`. The temp directory stays alive while the caller processes the result. Both functions now delegate their search logic to this shared helper, keeping only their caller-specific installation logic.
+
+All 272 relevant tests pass.

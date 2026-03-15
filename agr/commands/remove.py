@@ -2,16 +2,49 @@
 
 from pathlib import Path
 
-from agr.commands.sync import migrate_codex_skills_directory
+from agr.commands import CommandResult
+from agr.commands.migrations import run_tool_migrations
 from agr.config import (
     AgrConfig,
     find_config,
-    find_repo_root,
     get_global_config_path,
+    require_repo_root,
 )
-from agr.console import get_console
+from agr.console import get_console, print_error
+from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
 from agr.fetcher import uninstall_skill
-from agr.handle import parse_handle
+from agr.handle import ParsedHandle, parse_handle
+from agr.tool import build_global_skills_dirs
+
+
+def _identifier_candidates(
+    ref: str,
+    handle: ParsedHandle,
+    abs_path_str: str | None,
+) -> list[str]:
+    """Build ordered list of identifiers to try for dependency lookup/removal.
+
+    Dependencies can be stored under different identifier forms (raw ref,
+    local path string, resolved absolute path, or TOML handle).  This
+    helper produces the candidates in priority order so callers can stop
+    at the first match.
+    """
+    seen: set[str] = set()
+    candidates: list[str] = []
+
+    def _add(value: str) -> None:
+        if value not in seen:
+            seen.add(value)
+            candidates.append(value)
+
+    _add(ref)
+    if handle.is_local and handle.local_path is not None:
+        _add(str(handle.local_path))
+    if abs_path_str is not None:
+        _add(abs_path_str)
+    if not handle.is_local:
+        _add(handle.to_toml_handle())
+    return candidates
 
 
 def run_remove(refs: list[str], global_install: bool = False) -> None:
@@ -26,20 +59,16 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         repo_root = None
         config_path = get_global_config_path()
         if not config_path.exists():
-            console.print("[red]Error:[/red] No global agr.toml found")
+            print_error("No global agr.toml found")
             console.print("[dim]Run 'agr add -g <handle>' first.[/dim]")
             raise SystemExit(1)
     else:
-        # Find repo root
-        repo_root = find_repo_root()
-        if repo_root is None:
-            console.print("[red]Error:[/red] Not in a git repository")
-            raise SystemExit(1)
+        repo_root = require_repo_root()
 
         # Find config
         config_path = find_config()
         if config_path is None:
-            console.print("[red]Error:[/red] No agr.toml found")
+            print_error("No agr.toml found")
             raise SystemExit(1)
 
     config = AgrConfig.load(config_path)
@@ -47,46 +76,29 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     # Get configured tools
     tools = config.get_tools()
     if global_install:
-        skills_dirs = {tool.name: tool.get_global_skills_dir() for tool in tools}
-        for tool in tools:
-            migrate_codex_skills_directory(
-                Path.home() / ".codex" / "skills",
-                Path.home() / ".agents" / "skills",
-                tool,
-            )
-    elif repo_root:
-        for tool in tools:
-            migrate_codex_skills_directory(
-                repo_root / ".codex" / "skills",
-                repo_root / ".agents" / "skills",
-                tool,
-            )
+        skills_dirs = build_global_skills_dirs(tools)
+    run_tool_migrations(tools, repo_root, global_install=global_install)
 
     # Track results
-    results: list[tuple[str, bool, str]] = []
+    results: list[CommandResult] = []
 
     for ref in refs:
         try:
             # Parse handle
             handle = parse_handle(ref)
 
-            dep = config.get_by_identifier(ref)
-            if dep is None and handle.is_local:
-                dep = config.get_by_identifier(str(handle.local_path))
-            if (
-                dep is None
-                and global_install
-                and handle.is_local
-                and handle.local_path is not None
-            ):
-                absolute_path = (
-                    handle.local_path.resolve()
-                    if handle.local_path.is_absolute()
-                    else (Path.cwd() / handle.local_path).resolve()
-                )
-                dep = config.get_by_identifier(str(absolute_path))
-            if dep is None and not handle.is_local:
-                dep = config.get_by_identifier(handle.to_toml_handle())
+            # Compute the resolved absolute path once for local global installs
+            abs_path_str: str | None = None
+            if global_install and handle.is_local and handle.local_path is not None:
+                abs_path_str = str(handle.resolve_local_path())
+
+            candidates = _identifier_candidates(ref, handle, abs_path_str)
+
+            dep = None
+            for identifier in candidates:
+                dep = config.get_by_identifier(identifier)
+                if dep is not None:
+                    break
 
             source_name = None
             if dep and dep.is_remote:
@@ -107,50 +119,35 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                 ):
                     removed_fs = True
 
-            # Remove from config
-            # Try both handle format and path format
-            removed_config = config.remove_dependency(ref)
-            if not removed_config and handle.is_local:
-                # Try with the path
-                removed_config = config.remove_dependency(str(handle.local_path))
-            if (
-                not removed_config
-                and global_install
-                and handle.is_local
-                and handle.local_path is not None
-            ):
-                absolute_path = (
-                    handle.local_path.resolve()
-                    if handle.local_path.is_absolute()
-                    else (Path.cwd() / handle.local_path).resolve()
-                )
-                removed_config = config.remove_dependency(str(absolute_path))
-            if not removed_config:
-                # Try with toml handle
-                removed_config = config.remove_dependency(handle.to_toml_handle())
+            # Remove from config (try same candidate identifiers)
+            removed_config = False
+            for identifier in candidates:
+                if config.remove_dependency(identifier):
+                    removed_config = True
+                    break
 
             if removed_fs or removed_config:
-                results.append((ref, True, "Removed"))
+                results.append(CommandResult(ref, True, "Removed"))
             else:
-                results.append((ref, False, "Not found"))
+                results.append(CommandResult(ref, False, "Not found"))
 
-        except Exception as e:
-            results.append((ref, False, str(e)))
+        except INSTALL_ERROR_TYPES as e:
+            results.append(CommandResult(ref, False, format_install_error(e)))
 
     # Save config if any changes
-    successes = [r for r in results if r[1]]
+    successes = [r for r in results if r.success]
     if successes:
         config.save(config_path)
 
     # Print results
-    for ref, success, message in results:
-        if success:
-            console.print(f"[green]Removed:[/green] {ref}")
-        elif message == "Not found":
-            console.print(f"[yellow]Not found:[/yellow] {ref}")
+    for result in results:
+        if result.success:
+            console.print(f"[green]Removed:[/green] {result.ref}")
+        elif result.message == "Not found":
+            console.print(f"[yellow]Not found:[/yellow] {result.ref}")
         else:
-            console.print(f"[red]Error:[/red] {ref}")
-            console.print(f"  [dim]{message}[/dim]")
+            print_error(result.ref)
+            console.print(f"  [dim]{result.message}[/dim]")
 
     # Summary
     if len(refs) > 1:

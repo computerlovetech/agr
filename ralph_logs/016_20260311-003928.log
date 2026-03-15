@@ -1,0 +1,1 @@
+Done. The change fixes `_checkout_full` in `agr/fetcher.py:393` to use `HEAD` instead of the hardcoded `"main"` branch name. This ensures the function works correctly for repositories with any default branch name (e.g., "master", "develop"), since `HEAD` always resolves to whatever branch was cloned.

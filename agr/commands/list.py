@@ -4,11 +4,12 @@ from pathlib import Path
 
 from rich.table import Table
 
-from agr.config import AgrConfig, find_config, find_repo_root, get_global_config_path
+from agr.config import AgrConfig, find_config, get_global_config_path, require_repo_root
 from agr.console import get_console
+from agr.exceptions import AgrError, InvalidHandleError
 from agr.fetcher import is_skill_installed
-from agr.handle import ParsedHandle, parse_handle
-from agr.tool import ToolConfig
+from agr.handle import ParsedHandle
+from agr.tool import ToolConfig, build_global_skills_dirs
 
 
 def _get_installation_status(
@@ -24,9 +25,11 @@ def _get_installation_status(
         handle: Parsed handle for the skill
         repo_root: Repository root path
         tools: List of ToolConfig instances
+        source: Source name for remote skills (optional)
+        skills_dirs: Explicit skills directories per tool (optional)
 
     Returns:
-        Formatted status string
+        Rich-formatted status string
     """
     installed_tools = [
         tool.name
@@ -63,11 +66,7 @@ def run_list(global_install: bool = False) -> None:
             console.print("[dim]Run 'agr add -g <handle>' to create one.[/dim]")
             return
     else:
-        # Find repo root
-        repo_root = find_repo_root()
-        if repo_root is None:
-            console.print("[red]Error:[/red] Not in a git repository")
-            raise SystemExit(1)
+        repo_root = require_repo_root()
 
         # Find config
         config_path = find_config()
@@ -79,7 +78,7 @@ def run_list(global_install: bool = False) -> None:
     config = AgrConfig.load(config_path)
     tools = config.get_tools()
     if global_install:
-        skills_dirs = {tool.name: tool.get_global_skills_dir() for tool in tools}
+        skills_dirs = build_global_skills_dirs(tools)
 
     if not config.dependencies:
         console.print("[yellow]No dependencies in agr.toml.[/yellow]")
@@ -93,33 +92,25 @@ def run_list(global_install: bool = False) -> None:
     table.add_column("Status")
 
     for dep in config.dependencies:
-        identifier = dep.identifier
-
         # Determine display name and status
         if dep.is_local:
             display_name = dep.path or ""
-            source = "local"
+            kind = "local"
         else:
             display_name = dep.handle or ""
-            source = "remote"
+            kind = "remote"
 
         # Check installation status
         try:
-            if dep.is_local:
-                path = Path(identifier)
-                handle = ParsedHandle(is_local=True, name=path.name, local_path=path)
-            else:
-                handle = parse_handle(identifier, prefer_local=False)
-            source_name = (
-                None if dep.is_local else (dep.source or config.default_source)
-            )
+            handle = dep.to_parsed_handle()
+            source_name = dep.resolve_source_name(config.default_source)
             status = _get_installation_status(
                 handle, repo_root, tools, source_name, skills_dirs
             )
-        except Exception:
+        except (InvalidHandleError, AgrError):
             status = "[red]invalid[/red]"
 
-        table.add_row(display_name, source, status)
+        table.add_row(display_name, kind, status)
 
     console.print(table)
 

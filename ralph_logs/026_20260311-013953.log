@@ -1,0 +1,13 @@
+Done. Here's what I did:
+
+**Extracted shared tool helpers from the deprecated `tools.py` into a new `_tool_helpers.py` module.**
+
+The problem: `config_cmd.py` (the current unified config system) was importing 5 private (`_`-prefixed) helper functions across module boundaries from `tools.py` (the deprecated tool commands). This violated Python's naming convention where `_` prefix means module-private.
+
+The fix:
+- Created `agr/commands/_tool_helpers.py` with the 5 shared functions under proper public names (`normalize_tool_names`, `validate_tool_names`, `sync_dependencies_to_tools`, `delete_tool_skills`, `ensure_valid_default_tool`)
+- Updated `config_cmd.py` to import directly from `_tool_helpers` using the clean names
+- Updated `tools.py` to re-export under old `_`-prefixed names for backward compatibility
+- Fixed test monkeypatch target to point at the new module
+
+Net result: `tools.py` went from 324 lines down to ~213, with the shared logic now living in a properly named shared module. All 576 tests pass.

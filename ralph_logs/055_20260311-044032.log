@@ -1,0 +1,5 @@
+Done. The change:
+
+1. **Added `print_deprecation()` helper** to `agr/console.py` — provides consistent Rich-styled deprecation warnings with `soft_wrap=True` to prevent line wrapping in subprocess/CI contexts
+2. **Replaced 9 `typer.echo()` calls** in `agr/main.py` with `print_deprecation()` — these now respect the `--quiet` flag and have consistent `[yellow]Warning:[/yellow]` styling matching the rest of the codebase
+3. **Reduced code** — 26 lines removed, 18 added, eliminating duplicated warning message formatting

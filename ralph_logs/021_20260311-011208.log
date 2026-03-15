@@ -1,0 +1,8 @@
+Done. Extracted four focused parsing helpers from the 141-line `AgrConfig.load` method in `agr/config.py`:
+
+- `_parse_tools_from_doc` - validates tool names against the TOOLS registry
+- `_parse_default_tool_from_doc` - validates default_tool against tools list
+- `_parse_sources_from_doc` - parses `[[source]]` blocks and resolves default_source
+- `_parse_dependencies_from_doc` - parses dependencies with source cross-validation
+
+The `load` method is now ~30 lines that reads as a clean orchestrator. All 472 tests pass (the one failure in `test_gh_issue_phase.py` is a pre-existing bash script issue), and linting/formatting/type checks are clean.

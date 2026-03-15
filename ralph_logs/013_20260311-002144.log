@@ -1,0 +1,5 @@
+Done. Two deduplication improvements committed:
+
+1. **`list.py`**: Replaced manual `ParsedHandle` construction and source name computation with `dep.to_parsed_handle()` and `dep.resolve_source_name()` — methods that already exist on the `Dependency` class. Also removed the now-unused `identifier` variable and `parse_handle` import.
+
+2. **`sync.py`**: Extracted `_print_sync_summary()` helper to replace identical 11-line summary blocks in both `_run_global_sync()` and `run_sync()`.

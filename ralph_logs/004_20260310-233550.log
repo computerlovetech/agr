@@ -1,0 +1,6 @@
+Extracted the legacy repo deprecation warning string from 5 duplicate locations into a single `LEGACY_REPO_DEPRECATION_WARNING` constant in `agr/handle.py`. All 576 tests pass. The change touches:
+
+- **`agr/handle.py`**: Added the shared constant
+- **`agr/fetcher.py`**: Replaced 2 inline duplicates with the constant
+- **`agr/sdk/skill.py`**: Replaced 2 inline duplicates with the constant
+- **`agr/sdk/hub.py`**: Removed local `DEPRECATION_MESSAGE` constant, replaced 2 usages with the shared constant

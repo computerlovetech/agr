@@ -1,0 +1,8 @@
+Done. The change:
+
+- **Extracted** `_filter_tools_needing_install` from `sync.py` to `fetcher.py` as the public `filter_tools_needing_install` function, placed next to `is_skill_installed` where it naturally belongs
+- **Replaced** the duplicate inline list comprehension in `_tool_helpers.py` with a call to the shared function
+- **Updated** 4 call sites in `sync.py` to use the imported function
+- **Fixed** a test monkeypatch target to match the new import structure
+
+Net result: one canonical location for tool-filtering logic instead of two, all 576 tests pass.

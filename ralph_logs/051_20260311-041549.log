@@ -1,0 +1,5 @@
+Done. Extracted a `_parse_frontmatter` helper in `agr/skill.py` that eliminates duplicated frontmatter parsing logic shared by `get_skill_frontmatter_name` and `update_skill_md_name`. The change:
+
+- **Removed duplication**: Both functions had identical `startswith("---")` + `split("---", 2)` + `len(parts) < 3` checks
+- **Consolidated two identical branches**: `update_skill_md_name` had two separate "prepend frontmatter" blocks (for "no frontmatter" and "malformed frontmatter") that produced the same output — now handled by a single `if parsed is None` branch
+- All 586 tests pass (1 pre-existing failure in an unrelated shell script test)

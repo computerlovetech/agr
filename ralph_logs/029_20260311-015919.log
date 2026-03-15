@@ -1,0 +1,1 @@
+Done. Narrowed the bare `except Exception:` in `migrations.py:271` to `except (AgrError, ValueError):`. This prevents silently swallowing programming errors (like `TypeError` or `AttributeError`) while still gracefully handling the expected error types from `to_parsed_handle()` and `resolve_source_name()`.

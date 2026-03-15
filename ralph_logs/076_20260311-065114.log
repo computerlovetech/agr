@@ -1,0 +1,14 @@
+Done. Here's what I improved:
+
+**`agr/commands/sync.py`** — Added inline comments explaining:
+- The three-phase sync flow (classify dependencies → install → report)
+- Why results are pre-allocated by index
+- The three download categories (local, default-repo, specific-repo) and why they're handled differently
+- The batching optimization for same-repo skills
+
+**`agr/commands/migrations.py`** — Rewrote `migrate_flat_installed_names()` docstring and added comments for:
+- The three cases: unique name (safe to shorten), ambiguous name (keep full names), unknown (skip)
+- Why the handles-by-name index is built from agr.toml
+- What "matched_handle" means and the legacy ID backward-compat check
+
+**`agent_docs/ARCHITECTURE.md`** — Replaced the one-line sync description with a full four-stage workflow diagram covering instruction sync, migrations, dependency install (with the three categories), and reporting.

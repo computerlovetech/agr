@@ -1,0 +1,1 @@
+Replaced raw tuples with an `AddResult` dataclass in the add command, following the same pattern as `SyncResult` in the sync command. This improves readability by replacing cryptic positional access (`r[1]`) with named fields (`r.success`). All 576 tests pass.

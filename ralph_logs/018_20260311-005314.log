@@ -1,0 +1,7 @@
+Done. Narrowed 3 overly-broad exception handlers:
+
+- **`list.py`**: `except Exception` → `except (InvalidHandleError, AgrError)` — only expected errors when parsing handles or checking status
+- **`remove.py`**: `except Exception` → `except (AgrError, OSError)` — domain errors and filesystem errors during removal
+- **`add.py`**: `except Exception` → `except (AgrError, OSError)` in `_maybe_suggest_repo_skills` — network/filesystem failures during best-effort suggestion
+
+Updated the corresponding test mock to use `OSError` instead of `RuntimeError` to match realistic failure modes. All 576 tests pass.

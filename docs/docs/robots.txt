@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://kasperjunge.github.io/agent-resources/site/sitemap.xml
+Sitemap: https://kasperjunge.github.io/agent-resources/sitemap.xml

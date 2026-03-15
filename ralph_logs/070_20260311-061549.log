@@ -1,0 +1,1 @@
+Fixed all 46 E501 line-length violations across 18 files (12 source files in `agr/` and `agrx/`, 6 test files). All ruff checks now pass cleanly, and all 587 tests continue to pass. The changes are purely formatting — wrapping long strings, error messages, comments, and docstrings to fit within the 88-character limit.

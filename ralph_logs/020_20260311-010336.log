@@ -1,0 +1,1 @@
+Extracted the duplicated `_rollback` closure from `install_skill_from_repo_to_tools` and `fetch_and_install_to_tools` into a shared `_rollback_installed` top-level helper in `fetcher.py`. This removes 8 lines of duplication while preserving identical behavior. All 472 tests pass (the 1 failure in `test_gh_issue_phase.py` is a pre-existing bash substitution bug).
