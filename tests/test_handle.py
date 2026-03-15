@@ -102,8 +102,8 @@ class TestParseHandle:
 
     def test_parse_handle_allows_single_hyphen_in_repo(self):
         """Single hyphens are allowed in repo name."""
-        h = parse_handle("user/repo/skill")
-        assert h.repo == "repo"
+        h = parse_handle("user/my-repo/skill")
+        assert h.repo == "my-repo"
 
     def test_parse_handle_rejects_double_hyphen_in_local_skill(self, tmp_path):
         """Local skill directory containing -- raises error."""

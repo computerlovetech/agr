@@ -269,6 +269,10 @@ def _try_parse_github_url(ref: str) -> str | None:
     Raises:
         InvalidHandleError: If it looks like a GitHub URL but can't be parsed.
     """
+    # Fast path: skip urlparse for non-URL inputs
+    if "://" not in ref:
+        return None
+
     parsed = urlparse(ref)
     if parsed.hostname != "github.com":
         return None
@@ -290,12 +294,11 @@ def _try_parse_github_url(ref: str) -> str | None:
 
     # URL with /tree/branch/... or /blob/branch/...
     if len(path_parts) >= 4 and path_parts[2] in ("tree", "blob"):
-        # path_parts[3] is the branch, everything after is the path
-        remaining = path_parts[4:]  # path segments after branch
-        if remaining:
-            skill_name = remaining[-1]
-            return f"{username}/{repo}/{skill_name}"
-        # Just https://github.com/user/repo/tree/branch
+        # path after branch — e.g. ["skills", "sample"] from /tree/main/skills/sample
+        skill_path = path_parts[4:]
+        if skill_path:
+            return f"{username}/{repo}/{skill_path[-1]}"
+        # Just https://github.com/user/repo/tree/branch (no subpath)
         return f"{username}/{repo}"
 
     raise InvalidHandleError(
