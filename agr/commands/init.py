@@ -4,17 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agr.console import get_console, print_error
+from agr.console import error_exit, get_console
 from agr.config import (
-    VALID_CANONICAL_INSTRUCTIONS,
+    CONFIG_FILENAME,
     AgrConfig,
     find_config,
     find_repo_root,
+    validate_canonical_instructions,
 )
+from agr.commands._tool_helpers import normalize_and_validate_tool_names
+from agr.exceptions import ConfigError
 from agr.detect import detect_tools
 from agr.instructions import canonical_instruction_file
 from agr.skill import create_skill_scaffold
-from agr.tool import TOOLS, available_tools_string
 
 
 def init_config(path: Path | None = None) -> tuple[Path, bool]:
@@ -27,7 +29,7 @@ def init_config(path: Path | None = None) -> tuple[Path, bool]:
         Tuple of (config_path, created). created=False if already existed.
     """
     base = path or Path.cwd()
-    config_path = base / "agr.toml"
+    config_path = base / CONFIG_FILENAME
 
     # Check if config already exists anywhere up the tree
     existing = find_config(base)
@@ -65,14 +67,6 @@ def _parse_tools_flag(value: str | None) -> list[str] | None:
     return raw or None
 
 
-def _validate_tools(tools: list[str]) -> None:
-    for name in tools:
-        if name not in TOOLS:
-            raise ValueError(
-                f"Unknown tool '{name}'. Available: {available_tools_string()}"
-            )
-
-
 def run_init(
     skill_name: str | None = None,
     *,
@@ -97,19 +91,19 @@ def run_init(
                 f"  [dim]Edit {skill_path}/SKILL.md to customize your skill[/dim]"
             )
         except (ValueError, FileExistsError) as e:
-            print_error(str(e))
-            raise SystemExit(1)
+            error_exit(str(e))
         return
 
     repo_root = find_repo_root() or Path.cwd()
 
     config_path, created = init_config(repo_root)
     config = AgrConfig.load(config_path)
-    original_tools = list(config.tools)
-    original_default_tool = config.default_tool
-    original_sync_instructions = config.sync_instructions
-    original_canonical_instructions = config.canonical_instructions
-    changed = False
+    original_state = (
+        list(config.tools),
+        config.default_tool,
+        config.sync_instructions,
+        config.canonical_instructions,
+    )
 
     if created:
         console.print(f"[green]Created:[/green] {config_path}")
@@ -120,63 +114,48 @@ def run_init(
     tools_display: list[str] | None = None
     tools_override = _parse_tools_flag(tools)
     if tools_override:
-        try:
-            _validate_tools(tools_override)
-        except ValueError as exc:
-            print_error(str(exc))
-            raise SystemExit(1)
+        tools_override = normalize_and_validate_tool_names(tools_override)
         config.tools = tools_override
         tools_display = tools_override
-        if config.tools != original_tools:
-            changed = True
     elif created:
         detected_tools = detect_tools(repo_root)
         if detected_tools:
             config.tools = detected_tools
             tools_display = detected_tools
-            if config.tools != original_tools:
-                changed = True
     else:
         tools_display = config.tools if config.tools else None
 
     # Default tool
     if default_tool:
-        if default_tool not in TOOLS:
-            print_error(
-                f"Unknown tool '{default_tool}'. Available: {available_tools_string()}"
-            )
-            raise SystemExit(1)
-        config.default_tool = default_tool
-        if config.default_tool != original_default_tool:
-            changed = True
+        names = normalize_and_validate_tool_names([default_tool])
+        config.default_tool = names[0]
 
     if config.default_tool and config.default_tool not in config.tools:
-        print_error("default_tool must be listed in tools. Use --tools to include it.")
-        raise SystemExit(1)
+        error_exit("default_tool must be listed in tools. Use --tools to include it.")
 
     # Instruction sync
     if sync_instructions is not None:
         config.sync_instructions = sync_instructions
-        if config.sync_instructions != original_sync_instructions:
-            changed = True
 
     if canonical_instructions:
-        if canonical_instructions not in VALID_CANONICAL_INSTRUCTIONS:
-            valid = ", ".join(sorted(VALID_CANONICAL_INSTRUCTIONS))
-            print_error(f"canonical_instructions must be one of: {valid}")
-            raise SystemExit(1)
+        try:
+            validate_canonical_instructions(canonical_instructions)
+        except ConfigError as exc:
+            error_exit(str(exc))
         config.canonical_instructions = canonical_instructions
-        if config.canonical_instructions != original_canonical_instructions:
-            changed = True
     elif config.sync_instructions and config.canonical_instructions is None:
         if config.default_tool:
             config.canonical_instructions = canonical_instruction_file(
                 config.default_tool
             )
-            if config.canonical_instructions != original_canonical_instructions:
-                changed = True
 
-    if changed:
+    current_state = (
+        list(config.tools),
+        config.default_tool,
+        config.sync_instructions,
+        config.canonical_instructions,
+    )
+    if current_state != original_state:
         config.save(config_path)
 
     # Summary

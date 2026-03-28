@@ -1,12 +1,57 @@
 ---
-title: Configuration
+title: "Configure agr.toml — Multi-Tool Setup, Sources, and Instruction Syncing"
+description: Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.
+keywords:
+  - agr.toml configuration
+  - agr config command
+  - custom git sources
+  - private repository skills
+  - global skill install
+  - instruction syncing
+  - multi-tool AI setup
+  - agr config set tools
+  - Claude Code agr config
+  - Cursor agr setup
+  - Codex agr config
+  - OpenCode agr setup
+  - GitHub Copilot agr config
+  - Antigravity agr setup
 ---
 
-# Configuration
+# Configure agr.toml — Tools, Sources, and Syncing
+
+!!! tldr
+    `agr.toml` is your skill manifest. Key settings: **tools** (which AI tools
+    to sync to), **sources** (where to fetch skills from), **sync_instructions**
+    (keep `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` aligned). Use `agr config` to
+    manage everything from the CLI. Add `-g` for global config at `~/.agr/agr.toml`.
+
+**Prerequisites:** [agr installed](tutorial.md#step-1-install-agr) and an
+`agr.toml` file (created by [`agr init`](reference.md#agr-init),
+[`agr add`](reference.md#agr-add), or [`agr onboard`](reference.md#agr-onboard))
 
 agr uses `agr.toml` for project-level configuration and `~/.agr/agr.toml` for
-global configuration. This page covers multi-tool setup, custom sources,
-instruction syncing, and global installs.
+global configuration. For an overview of how config fits into agr's architecture,
+see [Core Concepts](concepts.md).
+
+**Key terms used on this page:**
+
+- A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and markdown instructions for an AI coding agent.
+- A **handle** identifies a skill: `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/skill` (local).
+- A **source** is a Git server URL template (e.g., GitHub, GitLab, self-hosted) where agr fetches remote skills from.
+- A **tool** is one of the supported AI coding agents: Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, or Antigravity.
+
+## All agr.toml Settings
+
+| Key | Type | Default | What it does |
+|-----|------|---------|-------------|
+| `tools` | list | `["claude"]` | [AI tools](#multi-tool-setup) to install skills into |
+| `default_tool` | string | first in `tools` | Tool used by [`agrx`](agrx.md) and for [instruction sync](#instruction-syncing) |
+| `default_source` | string | `"github"` | [Source](#sources) used when `--source` is not specified |
+| `sync_instructions` | bool | `false` | Copy the canonical instruction file to other tools on [`agr sync`](reference.md#agr-sync) |
+| `canonical_instructions` | string | auto from `default_tool` | Which [instruction file](#instruction-syncing) is the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`) |
+
+Dependencies and sources are configured separately — see [Full Example](#full-agrtoml-example) below.
 
 ## Multi-Tool Setup
 
@@ -33,7 +78,7 @@ tool's skills directory:
 | OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` |
 | OpenCode | `.opencode/skills/` | `~/.config/opencode/skills/` |
 | GitHub Copilot | `.github/skills/` | `~/.copilot/skills/` |
-| Antigravity | `.agent/skills/` | `~/.gemini/antigravity/skills/` |
+| Antigravity | `.gemini/skills/` | `~/.gemini/skills/` |
 
 ### Default Tool
 
@@ -46,13 +91,32 @@ agr config set default_tool claude
 
 If not set, the first tool in the `tools` list is used.
 
+### Adding and Removing Tools
+
+Add a tool after initial setup — existing skills are installed into it
+automatically:
+
+```bash
+agr config add tools cursor
+```
+
+!!! warning "Removing a tool deletes its skills"
+    `agr config remove tools <name>` deletes all skills from that tool's skills
+    directory. Skills remain in your other tools and can be reinstalled with
+    `agr config add tools <name>`.
+
 ### Tool Detection
 
-`agr init` and `agr onboard` auto-detect tools from repo signals — config
-directories (`.claude/`, `.cursor/`, `.agents/`) and instruction files
-(`CLAUDE.md`, `.cursorrules`).
+`agr init` and `agr onboard` auto-detect which tools you use by looking for
+tool-specific files and directories in your repo. Each tool has its own set of
+detection signals — see the [Supported Tools](tools.md) page for the full list
+per tool. Override detection with `--tools`:
 
-## Sources
+```bash
+agr init --tools claude,codex,opencode
+```
+
+## Fetch Skills from Custom Git Servers { #sources }
 
 Sources define where agr fetches remote skills from. The default source is
 GitHub:
@@ -69,16 +133,16 @@ url = "https://github.com/{owner}/{repo}.git"
 To fetch skills from a self-hosted Git server:
 
 ```bash
-agr config add sources my-server --type git --url "https://git.example.com/{owner}/{repo}.git"
+agr config add sources my-server --url "https://git.example.com/{owner}/{repo}.git"
 ```
 
 The URL template uses `{owner}` and `{repo}` placeholders, which are filled from
 the handle. For example, `agr add user/repo/skill --source my-server` clones
 `https://git.example.com/user/repo.git`.
 
-!!! note "Only `git` type is supported"
-    The `--type` flag currently only accepts `git`. Other source types may be
-    added in the future.
+!!! note "`--type` defaults to `git`"
+    The `--type` flag defaults to `git` (the only supported type) and can be
+    omitted. Other source types may be added in the future.
 
 ### Default Source
 
@@ -156,7 +220,7 @@ your environment and agr will use it automatically for all remote operations.
 Export one of these environment variables:
 
 ```bash
-export GITHUB_TOKEN="ghp_your_token_here"
+export GITHUB_TOKEN="ghp_aBcDeFgHiJkL01234567890mNoPqRsTuVwXy"
 ```
 
 Or, if you use the [GitHub CLI](https://cli.github.com/):
@@ -167,17 +231,6 @@ export GH_TOKEN="$(gh auth token)"
 
 agr checks `GITHUB_TOKEN` first, then falls back to `GH_TOKEN`.
 
-### How It Works
-
-When a `GITHUB_TOKEN` or `GH_TOKEN` is set, agr injects the token into HTTPS
-clone URLs for GitHub sources. This happens transparently — no config changes
-needed. The token is used for:
-
-- `agr add` — cloning private repos
-- `agr sync` — syncing private dependencies
-- `agrx` — ephemeral runs from private repos
-- Python SDK — `Skill.from_git()`, `list_skills()`, `skill_info()`
-
 ### Token Permissions
 
 The token needs **read access** to the repositories containing your skills:
@@ -186,37 +239,37 @@ The token needs **read access** to the repositories containing your skills:
   specific repositories
 - **Classic tokens**: The `repo` scope works but grants broader access
 
-### Per-Shell vs Permanent
+agr injects the token into HTTPS clone URLs transparently — no config changes
+needed. It works with `agr add`, `agr sync`, `agrx`, and the Python SDK.
 
-Add the export to your shell profile for permanent access:
+??? note "Persist your token across shell sessions"
+    Add the export to your shell profile so it's always available:
 
-=== "bash"
+    === "bash"
+
+        ```bash
+        echo 'export GITHUB_TOKEN="ghp_aBcDeFgHiJkL01234567890mNoPqRsTuVwXy"' >> ~/.bashrc
+        ```
+
+    === "zsh"
+
+        ```bash
+        echo 'export GITHUB_TOKEN="ghp_aBcDeFgHiJkL01234567890mNoPqRsTuVwXy"' >> ~/.zshrc
+        ```
+
+    Or load it dynamically from the GitHub CLI:
 
     ```bash
-    echo 'export GITHUB_TOKEN="ghp_your_token"' >> ~/.bashrc
+    export GITHUB_TOKEN="$(gh auth token)"
     ```
 
-=== "zsh"
+??? note "Self-hosted Git servers (non-GitHub)"
+    Token injection only applies to GitHub URLs. For self-hosted Git servers,
+    configure credentials through your system's Git credential helper:
 
     ```bash
-    echo 'export GITHUB_TOKEN="ghp_your_token"' >> ~/.zshrc
+    git config --global credential.helper store
     ```
-
-Or use a secrets manager and load it dynamically:
-
-```bash
-export GITHUB_TOKEN="$(gh auth token)"
-```
-
-### Non-GitHub Sources
-
-Token injection only applies to GitHub URLs. For self-hosted Git servers, embed
-credentials in the source URL or configure them through your system's Git
-credential helper:
-
-```bash
-git config --global credential.helper store
-```
 
 ## Global Installs
 
@@ -234,56 +287,69 @@ each tool's global skills directory (see table above).
 
 ## Full agr.toml Example
 
-```toml
-default_source = "github"
-tools = ["claude", "codex", "opencode"]
-default_tool = "claude"
-sync_instructions = true
-canonical_instructions = "CLAUDE.md"
+???+ example "Complete annotated agr.toml"
 
-dependencies = [
-    {handle = "anthropics/skills/frontend-design", type = "skill"},
-    {handle = "kasperjunge/commit", type = "skill"},
-    {handle = "team/internal-tool", type = "skill", source = "my-server"},
-    {path = "./skills/local-skill", type = "skill"},
-]
+    ```toml
+    default_source = "github" # (1)!
+    tools = ["claude", "codex", "opencode"] # (2)!
+    default_tool = "claude" # (3)!
+    sync_instructions = true # (4)!
+    canonical_instructions = "CLAUDE.md" # (5)!
 
-[[source]]
-name = "github"
-type = "git"
-url = "https://github.com/{owner}/{repo}.git"
+    dependencies = [ # (6)!
+        {handle = "anthropics/skills/frontend-design", type = "skill"},
+        {handle = "kasperjunge/commit", type = "skill"},
+        {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
+        {path = "./skills/local-skill", type = "skill"}, # (8)!
+    ]
 
-[[source]]
-name = "my-server"
-type = "git"
-url = "https://git.example.com/{owner}/{repo}.git"
-```
+    [[source]] # (9)!
+    name = "github"
+    type = "git"
+    url = "https://github.com/{owner}/{repo}.git"
 
-!!! note "Ordering"
-    `dependencies` must appear before any `[[source]]` blocks in `agr.toml`.
+    [[source]]
+    name = "my-server"
+    type = "git"
+    url = "https://git.example.com/{owner}/{repo}.git"
+    ```
+
+    1. Source used when `--source` is not passed to `agr add` or `agrx`
+    2. Skills are installed into all listed tools on every `agr add` and `agr sync`
+    3. Tool used by `agrx` and for instruction sync — defaults to the first in `tools`
+    4. Copies the canonical instruction file to other tools on `agr sync`
+    5. The instruction file treated as the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`)
+    6. Must appear before any `[[source]]` blocks
+    7. Pin a dependency to a specific source instead of using `default_source`
+    8. Local path dependencies point to a directory on disk — no Git fetch needed
+    9. Each `[[source]]` defines a Git server URL template with `{owner}` and `{repo}` placeholders
 
 ## Managing Config
 
-All config operations use the `agr config` command:
+All `agr config` subcommands at a glance:
 
-```bash
-agr config show               # View formatted config
-agr config path               # Print agr.toml path
-agr config edit               # Open in $EDITOR or $VISUAL
-agr config get <key>           # Read a value
-agr config set <key> <values>  # Write a value
-agr config add <key> <values>  # Append to a list
-agr config remove <key> <values>  # Remove from a list
-agr config unset <key>         # Clear to default
-```
+| Command | What it does |
+|---------|-------------|
+| `agr config show` | View formatted config with all settings |
+| `agr config path` | Print the path to `agr.toml` |
+| `agr config edit` | Open `agr.toml` in `$VISUAL` or `$EDITOR` |
+| `agr config get <key>` | Read a single config value |
+| `agr config set <key> <values>` | Write a scalar or replace a list |
+| `agr config add <key> <values>` | Append to a list (`tools`, `sources`) |
+| `agr config remove <key> <values>` | Remove from a list (`tools`, `sources`) |
+| `agr config unset <key>` | Clear a setting back to its default |
 
 Add `-g` to any command to operate on the global config (`~/.agr/agr.toml`).
+See the [CLI Reference](reference.md#agr-config) for full details and examples.
 
 !!! note "`agr config edit` requires an editor"
-    `agr config edit` opens `agr.toml` in your `$EDITOR` (or `$VISUAL`).
-    If neither environment variable is set, you'll get an error. Set one:
+    If neither `$VISUAL` nor `$EDITOR` is set, you'll get an error. Set one:
     ```bash
     export EDITOR="vim"              # or nano, code --wait, etc.
     ```
 
-See the [CLI Reference](reference.md) for full details.
+## Next Steps
+
+- [**Supported Tools**](tools.md) — Details on each tool's skills directory and behavior
+- [**Teams**](teams.md) — Set up multi-tool teams with shared skills and CI/CD
+- [**Troubleshooting**](troubleshooting.md) — Fix common config and sync issues

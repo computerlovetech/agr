@@ -1,24 +1,53 @@
 ---
-title: Supported Tools
+title: "Install AI Skills in Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity"
+description: How agr installs skills into Claude Code, Cursor, Codex, GitHub Copilot, OpenCode, and Antigravity — directories, detection, and multi-tool setup.
+keywords:
+  - agr supported tools
+  - Claude Code skills directory
+  - Cursor skills setup
+  - Codex skills install
+  - GitHub Copilot skills
+  - OpenCode skills
+  - Antigravity Gemini skills
+  - multi-tool AI setup
+  - install skills multiple AI tools
+  - agr config set tools
+  - how to add skills to Claude Code
+  - Cursor AI agent skills directory
+  - sync skills across AI coding tools
+  - OpenAI Codex agents skills directory
+  - manage AI skills across editors
+  - Claude Code Cursor Codex skill sync
+  - SKILL.md install path
+  - AI coding tool skill directories
 ---
 
-# Supported Tools
+# Supported Tools — Install Skills Across AI Coding Agents
 
-agr installs skills into 6 AI coding tools. You can target one tool or
-multiple tools simultaneously — one `agr add` installs everywhere.
+!!! tldr
+    agr installs skills into Claude Code, Cursor, Codex, OpenCode, GitHub
+    Copilot, and Antigravity. Target one or all — one `agr add` installs
+    everywhere. Default: Claude Code only.
 
-## At a Glance
+A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter
+(`name`, `description`) and markdown instructions for an AI coding agent. When
+you run `agr add`, agr copies the skill into each configured tool's skills
+directory so the tool can discover and invoke it. A **handle** like
+`anthropics/skills/pdf` identifies a skill on GitHub. See
+[Core Concepts](concepts.md) for the full picture.
 
-| Tool | Config name | Project skills dir | Global skills dir | agrx CLI |
-|------|-------------|-------------------|-------------------|----------|
-| [Claude Code](#claude-code) | `claude` | `.claude/skills/` | `~/.claude/skills/` | `claude` |
-| [Cursor](#cursor) | `cursor` | `.cursor/skills/` | `~/.cursor/skills/` | `agent` |
-| [OpenAI Codex](#openai-codex) | `codex` | `.agents/skills/` | `~/.agents/skills/` | `codex` |
-| [OpenCode](#opencode) | `opencode` | `.opencode/skills/` | `~/.config/opencode/skills/` | `opencode` |
-| [GitHub Copilot](#github-copilot) | `copilot` | `.github/skills/` | `~/.copilot/skills/` | `copilot` |
-| [Antigravity](#antigravity) | `antigravity` | `.agent/skills/` | `~/.gemini/antigravity/skills/` | — |
+## All Tools at a Glance
 
-## Configuring Your Tools
+| Tool | Config name | Invoke skill | Project skills dir | Global skills dir | agrx CLI |
+|------|-------------|-------------|-------------------|-------------------|----------|
+| [Claude Code](#claude-code) | `claude` | `/skill-name` | `.claude/skills/` | `~/.claude/skills/` | `claude` |
+| [Cursor](#cursor) | `cursor` | `/skill-name` | `.cursor/skills/` | `~/.cursor/skills/` | `agent` |
+| [OpenAI Codex](#openai-codex) | `codex` | `$skill-name` | `.agents/skills/` | `~/.agents/skills/` | `codex` |
+| [OpenCode](#opencode) | `opencode` | `skill-name` | `.opencode/skills/` | `~/.config/opencode/skills/` | `opencode` |
+| [GitHub Copilot](#github-copilot) | `copilot` | `/skill-name` | `.github/skills/` | `~/.copilot/skills/` | `copilot` |
+| [Antigravity](#antigravity) | `antigravity` | via IDE | `.gemini/skills/` | `~/.gemini/skills/` | — |
+
+## Target Multiple Tools at Once
 
 By default, agr targets Claude Code only. To install skills into multiple
 tools at once:
@@ -27,13 +56,22 @@ tools at once:
 agr config set tools claude cursor codex
 ```
 
+```text
+Set: tools = claude, cursor, codex
+```
+
 Or during initial setup:
 
 ```bash
 agr init --tools claude,cursor,codex
 ```
 
-After this, every `agr add` and `agr sync` installs skills into all configured
+```text
+Created: agr.toml
+Tools: claude, cursor, codex
+```
+
+After this, every [`agr add`](reference.md#agr-add) and [`agr sync`](reference.md#agr-sync) installs skills into all configured
 tools simultaneously.
 
 ---
@@ -54,7 +92,7 @@ runs in your terminal.
 | **Detection signals** | `.claude/`, `CLAUDE.md` |
 
 Claude Code is the default tool. If you only use Claude Code, no extra
-configuration is needed — `agr add` and `agrx` work out of the box.
+configuration is needed — `agr add` and [`agrx`](agrx.md) work out of the box.
 
 **Official docs:** [Skills](https://code.claude.com/docs/en/skills) ·
 [Slash commands](https://code.claude.com/docs/en/slash-commands) ·
@@ -75,11 +113,6 @@ configuration is needed — `agr add` and `agrx` work out of the box.
 | **CLI command** | `agent` |
 | **Skill invocation** | `/skill-name` |
 | **Detection signals** | `.cursor/`, `.cursorrules` |
-
-!!! note "Nested directory structure"
-    Cursor uses nested directories for skills (e.g.,
-    `.cursor/skills/owner/repo/skill-name/`). agr handles this automatically —
-    you use the same `agr add user/skill` command regardless of tool.
 
 **Official docs:** [Skills](https://cursor.com/docs/context/skills) ·
 [Commands](https://cursor.com/docs/context/commands) ·
@@ -103,7 +136,7 @@ coding agent that runs in your terminal.
 | **Skill invocation** | `$skill-name` |
 | **Detection signals** | `.agents/`, `.codex` |
 
-Install the Codex CLI:
+Install the Codex CLI (required for [`agrx`](agrx.md) to run skills with Codex):
 
 ```bash
 npm i -g @openai/codex
@@ -127,7 +160,7 @@ terminal.
 | **Instruction file** | `AGENTS.md` |
 | **CLI command** | `opencode` |
 | **Skill invocation** | `skill-name` (no prefix) |
-| **Detection signals** | `.opencode/` |
+| **Detection signals** | `.opencode/`, `opencode.json`, `opencode.jsonc` |
 
 !!! note "Global path"
     OpenCode uses `~/.config/opencode/skills/` for global skills, which differs
@@ -152,7 +185,7 @@ assistant, available in VS Code, JetBrains, and the CLI.
 | **Instruction file** | `AGENTS.md` |
 | **CLI command** | `copilot` |
 | **Skill invocation** | `/skill-name` |
-| **Detection signals** | `.github/copilot`, `.github/skills` |
+| **Detection signals** | `.github/copilot/`, `.github/skills/`, `.github/copilot-instructions.md`, `.github/instructions/` |
 
 !!! note "Asymmetric paths"
     Copilot uses `.github/skills/` for project skills but `~/.copilot/skills/`
@@ -170,21 +203,21 @@ Gemini).
 | | |
 |---|---|
 | **Config name** | `antigravity` |
-| **Project skills** | `.agent/skills/` |
-| **Global skills** | `~/.gemini/antigravity/skills/` |
+| **Project skills** | `.gemini/skills/` |
+| **Global skills** | `~/.gemini/skills/` |
 | **Instruction file** | `GEMINI.md` |
 | **CLI command** | — (no CLI available) |
 | **Skill invocation** | — |
-| **Detection signals** | `.agent/` |
+| **Detection signals** | `.gemini/`, `.agents/` |
 
 !!! warning "No CLI support"
-    Antigravity does not have a standalone CLI, so `agrx` cannot run skills
+    Antigravity does not have a standalone CLI, so [`agrx`](agrx.md) cannot run skills
     with this tool. Use `agr add` to install skills, then use them through the
-    Antigravity interface.
+    Antigravity interface. See [Troubleshooting](troubleshooting.md#why-cant-i-use-agrx-with-antigravity) for details.
 
 ---
 
-## Instruction File Syncing
+## Keep Instruction Files in Sync Across Tools
 
 Each tool uses a different instruction file:
 
@@ -202,30 +235,53 @@ agr config set sync_instructions true
 agr config set canonical_instructions CLAUDE.md
 ```
 
+```text
+Set: sync_instructions = true
+Set: canonical_instructions = CLAUDE.md
+```
+
 See [Configuration — Instruction Syncing](configuration.md#instruction-syncing)
 for details.
 
-## Auto-Detection
+## Detection Signals
 
-When you run `agr init` or `agr onboard`, agr detects which tools you use by
-looking for their config directories and instruction files in your repo:
+`agr init` and `agr onboard` auto-detect which tools you use by checking for
+these files and directories in your repo:
+
+| Tool | Detection signals |
+|------|-------------------|
+| Claude Code | `.claude/`, `CLAUDE.md` |
+| Cursor | `.cursor/`, `.cursorrules` |
+| OpenAI Codex | `.agents/`, `.codex` |
+| OpenCode | `.opencode/`, `opencode.json`, `opencode.jsonc` |
+| GitHub Copilot | `.github/copilot/`, `.github/skills/`, `.github/copilot-instructions.md`, `.github/instructions/` |
+| Antigravity | `.gemini/`, `.agents/` |
+
+Any single signal is enough to detect a tool. Note that `.agents/` is shared
+between Codex and Antigravity — see
+[Troubleshooting](troubleshooting.md#why-does-agr-init-detect-a-tool-i-dont-use)
+if this causes unexpected results.
+
+Override detection with `--tools`:
 
 ```bash
-agr init   # Detects tools from .claude/, CLAUDE.md, .cursor/, .cursorrules, etc.
+agr init --tools claude,codex
 ```
 
-You can override the detected tools with `--tools`:
+## Add or Remove a Tool After Setup
 
-```bash
-agr init --tools claude,codex,opencode
-```
-
-## Adding a New Tool Later
-
-To start syncing skills to an additional tool after initial setup:
+To start syncing skills to an additional tool:
 
 ```bash
 agr config add tools cursor
+```
+
+```text
+Added: cursor
+Syncing 3 dependencies to new tools...
+Installed: anthropics/skills/frontend-design (cursor)
+Installed: anthropics/skills/pdf (cursor)
+Installed: kasperjunge/commit (cursor)
 ```
 
 This automatically installs all existing dependencies into the new tool — no
@@ -237,13 +293,49 @@ To stop syncing to a tool:
 agr config remove tools cursor
 ```
 
-## Skill Format Compatibility
+```text
+Removed: cursor
+Deleted 3 skills from .cursor/skills/
+```
 
-All tools use the same skill format — a directory containing a `SKILL.md` file
-with YAML frontmatter. See the
-[Agent Skills Specification](https://agentskills.io/specification) for the
-full format details.
+!!! warning "This deletes installed skills"
+    Removing a tool also deletes all skills from that tool's skills directory
+    (e.g., `.cursor/skills/`). The skills remain installed in your other
+    configured tools and can be reinstalled with `agr config add tools cursor`.
 
-This means a skill written for one tool works in all the others. When you
-`agr add` a skill, the same `SKILL.md` and supporting files are copied into
-each configured tool's skills directory.
+## Automatic Directory Migrations
+
+When tool directories change upstream, agr updates its install paths to match.
+If you have skills in an old location, `agr sync`, `agr add`, or `agr remove`
+automatically moves them — no manual steps needed.
+
+| Tool | Old directory | New directory | When changed |
+|------|-------------|---------------|-------------|
+| Antigravity | `.agent/skills/` | `.gemini/skills/` | Unreleased |
+| OpenAI Codex | `.codex/skills/` | `.agents/skills/` | 0.7.10 |
+| OpenCode | `.opencode/skill/` | `.opencode/skills/` | 0.7.10 |
+| Cursor | `.cursor/skills/owner/repo/skill/` (nested) | `.cursor/skills/skill/` (flat) | Unreleased |
+
+Global directories are migrated the same way (e.g., `~/.agent/skills/` →
+`~/.gemini/skills/`).
+
+If you see skills in the "Old directory" column, running `agr sync` will move
+them automatically.
+
+??? note "One skill format works in every tool"
+    All tools use the same [skill format](creating.md#skillmd-format) — a directory containing a `SKILL.md`
+    file with YAML frontmatter. A skill written for one tool works in all the
+    others. When you `agr add` a skill, the same files are copied into each
+    configured tool's skills directory. See the
+    [Agent Skills Specification](https://agentskills.io/specification) for full
+    format details.
+
+---
+
+## Next Steps
+
+- [**Configuration**](configuration.md) — Multi-tool setup, custom sources, instruction syncing
+- [**Creating Skills**](creating.md) — Write skills that work across all tools
+- [**Teams**](teams.md) — Set up multi-tool teams with shared skills
+- [**Skill Directory**](skills.md) — Browse available skills to install
+- [**Troubleshooting**](troubleshooting.md) — Fix detection, CLI, and install issues per tool

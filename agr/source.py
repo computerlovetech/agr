@@ -8,6 +8,7 @@ from agr.exceptions import AgrError
 
 DEFAULT_SOURCE_NAME = "github"
 DEFAULT_GITHUB_URL = "https://github.com/{owner}/{repo}.git"
+SOURCE_TYPE_GIT = "git"
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ def default_sources() -> list[SourceConfig]:
     return [
         SourceConfig(
             name=DEFAULT_SOURCE_NAME,
-            type="git",
+            type=SOURCE_TYPE_GIT,
             url=DEFAULT_GITHUB_URL,
         )
     ]
@@ -42,7 +43,7 @@ class SourceResolver:
     default_source: str = DEFAULT_SOURCE_NAME
 
     @classmethod
-    def default(cls) -> "SourceResolver":
+    def default(cls) -> SourceResolver:
         """Create a resolver with the default GitHub source."""
         return cls(default_sources(), DEFAULT_SOURCE_NAME)
 

@@ -1,12 +1,35 @@
 ---
-title: Tutorial
+title: "Get Started with agr: Install, Add, and Share AI Agent Skills"
+description: Step-by-step quickstart for agr — install the CLI, add your first AI agent skill to Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity, sync skills across a team, and create your own.
+keywords:
+  - agr tutorial
+  - install agr
+  - agr quickstart
+  - how to add AI agent skill
+  - getting started with agr
+  - agr getting started guide
+  - manage AI coding agent skills
+  - share skills across team
+  - create custom AI skill
+  - agr add skill example
+  - Claude Code skills tutorial
+  - Cursor skills setup
+  - Codex skills tutorial
+  - OpenCode skills setup
+  - Copilot skills tutorial
+  - Antigravity skills setup
 ---
 
-# Tutorial: From Zero to Sharing Skills
+# Get Started with agr
+
+!!! tldr
+    `uv tool install agr` → `cd your-project` → `agr add anthropics/skills/frontend-design`
+    → use `/frontend-design` in your AI tool. Share via `agr.toml` in git;
+    teammates run `agr sync`. Create your own: `agr init my-skill`.
 
 This tutorial walks you through a complete workflow — installing agr, adding
-skills to a project, syncing with a team, and creating your own skill. By the
-end you'll understand how all the pieces fit together.
+[skills](concepts.md#skills) to a project, syncing with a team, and creating
+your own skill. By the end you'll understand how all the pieces fit together.
 
 **Time:** ~10 minutes
 **Prerequisites:** Python 3.10+, git, a Python package installer ([uv](https://docs.astral.sh/uv/), [pipx](https://pipx.pypa.io/), or pip), and at least one supported AI coding tool (Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity)
@@ -39,7 +62,7 @@ Verify it works:
 agr --version
 ```
 
-```
+```text
 agr 0.7.10
 ```
 
@@ -64,10 +87,11 @@ You can optionally run `agr init` to create `agr.toml` up front:
 agr init
 ```
 
-This creates an `agr.toml` file and auto-detects which tools you use based on
-repo signals (`.claude/`, `CLAUDE.md`, `.cursor/`, `.cursorrules`, etc.):
+This creates an [`agr.toml`](configuration.md) file and auto-detects which
+[tools](tools.md) you use based on repo signals (`.claude/`, `CLAUDE.md`,
+`.cursor/`, `.cursorrules`, etc.):
 
-```
+```text
 Created: agr.toml
 Tools: claude
 Next: agr add <handle> or agr onboard
@@ -81,10 +105,16 @@ Next: agr add <handle> or agr onboard
     Run `agr onboard` instead. It walks you through tool selection, skill
     discovery, and configuration interactively.
 
-Your `agr.toml` starts mostly empty:
+Your `agr.toml` starts with the defaults and an empty dependency list:
 
 ```toml
+default_source = "github"
 dependencies = []
+
+[[source]]
+name = "github"
+type = "git"
+url = "https://github.com/{owner}/{repo}.git"
 ```
 
 ---
@@ -97,7 +127,7 @@ Install a skill from GitHub:
 agr add anthropics/skills/frontend-design
 ```
 
-```
+```text
 Added: anthropics/skills/frontend-design
   Installed to claude: .claude/skills/frontend-design
 ```
@@ -123,7 +153,7 @@ List what's installed:
 agr list
 ```
 
-```
+```text
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┓
 ┃ Skill                             ┃ Type   ┃ Status    ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━┩
@@ -143,6 +173,7 @@ which tool you use:
 | OpenAI Codex | Type `$frontend-design` in the chat |
 | OpenCode | Type `frontend-design` in the chat |
 | GitHub Copilot | Type `/frontend-design` in the chat |
+| Antigravity | Use through the IDE interface |
 
 In most tools, skills also load as context automatically — the agent may apply
 them without you explicitly invoking them. See [Supported Tools](tools.md) for
@@ -152,13 +183,14 @@ details on each tool's behavior.
 
 ## Step 4: Add more skills
 
-You can install multiple skills at once:
+Browse the [Skill Directory](skills.md) for more options, or install multiple
+skills at once:
 
 ```bash
 agr add anthropics/skills/pdf anthropics/skills/skill-creator
 ```
 
-Or install from a specific user's repo using the three-part handle format:
+Or install from a specific user's repo using the three-part [handle](concepts.md#handles) format:
 
 ```bash
 agr add madsnorgaard/drupal-agent-resources/drupal-expert
@@ -186,7 +218,7 @@ agr sync
 This installs every skill listed in `agr.toml` that isn't already present. It's
 like `npm install` for agent skills:
 
-```
+```text
 Up to date: anthropics/skills/frontend-design
 Up to date: anthropics/skills/pdf
 Up to date: anthropics/skills/skill-creator
@@ -200,8 +232,8 @@ For a full walkthrough on multi-tool teams, CI/CD, and private repos, see [Teams
 
 ## Step 6: Try a skill without installing
 
-Sometimes you want to test a skill before committing to it. That's what `agrx`
-is for:
+Sometimes you want to test a skill before committing to it. That's what
+[`agrx`](agrx.md) is for:
 
 ```bash
 agrx anthropics/skills/pdf -p "Summarize the key findings in report.pdf"
@@ -226,7 +258,7 @@ Scaffold a new skill:
 agr init my-skill
 ```
 
-```
+```text
 Created skill scaffold: my-skill
   Edit my-skill/SKILL.md to customize your skill
 ```
@@ -236,24 +268,31 @@ This creates `my-skill/SKILL.md` with a starter template:
 ```markdown
 ---
 name: my-skill
-description: What this skill does.
+description: TODO — describe what this skill does and when to use it
 ---
 
-# My Skill
+# my-skill
 
-Instructions for the agent.
+## When to use
+
+Describe when this skill should be used.
+
+## Instructions
+
+Provide detailed instructions here.
 ```
 
-Edit the file to describe what you want the agent to do. The frontmatter
-(`name`, `description`) is required. The body after the frontmatter is the
-actual instruction content that gets loaded by your AI tool.
+Edit the file to describe what you want the agent to do. The
+[frontmatter](creating.md#skillmd-format) (`name`, `description`) is required.
+The body after the frontmatter is the actual instruction content that gets
+loaded by your AI tool.
 
 ### Skill structure
 
 A minimal skill is just a `SKILL.md` file in a directory. But skills can include
 supporting files too:
 
-```
+```text
 my-skill/
 ├── SKILL.md          # Required — skill instructions
 ├── scripts/          # Optional — helper scripts the skill references
@@ -284,7 +323,7 @@ agr add ./my-skill -o
 Push your skill to GitHub. The recommended structure is a repo named `skills`
 under your GitHub username:
 
-```
+```text
 your-username/skills/
 ├── my-skill/
 │   └── SKILL.md
@@ -308,47 +347,39 @@ agr add your-username/my-repo/my-skill
 
 ---
 
-## Step 9: Remove a skill
+## Going further
 
-```bash
-agr remove anthropics/skills/frontend-design
-```
+??? note "Remove a skill"
+    ```bash
+    agr remove anthropics/skills/frontend-design
+    ```
 
-```
-Removed: anthropics/skills/frontend-design
-```
+    ```text
+    Removed: anthropics/skills/frontend-design
+    ```
 
-This deletes the skill from your tool's skills folder and removes the entry from
-`agr.toml`.
+    This deletes the skill from your tool's skills folder and removes the entry
+    from `agr.toml`.
 
----
+??? note "Install skills globally (available in every project)"
+    Some skills are useful across every project — not just one. Add `-g` to
+    install globally:
 
-## Step 10: Global skills
+    ```bash
+    agr add -g anthropics/skills/skill-creator
+    ```
 
-Some skills are useful across every project — not just one. Install them
-globally:
+    ```text
+    Added: anthropics/skills/skill-creator
+      Installed to claude: ~/.claude/skills/skill-creator
+    ```
 
-```bash
-agr add -g anthropics/skills/skill-creator
-```
+    Global skills are tracked in `~/.agr/agr.toml`. Sync and list them with:
 
-```
-Added: anthropics/skills/skill-creator
-  Installed to claude: ~/.claude/skills/skill-creator
-```
-
-Global skills are tracked in `~/.agr/agr.toml` and installed into your tool's
-global skills directory. Sync them with:
-
-```bash
-agr sync -g
-```
-
-List global skills:
-
-```bash
-agr list -g
-```
+    ```bash
+    agr sync -g
+    agr list -g
+    ```
 
 ---
 

@@ -334,6 +334,24 @@ class TestAgrConfigUnset:
         config = AgrConfig.load(cli_project / "agr.toml")
         assert config.tools == ["claude"]
 
+    def test_unset_tools_updates_default_tool_when_invalid(
+        self, agr, cli_project, cli_config
+    ):
+        """agr config unset tools updates default_tool if it's no longer valid."""
+        cli_config(
+            'tools = ["claude", "cursor"]\n'
+            'default_tool = "cursor"\n'
+            "dependencies = []"
+        )
+
+        result = agr("config", "unset", "tools")
+
+        assert_cli(result).succeeded().stdout_contains("Reset:")
+        config = AgrConfig.load(cli_project / "agr.toml")
+        assert config.tools == ["claude"]
+        # default_tool should be updated to a valid tool, not left as "cursor"
+        assert config.default_tool != "cursor"
+
     def test_unset_sources_errors(self, agr, cli_config):
         """agr config unset sources is not supported."""
         cli_config("dependencies = []")

@@ -1,9 +1,5 @@
 """Skill class for loading and accessing skills programmatically."""
 
-import hashlib
-import subprocess
-import time
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,36 +10,22 @@ from agr.exceptions import (
     SkillNotFoundError,
 )
 from agr.fetcher import prepare_repo_for_skill
-from agr.git import downloaded_repo
+from agr.git import downloaded_repo, get_head_commit
 from agr.handle import (
-    LEGACY_REPO_DEPRECATION_WARNING,
     ParsedHandle,
+    is_local_path_ref,
     iter_repo_candidates,
     parse_handle,
+    warn_legacy_repo,
 )
-from agr.metadata import compute_content_hash, read_skill_metadata
+from agr.metadata import (
+    METADATA_KEY_CONTENT_HASH,
+    compute_content_hash,
+    read_skill_metadata,
+)
 from agr.sdk.cache import cache_skill, get_skill_cache_path, is_cached
 from agr.skill import SKILL_MARKER, is_valid_skill_dir
-from agr.source import SourceConfig, default_sources
-
-
-def _get_head_commit(repo_dir: Path) -> str:
-    """Get the HEAD commit hash of a repository.
-
-    If git command fails, generates a unique fallback hash based on
-    current time and repo path to ensure proper cache busting.
-    """
-    result = subprocess.run(
-        ["git", "-C", str(repo_dir), "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        # Generate unique fallback to prevent cache collisions
-        fallback_data = f"{time.time_ns()}:{repo_dir}"
-        return hashlib.sha256(fallback_data.encode()).hexdigest()[:12]
-    return result.stdout.strip()[:12]
+from agr.source import default_sources
 
 
 @dataclass
@@ -94,7 +76,7 @@ class Skill:
             >>> skill = Skill.from_git("anthropics/skills/code-review")
         """
         # Reject obvious local paths early
-        if handle.startswith(("./", "../", "/")):
+        if is_local_path_ref(handle):
             raise InvalidHandleError(
                 f"'{handle}' is a local path. Use Skill.from_local() instead."
             )
@@ -110,14 +92,7 @@ class Skill:
         repo_candidates = iter_repo_candidates(parsed.repo)
 
         # Get default source
-        sources = default_sources()
-        source_config = (
-            sources[0]
-            if sources
-            else SourceConfig(
-                name="github", type="git", url="https://github.com/{owner}/{repo}.git"
-            )
-        )
+        source_config = default_sources()[0]
 
         # Try each repo candidate (e.g. "skills", then legacy "agent-resources").
         # Track errors separately: SkillNotFoundError means the repo exists but
@@ -129,51 +104,30 @@ class Skill:
             try:
                 with downloaded_repo(source_config, owner, repo_name) as repo_dir:
                     # Get commit hash for cache key
-                    commit = _get_head_commit(repo_dir)
+                    commit = get_head_commit(repo_dir)
 
-                    # Check cache
+                    # Check cache first, otherwise download and cache
                     if not force_download and is_cached(
                         owner, repo_name, parsed.name, commit
                     ):
                         cached_path = get_skill_cache_path(
                             owner, repo_name, parsed.name, commit
                         )
-                        if is_legacy:
-                            warnings.warn(
-                                LEGACY_REPO_DEPRECATION_WARNING,
-                                UserWarning,
-                                stacklevel=2,
+                    else:
+                        skill_path = prepare_repo_for_skill(repo_dir, parsed.name)
+                        if skill_path is None:
+                            last_error = SkillNotFoundError(
+                                f"Skill '{parsed.name}' not found "
+                                f"in repository "
+                                f"'{owner}/{repo_name}'."
                             )
-                        return cls(
-                            name=parsed.name,
-                            path=cached_path,
-                            handle=parsed,
-                            source=source_config.name,
-                            revision=commit,
+                            continue
+                        cached_path = cache_skill(
+                            skill_path, owner, repo_name, parsed.name, commit
                         )
-
-                    # Find and checkout skill
-                    skill_path = prepare_repo_for_skill(repo_dir, parsed.name)
-                    if skill_path is None:
-                        last_error = SkillNotFoundError(
-                            f"Skill '{parsed.name}' not found "
-                            f"in repository "
-                            f"'{owner}/{repo_name}'."
-                        )
-                        continue
-
-                    # Cache the skill
-                    cached_path = cache_skill(
-                        skill_path, owner, repo_name, parsed.name, commit
-                    )
 
                     if is_legacy:
-                        warnings.warn(
-                            LEGACY_REPO_DEPRECATION_WARNING,
-                            UserWarning,
-                            stacklevel=2,
-                        )
-
+                        warn_legacy_repo()
                     return cls(
                         name=parsed.name,
                         path=cached_path,
@@ -293,7 +247,7 @@ class Skill:
         meta = read_skill_metadata(self.path)
         if meta is None:
             return None
-        return meta.get("content_hash")
+        return meta.get(METADATA_KEY_CONTENT_HASH)
 
     def recompute_content_hash(self) -> str:
         """Recompute the content hash from the current files on disk.

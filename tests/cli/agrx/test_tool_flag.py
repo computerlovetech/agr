@@ -51,6 +51,15 @@ class TestAgrxToolFlag:
 
         assert_cli(result).failed().stdout_contains("codex CLI not found")
 
+    @pytest.mark.skipif(
+        shutil.which("opencode") is not None, reason="opencode CLI is installed"
+    )
+    def test_agrx_tool_cli_not_found_opencode(self, agrx):
+        """agrx --tool opencode fails when opencode CLI not found."""
+        result = agrx("user/skill", "--tool", "opencode")
+
+        assert_cli(result).failed().stdout_contains("opencode CLI not found")
+
     def test_agrx_tool_no_cli_antigravity(self, agrx):
         """agrx --tool antigravity fails when no CLI is configured."""
         result = agrx("user/skill", "--tool", "antigravity")

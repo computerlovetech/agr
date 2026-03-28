@@ -112,8 +112,8 @@ class TestAgrToolsAdd:
         # Should report syncing
         assert "Syncing" in result.stdout or "Installed" in result.stdout
 
-        # Verify skill was installed to cursor (nested path: local/test-skill)
-        cursor_skill = cli_project / ".cursor" / "skills" / "local" / "test-skill"
+        # Verify skill was installed to cursor (flat path)
+        cursor_skill = cli_project / ".cursor" / "skills" / "test-skill"
         assert cursor_skill.exists()
 
     def test_tools_add_sync_partial_failure_exits_nonzero(

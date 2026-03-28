@@ -57,8 +57,23 @@ class TestSanitizePathComponent:
             _sanitize_path_component("..", "owner")
         with pytest.raises(ValueError, match="cannot contain '..'"):
             _sanitize_path_component("../evil", "owner")
-        with pytest.raises(ValueError, match="cannot contain '..'"):
+        # "owner/../evil" is caught by the path separator check (/)
+        # rather than the '..' check, but it's still rejected
+        with pytest.raises(ValueError):
             _sanitize_path_component("owner/../evil", "owner")
+
+    def test_consecutive_dots_in_valid_name_accepted(self):
+        """Test that names containing '..' as a substring are accepted.
+
+        GitHub allows consecutive dots in repo names (e.g., 'v2..rc1').
+        The path traversal check should only reject the literal '..'
+        component, not any name that happens to contain consecutive dots.
+        Since path separators are already blocked, embedded '..' in a
+        name cannot cause traversal.
+        """
+        assert _sanitize_path_component("v2..rc1", "repo") == "v2..rc1"
+        assert _sanitize_path_component("a..b", "repo") == "a..b"
+        assert _sanitize_path_component("test..name", "repo") == "test..name"
 
     def test_path_separators_rejected(self):
         """Test that path separators are rejected."""
@@ -187,9 +202,11 @@ class TestCacheSkill:
         blocking_file = cache_base / "skills"
         blocking_file.write_text("blocking")  # File instead of directory
 
-        with patch("agr.sdk.cache.get_cache_dir", return_value=cache_base):
-            with pytest.raises(CacheError):
-                cache_skill(mock_skill_dir, "owner", "repo", "skill", "abc123")
+        with (
+            patch("agr.sdk.cache.get_cache_dir", return_value=cache_base),
+            pytest.raises(CacheError),
+        ):
+            cache_skill(mock_skill_dir, "owner", "repo", "skill", "abc123")
 
 
 class TestFileLocking:
@@ -334,6 +351,32 @@ class TestCacheManager:
 
             assert info["skills_count"] == 1
             assert info["size_bytes"] > 0
+
+    def test_info_counts_skills_not_revisions(self, tmp_path: Path):
+        """Test that info() counts unique skills, not individual revisions.
+
+        When one skill has multiple cached revisions, info() should report
+        it as 1 cached skill (consistent with clear_cache which deletes
+        at the skill level).
+        """
+        # Create one skill cached at two different revisions
+        base = tmp_path / "skills" / "github" / "owner" / "repo" / "skill"
+        rev1 = base / "abc123"
+        rev1.mkdir(parents=True)
+        (rev1 / "SKILL.md").write_text("# Skill rev 1")
+
+        rev2 = base / "def456"
+        rev2.mkdir(parents=True)
+        (rev2 / "SKILL.md").write_text("# Skill rev 2")
+
+        with patch("agr.sdk.cache.get_cache_dir", return_value=tmp_path):
+            info = cache.info()
+            # Should count 1 skill, not 2 revisions
+            assert info["skills_count"] == 1
+
+            # clear() also reports 1 — they should be consistent
+            count = cache.clear()
+            assert count == 1
 
     def test_clear_method(self, tmp_path: Path):
         """Test clear method delegates to clear_cache."""

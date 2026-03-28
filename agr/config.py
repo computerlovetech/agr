@@ -2,16 +2,20 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Generator
+from collections.abc import Generator
+from typing import Any
 
 import tomlkit
 from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
+from agr.console import error_exit
 from agr.exceptions import ConfigError
 from agr.handle import ParsedHandle, parse_handle
+from agr.instructions import INSTRUCTION_FILES
 from agr.source import (
     DEFAULT_SOURCE_NAME,
+    SOURCE_TYPE_GIT,
     SourceConfig,
     SourceResolver,
     default_sources,
@@ -24,7 +28,25 @@ from agr.tool import (
     get_tool,
 )
 
-VALID_CANONICAL_INSTRUCTIONS = {"AGENTS.md", "CLAUDE.md", "GEMINI.md"}
+CONFIG_FILENAME = "agr.toml"
+DEPENDENCY_TYPE_SKILL = "skill"
+
+
+def validate_canonical_instructions(value: str) -> None:
+    """Raise ConfigError if *value* is not a valid canonical instructions file."""
+    if value not in INSTRUCTION_FILES:
+        valid = ", ".join(f"'{v}'" for v in sorted(INSTRUCTION_FILES))
+        raise ConfigError(f"canonical_instructions must be one of: {valid}")
+
+
+def _validate_default_source(
+    default_source: str, sources: list[SourceConfig]
+) -> None:
+    """Raise ConfigError if *default_source* is not in the sources list."""
+    if not any(source.name == default_source for source in sources):
+        raise ConfigError(
+            f"default_source '{default_source}' not found in [[source]] list"
+        )
 
 
 def _parse_tools_from_doc(doc: TOMLDocument) -> list[str]:
@@ -63,6 +85,34 @@ def _parse_default_tool_from_doc(doc: TOMLDocument, tools: list[str]) -> str | N
     return default_tool
 
 
+def _parse_source_entry(item: Any) -> SourceConfig:
+    """Parse and validate a single ``[[source]]`` entry.
+
+    Args:
+        item: A TOML table (dict) representing one ``[[source]]`` block.
+
+    Returns:
+        A validated SourceConfig.
+
+    Raises:
+        ConfigError: If the entry is malformed or has invalid values.
+    """
+    if not isinstance(item, dict):
+        raise ConfigError("Invalid [[source]] entry in agr.toml")
+    name = str(item.get("name", "")).strip()
+    source_type = str(item.get("type", SOURCE_TYPE_GIT)).strip()
+    url = item.get("url")
+    if not name:
+        raise ConfigError("Source entry missing name")
+    if source_type != SOURCE_TYPE_GIT:
+        raise ConfigError(
+            f"Unsupported source type '{source_type}' for '{name}'"
+        )
+    if not url:
+        raise ConfigError(f"Source '{name}' missing url")
+    return SourceConfig(name=name, type=source_type, url=str(url))
+
+
 def _parse_sources_from_doc(
     doc: TOMLDocument,
 ) -> tuple[list[SourceConfig], str]:
@@ -78,21 +128,7 @@ def _parse_sources_from_doc(
     else:
         if not isinstance(sources_list, list):
             raise ConfigError("Invalid [[source]] format in agr.toml")
-        for item in sources_list:
-            if not isinstance(item, dict):
-                raise ConfigError("Invalid [[source]] entry in agr.toml")
-            name = str(item.get("name", "")).strip()
-            source_type = str(item.get("type", "git")).strip()
-            url = item.get("url")
-            if not name:
-                raise ConfigError("Source entry missing name")
-            if source_type != "git":
-                raise ConfigError(
-                    f"Unsupported source type '{source_type}' for '{name}'"
-                )
-            if not url:
-                raise ConfigError(f"Source '{name}' missing url")
-            sources.append(SourceConfig(name=name, type=source_type, url=str(url)))
+        sources = [_parse_source_entry(item) for item in sources_list]
 
     default_source = doc.get("default_source")
     if default_source:
@@ -102,10 +138,7 @@ def _parse_sources_from_doc(
     else:
         default_source = DEFAULT_SOURCE_NAME
 
-    if not any(source.name == default_source for source in sources):
-        raise ConfigError(
-            f"default_source '{default_source}' not found in [[source]] list"
-        )
+    _validate_default_source(default_source, sources)
 
     return sources, default_source
 
@@ -166,6 +199,16 @@ class Dependency:
             return None
         return self.source or default_source
 
+    def resolve(
+        self, default_source: str | None = None
+    ) -> tuple[ParsedHandle, str | None]:
+        """Parse the handle and resolve the source name in one step.
+
+        Combines ``to_parsed_handle()`` and ``resolve_source_name()`` —
+        the two calls are always used together when processing dependencies.
+        """
+        return self.to_parsed_handle(), self.resolve_source_name(default_source)
+
 
 def _parse_dependencies_from_doc(
     doc: TOMLDocument,
@@ -185,19 +228,22 @@ def _parse_dependencies_from_doc(
     for item in deps_list:
         if not isinstance(item, dict):
             continue
-        dep_type = item.get("type", "skill")
+        dep_type = item.get("type", DEPENDENCY_TYPE_SKILL)
         handle = item.get("handle")
         path_val = item.get("path")
         source = item.get("source")
         if source is not None:
             source = str(source)
 
-        if handle:
-            dependencies.append(Dependency(handle=handle, type=dep_type, source=source))
-        elif path_val:
-            if source is not None:
-                raise ConfigError("Local dependencies cannot specify a source")
-            dependencies.append(Dependency(path=path_val, type=dep_type))
+        if handle or path_val:
+            try:
+                dependencies.append(
+                    Dependency(
+                        handle=handle, path=path_val, type=dep_type, source=source
+                    )
+                )
+            except ValueError as e:
+                raise ConfigError(str(e)) from None
 
     for dep in dependencies:
         if dep.source and dep.source not in source_names:
@@ -276,7 +322,7 @@ class AgrConfig:
             content = path.read_text()
             doc = tomlkit.parse(content)
         except TOMLKitError as e:
-            raise ConfigError(f"Invalid TOML in {path}: {e}")
+            raise ConfigError(f"Invalid TOML in {path}: {e}") from e
 
         config = cls()
         config._path = path
@@ -291,12 +337,7 @@ class AgrConfig:
         canonical_instructions = doc.get("canonical_instructions")
         if canonical_instructions is not None:
             canonical_instructions = str(canonical_instructions)
-            if canonical_instructions not in VALID_CANONICAL_INSTRUCTIONS:
-                raise ConfigError(
-                    "canonical_instructions must be "
-                    "'AGENTS.md', 'CLAUDE.md', "
-                    "or 'GEMINI.md'"
-                )
+            validate_canonical_instructions(canonical_instructions)
             config.canonical_instructions = canonical_instructions
 
         config.sources, config.default_source = _parse_sources_from_doc(doc)
@@ -323,14 +364,11 @@ class AgrConfig:
         # Always write default source and sources for clarity
         default_source = self.default_source or DEFAULT_SOURCE_NAME
         sources = self.sources or default_sources()
-        if not any(source.name == default_source for source in sources):
-            raise ValueError(
-                f"default_source '{default_source}' not found in sources list"
-            )
+        _validate_default_source(default_source, sources)
         doc["default_source"] = default_source
 
         # Save tools array if not default
-        if self.tools != DEFAULT_TOOL_NAMES:
+        if self.tools != list(DEFAULT_TOOL_NAMES):
             tools_array = tomlkit.array()
             for tool in self.tools:
                 tools_array.append(tool)
@@ -432,7 +470,7 @@ def find_config(start_path: Path | None = None) -> Path | None:
         Path to agr.toml if found, None otherwise
     """
     for directory in _walk_ancestors(start_path):
-        config_path = directory / "agr.toml"
+        config_path = directory / CONFIG_FILENAME
         if config_path.exists():
             return config_path
         if (directory / ".git").exists():
@@ -472,10 +510,7 @@ def require_repo_root(start_path: Path | None = None) -> Path:
     """
     repo_root = find_repo_root(start_path)
     if repo_root is None:
-        from agr.console import print_error
-
-        print_error("Not in a git repository")
-        raise SystemExit(1)
+        error_exit("Not in a git repository")
     return repo_root
 
 
@@ -496,35 +531,8 @@ def require_config(start_path: Path | None = None) -> Path:
     """
     config_path = find_config(start_path)
     if config_path is None:
-        from agr.console import get_console, print_error
-
-        print_error("No agr.toml found.")
-        get_console().print("[dim]Run 'agr init' first to create one.[/dim]")
-        raise SystemExit(1)
+        error_exit("No agr.toml found.", hint="Run 'agr init' first to create one.")
     return config_path
-
-
-def get_or_create_config(start_path: Path | None = None) -> tuple[Path, AgrConfig]:
-    """Get existing config or create new one.
-
-    Args:
-        start_path: Directory to start searching from (defaults to cwd)
-
-    Returns:
-        Tuple of (path to config, AgrConfig instance)
-    """
-    existing = find_config(start_path)
-    if existing:
-        return existing, AgrConfig.load(existing)
-
-    # Create new config in cwd
-    cwd = start_path or Path.cwd()
-    config_path = cwd / "agr.toml"
-
-    config = AgrConfig()
-    config.save(config_path)
-
-    return config_path, config
 
 
 def get_global_config_dir() -> Path:
@@ -534,7 +542,7 @@ def get_global_config_dir() -> Path:
 
 def get_global_config_path() -> Path:
     """Get global agr config path (~/.agr/agr.toml)."""
-    return get_global_config_dir() / "agr.toml"
+    return get_global_config_dir() / CONFIG_FILENAME
 
 
 def get_or_create_global_config() -> tuple[Path, AgrConfig]:

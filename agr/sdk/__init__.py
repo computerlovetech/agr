@@ -18,4 +18,4 @@ from agr.sdk.hub import list_skills, skill_info
 from agr.sdk.skill import Skill
 from agr.sdk.types import SkillInfo
 
-__all__ = ["Skill", "cache", "list_skills", "skill_info", "SkillInfo"]
+__all__ = ["Skill", "SkillInfo", "cache", "list_skills", "skill_info"]

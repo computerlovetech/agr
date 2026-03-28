@@ -10,11 +10,18 @@ from pathlib import Path
 
 from rich.prompt import Confirm, Prompt
 
-from agr.config import AgrConfig, Dependency, find_config, find_repo_root
-from agr.console import get_console, print_error
+from agr.config import (
+    CONFIG_FILENAME,
+    DEPENDENCY_TYPE_SKILL,
+    AgrConfig,
+    Dependency,
+    find_config,
+    find_repo_root,
+)
+from agr.console import error_exit, get_console
 from agr.detect import detect_tools
 from agr.instructions import canonical_instruction_file, detect_instruction_files
-from agr.metadata import read_skill_metadata
+from agr.metadata import METADATA_KEY_TYPE, METADATA_TYPE_REMOTE, read_skill_metadata
 from agr.skill import (
     discover_all_skill_dirs,
     get_skill_frontmatter_name,
@@ -63,12 +70,8 @@ def select_skills(
         grouped.setdefault(skill.name, []).append(skill)
 
     selected: list[DiscoveredSkill] = []
-    for name, skills in grouped.items():
-        if len(skills) == 1:
-            selected.append(skills[0])
-        else:
-            picked = min(skills, key=lambda s: len(s.path.parts))
-            selected.append(picked)
+    for skills in grouped.values():
+        selected.append(min(skills, key=lambda s: len(s.path.parts)))
     selected.sort(key=lambda s: s.name)
     return selected
 
@@ -103,6 +106,84 @@ def migrate_skill(skill: DiscoveredSkill, skills_root: Path) -> Path | None:
     return dest_dir
 
 
+def _is_migratable(skill: DiscoveredSkill) -> bool:
+    """Check if a skill in a tool folder should be offered for migration.
+
+    A skill is migratable if it lives inside a tool folder (e.g.
+    ``.claude/skills/``) and is NOT a remote-installed skill (which
+    should stay managed by agr sync).
+    """
+    if not skill.tool:
+        return False
+    meta = read_skill_metadata(skill.path)
+    return meta is None or meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_REMOTE
+
+
+def _run_skill_migration(
+    selected_skills: list[DiscoveredSkill],
+    repo_root: Path,
+) -> list[DiscoveredSkill]:
+    """Offer to migrate tool-folder skills to ``./skills/`` and execute if accepted.
+
+    Returns the updated skill list with migrated paths.
+    """
+    console = get_console()
+    tool_folder_skills = [s for s in selected_skills if _is_migratable(s)]
+    if not tool_folder_skills:
+        return selected_skills
+
+    console.print()
+    console.print(
+        f"[yellow]Note:[/yellow] "
+        f"{len(tool_folder_skills)} skill(s) "
+        "are in tool folders "
+        "(e.g. .claude/skills/)."
+    )
+    should_migrate = Confirm.ask("Move them to ./skills/ (recommended)?", default=True)
+
+    if not should_migrate:
+        return selected_skills
+
+    skills_root = repo_root / "skills"
+    migrated_skills: list[DiscoveredSkill] = []
+    migrate_count = 0
+    for skill in selected_skills:
+        if _is_migratable(skill):
+            old_path = skill.path
+            dest_existed = (skills_root / skill.name).exists()
+            dest_dir = migrate_skill(skill, skills_root)
+            if dest_dir is None:
+                console.print(
+                    f"  [yellow]Skipping:[/yellow] "
+                    f"{skills_root / skill.name} "
+                    "exists and is not a "
+                    "valid skill"
+                )
+                migrated_skills.append(skill)
+                continue
+            migrated_skills.append(
+                DiscoveredSkill(
+                    name=skill.name,
+                    path=dest_dir,
+                    frontmatter_name=skill.frontmatter_name,
+                    tool=None,
+                )
+            )
+            migrate_count += 1
+            # Remove old skill from tool folder only if we actually copied
+            if not dest_existed and old_path.exists():
+                try:
+                    shutil.rmtree(old_path)
+                except OSError:
+                    console.print(
+                        f"  [yellow]Warning:[/yellow] Failed to remove {old_path}"
+                    )
+        else:
+            migrated_skills.append(skill)
+    console.print(f"[green]Migrated:[/green] {migrate_count} skill(s) to ./skills/")
+    return migrated_skills
+
+
 def _parse_number_selection(input_str: str, max_val: int) -> list[int]:
     """Parse comma-separated number selection like '1,3' into indices."""
     if not input_str.strip():
@@ -127,9 +208,10 @@ def run_onboard(*, no_migrate: bool = False) -> None:
 
     # TTY check (bypass with _AGR_FORCE_TTY=1 for testing)
     if not sys.stdin.isatty() and not os.environ.get("_AGR_FORCE_TTY"):
-        print_error("agr onboard requires an interactive terminal.")
-        console.print("[dim]Use 'agr init' for non-interactive setup.[/dim]")
-        raise SystemExit(1)
+        error_exit(
+            "agr onboard requires an interactive terminal.",
+            hint="Use 'agr init' for non-interactive setup.",
+        )
 
     # Find repo root
     repo_root = find_repo_root() or Path.cwd()
@@ -141,7 +223,7 @@ def run_onboard(*, no_migrate: bool = False) -> None:
         console.print(f"[dim]Found existing config:[/dim] {config_path}")
     else:
         config = AgrConfig()
-        config_path = repo_root / "agr.toml"
+        config_path = repo_root / CONFIG_FILENAME
 
     # ── Step 1: Tools ──
     console.print()
@@ -185,10 +267,10 @@ def run_onboard(*, no_migrate: bool = False) -> None:
     elif default_indices:
         selected_tools = [all_tool_names[i - 1] for i in default_indices]
     else:
-        selected_tools = ["claude"]
+        selected_tools = list(DEFAULT_TOOL_NAMES)
 
     if not selected_tools:
-        selected_tools = ["claude"]
+        selected_tools = list(DEFAULT_TOOL_NAMES)
 
     config.tools = selected_tools
     console.print(f"[green]Tools:[/green] {', '.join(selected_tools)}")
@@ -228,67 +310,8 @@ def run_onboard(*, no_migrate: bool = False) -> None:
             console.print(f"[green]Selected:[/green] {len(selected_skills)} skill(s)")
 
         # Migration offer for tool-folder skills (skip remote-installed ones)
-        def _is_migratable(skill: DiscoveredSkill) -> bool:
-            if not skill.tool:
-                return False
-            meta = read_skill_metadata(skill.path)
-            return meta is None or meta.get("type") != "remote"
-
-        tool_folder_skills = [s for s in selected_skills if _is_migratable(s)]
-        if tool_folder_skills and not no_migrate:
-            console.print()
-            console.print(
-                f"[yellow]Note:[/yellow] "
-                f"{len(tool_folder_skills)} skill(s) "
-                "are in tool folders "
-                "(e.g. .claude/skills/)."
-            )
-            should_migrate = Confirm.ask(
-                "Move them to ./skills/ (recommended)?", default=True
-            )
-
-            if should_migrate:
-                skills_root = repo_root / "skills"
-                migrated_skills: list[DiscoveredSkill] = []
-                migrate_count = 0
-                for skill in selected_skills:
-                    if _is_migratable(skill):
-                        old_path = skill.path
-                        dest_existed = (skills_root / skill.name).exists()
-                        dest_dir = migrate_skill(skill, skills_root)
-                        if dest_dir is None:
-                            console.print(
-                                f"  [yellow]Skipping:[/yellow] "
-                                f"{skills_root / skill.name} "
-                                "exists and is not a "
-                                "valid skill"
-                            )
-                            migrated_skills.append(skill)
-                            continue
-                        migrated_skills.append(
-                            DiscoveredSkill(
-                                name=skill.name,
-                                path=dest_dir,
-                                frontmatter_name=skill.frontmatter_name,
-                                tool=None,
-                            )
-                        )
-                        migrate_count += 1
-                        # Remove old skill from tool folder only if we actually copied
-                        if not dest_existed and old_path.exists():
-                            try:
-                                shutil.rmtree(old_path)
-                            except OSError:
-                                console.print(
-                                    "  [yellow]Warning:[/yellow] "
-                                    f"Failed to remove {old_path}"
-                                )
-                    else:
-                        migrated_skills.append(skill)
-                selected_skills = migrated_skills
-                console.print(
-                    f"[green]Migrated:[/green] {migrate_count} skill(s) to ./skills/"
-                )
+        if not no_migrate:
+            selected_skills = _run_skill_migration(selected_skills, repo_root)
 
     # ── Step 3: Defaults ──
     if len(selected_tools) > 1:
@@ -341,7 +364,7 @@ def run_onboard(*, no_migrate: bool = False) -> None:
         dep_path = format_dep_path(repo_root, skill.path)
         if dep_path in existing_ids:
             continue
-        config.add_dependency(Dependency(type="skill", path=dep_path))
+        config.add_dependency(Dependency(type=DEPENDENCY_TYPE_SKILL, path=dep_path))
         existing_ids.add(dep_path)
 
     config.save(config_path)

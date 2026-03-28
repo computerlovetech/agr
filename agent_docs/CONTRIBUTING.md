@@ -166,7 +166,7 @@ tests/
 ├── test_metadata.py               # agr/metadata.py tests
 ├── test_tool.py                   # agr/tool.py tests
 ├── test_copilot.py                # Copilot-specific tests
-├── test_cursor.py                 # Cursor nested-dir tests
+├── test_cursor.py                 # Cursor-specific tests
 ├── test_commands.py               # CLI command integration tests
 ├── test_agrx_command_building.py  # agrx CLI command building
 ├── test_docs.py                   # Documentation accuracy tests

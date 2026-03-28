@@ -7,7 +7,6 @@ from agr.config import (
     Dependency,
     find_config,
     find_repo_root,
-    get_or_create_config,
 )
 from agr.exceptions import AgrError, ConfigError
 from agr.tool import ToolConfig
@@ -39,6 +38,84 @@ class TestDependency:
         """Must have either handle or path."""
         with pytest.raises(ValueError, match="must have either"):
             Dependency(type="skill")
+
+    def test_local_with_source_raises(self):
+        """Local dependency cannot specify a source."""
+        with pytest.raises(
+            ValueError, match="Local dependency cannot specify a source"
+        ):
+            Dependency(type="skill", path="./my-skill", source="github")
+
+    def test_to_parsed_handle_remote_two_part(self):
+        """Remote two-part handle converts to ParsedHandle."""
+        dep = Dependency(type="skill", handle="owner/skill-name")
+        parsed = dep.to_parsed_handle()
+        assert not parsed.is_local
+        assert parsed.username == "owner"
+        assert parsed.name == "skill-name"
+        assert parsed.repo is None
+
+    def test_to_parsed_handle_remote_three_part(self):
+        """Remote three-part handle converts to ParsedHandle."""
+        dep = Dependency(type="skill", handle="owner/repo/skill-name")
+        parsed = dep.to_parsed_handle()
+        assert not parsed.is_local
+        assert parsed.username == "owner"
+        assert parsed.repo == "repo"
+        assert parsed.name == "skill-name"
+
+    def test_to_parsed_handle_local(self):
+        """Local dependency converts to ParsedHandle with is_local=True."""
+        dep = Dependency(type="skill", path="./my-skill")
+        parsed = dep.to_parsed_handle()
+        assert parsed.is_local
+        assert parsed.name == "my-skill"
+        assert parsed.local_path is not None
+
+    def test_resolve_source_name_remote_explicit(self):
+        """Remote dependency with explicit source returns that source."""
+        dep = Dependency(type="skill", handle="owner/skill", source="custom")
+        assert dep.resolve_source_name("github") == "custom"
+
+    def test_resolve_source_name_remote_default(self):
+        """Remote dependency without source falls back to default."""
+        dep = Dependency(type="skill", handle="owner/skill")
+        assert dep.resolve_source_name("github") == "github"
+
+    def test_resolve_source_name_remote_no_default(self):
+        """Remote dependency without source or default returns None."""
+        dep = Dependency(type="skill", handle="owner/skill")
+        assert dep.resolve_source_name() is None
+
+    def test_resolve_source_name_local(self):
+        """Local dependency always returns None for source."""
+        dep = Dependency(type="skill", path="./my-skill")
+        assert dep.resolve_source_name("github") is None
+
+    def test_resolve_remote(self):
+        """resolve() returns parsed handle and source name together."""
+        dep = Dependency(type="skill", handle="owner/repo/skill", source="custom")
+        handle, source_name = dep.resolve("github")
+        assert handle.username == "owner"
+        assert handle.repo == "repo"
+        assert handle.name == "skill"
+        assert source_name == "custom"
+
+    def test_resolve_remote_default_source(self):
+        """resolve() falls back to default source for remote deps."""
+        dep = Dependency(type="skill", handle="owner/skill")
+        handle, source_name = dep.resolve("github")
+        assert handle.username == "owner"
+        assert handle.name == "skill"
+        assert source_name == "github"
+
+    def test_resolve_local(self):
+        """resolve() returns local handle with None source."""
+        dep = Dependency(type="skill", path="./my-skill")
+        handle, source_name = dep.resolve("github")
+        assert handle.is_local
+        assert handle.name == "my-skill"
+        assert source_name is None
 
 
 class TestAgrConfig:
@@ -118,6 +195,19 @@ dependencies = [
             'canonical_instructions = "README.md"\ndependencies = []\n'
         )
         with pytest.raises(ConfigError, match="canonical_instructions"):
+            AgrConfig.load(config_path)
+
+    def test_load_local_dep_with_source_raises(self, tmp_path):
+        """Local dependency with source in TOML raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text("""
+dependencies = [
+    { path = "./my-skill", type = "skill", source = "github" },
+]
+""")
+        with pytest.raises(
+            ConfigError, match="Local dependency cannot specify a source"
+        ):
             AgrConfig.load(config_path)
 
     def test_load_invalid_toml_raises(self, tmp_path):
@@ -265,33 +355,6 @@ class TestFindRepoRoot:
 
         root = find_repo_root()
         assert root is None
-
-
-class TestGetOrCreateConfig:
-    """Tests for get_or_create_config function."""
-
-    def test_creates_new(self, tmp_path, monkeypatch):
-        """Creates new config if none exists."""
-        monkeypatch.chdir(tmp_path)
-
-        path, config = get_or_create_config()
-        assert path == tmp_path / "agr.toml"
-        assert path.exists()
-        assert config.dependencies == []
-
-    def test_returns_existing(self, tmp_path, monkeypatch):
-        """Returns existing config."""
-        monkeypatch.chdir(tmp_path)
-        config_path = tmp_path / "agr.toml"
-        config_path.write_text("""
-dependencies = [
-    { handle = "user/skill", type = "skill" },
-]
-""")
-
-        path, config = get_or_create_config()
-        assert path == config_path
-        assert len(config.dependencies) == 1
 
 
 class TestGetTools:

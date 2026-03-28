@@ -1,21 +1,45 @@
 ---
-title: Python SDK
+title: "agr Python SDK — Load, Discover, and Cache AI Agent Skills Programmatically"
+description: Use agr as a Python library to load skills from GitHub or local paths, discover skills in repositories, manage the download cache, and handle errors.
+keywords:
+  - agr Python SDK
+  - agr Python library
+  - load skill from GitHub Python
+  - Skill.from_git
+  - list_skills API
+  - skill_info API
+  - agr cache management
+  - programmatic skill loading
+  - AI agent skill discovery
 ---
 
 # Python SDK
 
-Use `agr` as a Python library to load, inspect, and cache skills programmatically.
+!!! tldr
+    `pip install agr` and use `Skill.from_git("owner/repo/skill")` to load
+    skills programmatically. Discover skills with `list_skills()`, manage the
+    cache with `cache.clear()`, and handle errors via `AgrError` subclasses.
 
-## Install
+**Prerequisites:** Python 3.10+
+
+Use `agr` as a Python library to load, inspect, and cache [skills](concepts.md#skills) programmatically.
+
+**What is a skill?** A folder containing a `SKILL.md` file with YAML frontmatter
+(`name`, `description`) and markdown instructions for an AI coding agent. Skills
+work across Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, and
+Antigravity. A **handle** like `"anthropics/skills/code-review"` points to a
+skill directory inside a GitHub repo.
+
+## Install the agr package
 
 ```bash
 pip install agr   # As a library dependency in your project
 ```
 
 !!! tip
-    If you want the `agr` and `agrx` CLI tools (not just the SDK), install with `uv tool install agr` or `pipx install agr` instead.
+    If you want the `agr` and [`agrx`](agrx.md) CLI tools (not just the SDK), install with `uv tool install agr` or `pipx install agr` instead. See the [Tutorial](tutorial.md) for a full walkthrough.
 
-## Quick Start
+## Load a skill in 3 lines
 
 ```python
 from agr import Skill
@@ -30,13 +54,14 @@ skill = Skill.from_local("./my-skill")
 print(skill.prompt)
 ```
 
-## Loading Skills
+## Load skills from GitHub or local paths
 
 ### From GitHub
 
-`Skill.from_git()` downloads a skill from GitHub and caches it locally. On
-subsequent calls, agr checks the remote HEAD commit — if the cached revision
-matches, it returns the cached copy without re-downloading.
+`Skill.from_git()` downloads a skill from GitHub and caches it locally using a
+[handle](concepts.md#handles) to identify the skill. On subsequent calls, agr
+checks the remote HEAD commit — if the cached revision matches, it returns the
+cached copy without re-downloading.
 
 ```python
 from agr import Skill
@@ -49,18 +74,27 @@ skill = Skill.from_git("anthropics/skills/code-review")
 
 # Force re-download even if cached (useful after upstream changes)
 skill = Skill.from_git("kasperjunge/commit", force_download=True)
+
+# Private repos — set GITHUB_TOKEN or GH_TOKEN in your environment
+# export GITHUB_TOKEN="ghp_..."
+skill = Skill.from_git("my-org/private-repo/internal-skill")
 ```
+
+!!! note "Private repositories"
+    `from_git()` uses the same `GITHUB_TOKEN` / `GH_TOKEN` environment
+    variables as the CLI. See [Private Repositories](configuration.md#private-repositories)
+    for token setup.
 
 ### From a Local Directory
 
-`Skill.from_local()` loads a skill from a local path. The directory must contain a `SKILL.md` file.
+`Skill.from_local()` loads a skill from a local path. The directory must contain a `SKILL.md` file (see [Creating Skills](creating.md) for the expected structure).
 
 ```python
 skill = Skill.from_local("./my-skill")
 skill = Skill.from_local("/absolute/path/to/skill")
 ```
 
-## Skill Properties
+## Skill properties and metadata
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -132,9 +166,9 @@ if stored != current:
     print("Skill files have changed")
 ```
 
-## Discovering Skills
+## Discover skills in a repository
 
-### List Skills in a Repository
+### List all skills in a repo
 
 ```python
 from agr import list_skills
@@ -148,7 +182,15 @@ for info in skills:
 skills = list_skills("kasperjunge")
 ```
 
-### Get Skill Details
+!!! note "`list_skills()` does not fetch descriptions"
+    `list_skills()` discovers skills from the repository tree without downloading
+    each `SKILL.md`. The `description` field on returned `SkillInfo` objects is
+    `None`. To get the description for a specific skill, use `skill_info()`.
+
+### Get details for a single skill
+
+`skill_info()` fetches the skill's `SKILL.md` to extract its description (first
+body paragraph after frontmatter, up to 200 chars):
 
 ```python
 from agr import skill_info
@@ -156,16 +198,16 @@ from agr import skill_info
 info = skill_info("anthropics/skills/code-review")
 print(info.name)         # "code-review"
 print(info.handle)       # "anthropics/skills/code-review"
-print(info.description)  # First paragraph from SKILL.md
+print(info.description)  # First body paragraph from SKILL.md
 print(info.owner)        # "anthropics"
 print(info.repo)         # "skills"
 ```
 
-Both functions use the GitHub API and respect `GITHUB_TOKEN` / `GH_TOKEN` environment variables for authentication.
+Both functions use the GitHub API and respect `GITHUB_TOKEN` / `GH_TOKEN` environment variables for authentication. See [Troubleshooting](troubleshooting.md) if you hit rate limits or auth errors.
 
-## Cache Management
+## Manage the download cache
 
-Downloaded skills are cached in `~/.cache/agr/skills/`. The `cache` object provides inspection and cleanup.
+Downloaded skills are cached in `~/.cache/agr/skills/` (also used by the [CLI](reference.md)). The `cache` object provides inspection and cleanup.
 
 ```python
 from agr import cache
@@ -186,13 +228,16 @@ deleted = cache.clear("anthropics/skills/*")
 deleted = cache.clear("kasperjunge/*/*")
 ```
 
-## Error Handling
+## Handle errors with AgrError subclasses
 
-All SDK errors inherit from `AgrError`:
+All SDK errors inherit from `AgrError`, including network failures. Catch
+specific subclasses for targeted handling, or catch `AgrError` as a fallback
+for any SDK error (including network issues like DNS failures and timeouts):
 
 ```python
-from agr import Skill
+from agr import Skill, list_skills, skill_info
 from agr.exceptions import (
+    AgrError,
     InvalidHandleError,
     InvalidLocalPathError,
     SkillNotFoundError,
@@ -212,14 +257,48 @@ except AuthenticationError:
     print("Set GITHUB_TOKEN for private repos")
 except RateLimitError:
     print("GitHub API rate limit exceeded")
+except AgrError as e:
+    print(f"Unexpected error: {e}")  # Network failures, etc.
 
 try:
     skill = Skill.from_local("./missing-skill")
 except InvalidLocalPathError:
     print("Path does not exist or is missing SKILL.md")
+
+try:
+    skills = list_skills("not a valid handle/a/b")
+except InvalidHandleError:
+    print("Bad repo handle format")
+
+try:
+    info = skill_info("owner/nonexistent-skill")
+except SkillNotFoundError:
+    print("Skill not found in that repo")
 ```
 
-## Types
+!!! tip "Network errors are `AgrError`, not `ConnectionError`"
+    Network failures (DNS resolution, timeouts, connection refused) in
+    `list_skills()`, `skill_info()`, and `Skill.from_git()` raise `AgrError`
+    — not Python's built-in `ConnectionError`. If your code catches `AgrError`
+    (or its subclasses), network errors are included automatically.
+
+## Type definitions
+
+### `ParsedHandle`
+
+Returned by `skill.handle`:
+
+```python
+@dataclass
+class ParsedHandle:
+    username: str | None   # GitHub username (None for local skills)
+    repo: str | None       # Repository name (None = default "skills" repo)
+    name: str              # Skill name (final segment of the handle)
+    is_local: bool         # True for local path references
+    local_path: Path | None  # Original local path (if is_local)
+```
+
+`ParsedHandle` also has an `is_remote` property that returns `True` for GitHub references.
 
 ### `SkillInfo`
 
@@ -230,7 +309,15 @@ Returned by `list_skills()` and `skill_info()`:
 class SkillInfo:
     name: str              # Skill name
     handle: str            # Full handle (e.g., "owner/repo/skill")
-    description: str | None  # First paragraph from SKILL.md
+    description: str | None  # First body paragraph from SKILL.md (None from list_skills, populated from skill_info)
     repo: str              # Repository name
     owner: str             # GitHub owner/username
 ```
+
+---
+
+## Next Steps
+
+- [**Creating Skills**](creating.md) — build your own skills to load with the SDK
+- [**Core Concepts**](concepts.md) — understand handles, sources, and the sync lifecycle
+- [**CLI Reference**](reference.md) — manage skills from the command line instead of Python

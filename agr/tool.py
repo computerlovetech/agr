@@ -1,9 +1,8 @@
 """Tool configuration for AI coding tools.
 
 All tool-specific paths and configuration are isolated in this module.
-Supports Claude Code (flat naming), OpenAI Codex (flat naming),
-Cursor (nested directories), OpenCode (flat naming),
-GitHub Copilot (flat naming), and Antigravity (flat naming).
+Supports Claude Code, Cursor, OpenAI Codex, OpenCode,
+GitHub Copilot, and Antigravity. All tools use flat naming.
 """
 
 from dataclasses import dataclass
@@ -18,8 +17,8 @@ class ToolConfig:
 
     name: str
     config_dir: str  # e.g., ".claude"
-    skills_subdir: str  # e.g., "skills"
-    supports_nested: bool = False  # True for nested dir structure (Cursor)
+    skills_subdir: str = "skills"  # e.g., "skills"
+    supports_nested: bool = False  # Reserved for future use
     global_config_dir: str | None = (
         None  # For tools where personal path differs (e.g., Copilot)
     )
@@ -55,28 +54,23 @@ class ToolConfig:
 CLAUDE = ToolConfig(
     name="claude",
     config_dir=".claude",
-    skills_subdir="skills",
-    supports_nested=False,
     cli_command="claude",
-    cli_prompt_flag="-p",
     cli_force_flag="--dangerously-skip-permissions",
-    cli_continue_flag="--continue",
     cli_interactive_prompt_positional=True,
     install_hint="Install from: https://claude.ai/download",
     detection_signals=(".claude", "CLAUDE.md"),
     instruction_file="CLAUDE.md",
 )
 
-# Cursor tool configuration (nested dirs: maragudk/skills/bluesky/)
+# Cursor tool configuration (flat naming: <skill-name>)
+# Cursor docs: skill identifiers are "lowercase letters, numbers, and
+# hyphens only" and must match the parent folder name.  Primary skill
+# directories (.agents/skills/, .cursor/skills/) use flat naming.
 CURSOR = ToolConfig(
     name="cursor",
     config_dir=".cursor",
-    skills_subdir="skills",
-    supports_nested=True,
     cli_command="agent",
-    cli_prompt_flag="-p",
-    cli_force_flag="--force",
-    cli_continue_flag="--continue",
+    # Cursor CLI has no permission-bypass flag (cli_force_flag=None)
     cli_interactive_prompt_positional=True,
     install_hint="Install Cursor IDE to get the agent CLI",
     detection_signals=(".cursor", ".cursorrules"),
@@ -89,15 +83,14 @@ CURSOR = ToolConfig(
 CODEX = ToolConfig(
     name="codex",
     config_dir=".agents",
-    skills_subdir="skills",
-    supports_nested=False,
     cli_command="codex",
     cli_prompt_flag=None,  # Codex accepts prompt as positional arg
-    cli_force_flag=None,
+    cli_force_flag="--full-auto",
     cli_continue_flag=None,
     cli_exec_command=["codex", "exec"],
     cli_continue_command=["codex", "resume", "--last"],
     suppress_stderr_non_interactive=True,
+    cli_interactive_prompt_positional=True,
     skill_prompt_prefix="$",
     install_hint="Install OpenAI Codex CLI (npm i -g @openai/codex)",
     detection_signals=(".agents", ".codex"),
@@ -110,17 +103,14 @@ CODEX = ToolConfig(
 OPENCODE = ToolConfig(
     name="opencode",
     config_dir=".opencode",
-    skills_subdir="skills",
-    supports_nested=False,
     global_config_dir=".config/opencode",
     cli_command="opencode",
-    cli_prompt_flag=None,  # opencode run accepts prompt as positional args
-    cli_continue_flag="--continue",
+    cli_prompt_flag=None,  # opencode run <prompt> (positional arg)
     cli_exec_command=["opencode", "run"],
-    cli_interactive_prompt_flag="--prompt",
+    cli_interactive_prompt_flag="--prompt",  # opencode --prompt <text> (TUI mode)
     skill_prompt_prefix="",
     install_hint="Install OpenCode CLI (https://opencode.ai/docs/cli/)",
-    detection_signals=(".opencode",),
+    detection_signals=(".opencode", "opencode.json", "opencode.jsonc"),
 )
 
 # GitHub Copilot tool configuration
@@ -131,58 +121,62 @@ OPENCODE = ToolConfig(
 COPILOT = ToolConfig(
     name="copilot",
     config_dir=".github",
-    skills_subdir="skills",
-    supports_nested=False,  # Flat naming like Claude
     global_config_dir=".copilot",  # Personal path differs from project path
     cli_command="copilot",
-    cli_prompt_flag="-p",
     cli_force_flag="--allow-all-tools",
-    cli_continue_flag="--continue",
     cli_interactive_prompt_flag="-i",
     install_hint="Install GitHub Copilot CLI",
-    detection_signals=(".github/copilot", ".github/skills"),
+    detection_signals=(
+        ".github/copilot",
+        ".github/skills",
+        ".github/copilot-instructions.md",
+        ".github/instructions",
+    ),
 )
 
 # Antigravity tool configuration (flat naming: <skill-name>)
-# Skill paths based on Antigravity documentation:
-# - Workspace: .agent/skills/
-# - Global: ~/.gemini/antigravity/skills/
+# Skill paths based on Gemini CLI documentation:
+# - Workspace: .gemini/skills/  (primary; .agents/skills/ is an alias)
+# - User: ~/.gemini/skills/     (primary; ~/.agents/skills/ is an alias)
+# No CLI support — only fields that differ from ToolConfig defaults are set.
 ANTIGRAVITY = ToolConfig(
     name="antigravity",
-    config_dir=".agent",
-    skills_subdir="skills",
-    supports_nested=False,
-    global_config_dir=".gemini/antigravity",
-    cli_command=None,
+    config_dir=".gemini",
     cli_prompt_flag=None,
-    cli_force_flag=None,
     cli_continue_flag=None,
-    cli_exec_command=None,
-    cli_continue_command=None,
-    cli_interactive_prompt_positional=False,
-    cli_interactive_prompt_flag=None,
-    suppress_stderr_non_interactive=False,
     skill_prompt_prefix="",
-    install_hint=None,
-    detection_signals=(".agent",),
+    detection_signals=(".gemini", ".agents"),
     instruction_file="GEMINI.md",
 )
 
-# Registry of all supported tools
-TOOLS: dict[str, ToolConfig] = {
-    "claude": CLAUDE,
-    "cursor": CURSOR,
-    "codex": CODEX,
-    "opencode": OPENCODE,
-    "copilot": COPILOT,
-    "antigravity": ANTIGRAVITY,
-}
+# All tool configurations — order here determines iteration order in TOOLS.
+_ALL_TOOLS: tuple[ToolConfig, ...] = (
+    CLAUDE,
+    CURSOR,
+    CODEX,
+    OPENCODE,
+    COPILOT,
+    ANTIGRAVITY,
+)
+
+# Registry of all supported tools, keyed by ToolConfig.name.
+TOOLS: dict[str, ToolConfig] = {tool.name: tool for tool in _ALL_TOOLS}
 
 # Default tool names for new configurations
-DEFAULT_TOOL_NAMES: list[str] = ["claude"]
+DEFAULT_TOOL_NAMES: tuple[str, ...] = ("claude",)
 
 # Default tool for all operations
 DEFAULT_TOOL = CLAUDE
+
+
+def lookup_skills_dir(
+    skills_dirs: dict[str, Path] | None, tool: ToolConfig
+) -> Path | None:
+    """Look up a tool's explicit skills directory from an optional mapping.
+
+    Returns None when no override exists for the given tool.
+    """
+    return skills_dirs.get(tool.name) if skills_dirs is not None else None
 
 
 def build_global_skills_dirs(tools: list[ToolConfig]) -> dict[str, Path]:

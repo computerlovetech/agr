@@ -8,7 +8,6 @@ from agr.handle import (
     LEGACY_DEFAULT_REPO_NAME,
     ParsedHandle,
     iter_repo_candidates,
-    installed_name_to_toml_handle,
     parse_handle,
 )
 
@@ -179,48 +178,6 @@ class TestParsedHandle:
         h = ParsedHandle(is_local=True, name="my-skill")
         with pytest.raises(InvalidHandleError):
             h.get_github_repo()
-
-
-class TestInstalledNameToTomlHandle:
-    """Tests for installed_name_to_toml_handle function."""
-
-    def test_simple(self):
-        """Convert kasperjunge--commit to kasperjunge/commit."""
-        assert (
-            installed_name_to_toml_handle("kasperjunge--commit") == "kasperjunge/commit"
-        )
-
-    def test_with_repo(self):
-        """Convert maragudk--skills--collaboration to maragudk/skills/collaboration."""
-        assert (
-            installed_name_to_toml_handle("maragudk--skills--collaboration")
-            == "maragudk/skills/collaboration"
-        )
-
-    def test_local(self):
-        """Convert local--my-skill to my-skill."""
-        assert installed_name_to_toml_handle("local--my-skill") == "my-skill"
-
-    def test_no_separator(self):
-        """Handle without separator returns as-is."""
-        assert installed_name_to_toml_handle("simple") == "simple"
-
-    def test_legacy_colon_simple(self):
-        """Backward compatibility: colon format still parses (user:skill)."""
-        assert (
-            installed_name_to_toml_handle("kasperjunge:commit") == "kasperjunge/commit"
-        )
-
-    def test_legacy_colon_with_repo(self):
-        """Backward compatibility: colon format still parses (user:repo:skill)."""
-        assert (
-            installed_name_to_toml_handle("maragudk:skills:collaboration")
-            == "maragudk/skills/collaboration"
-        )
-
-    def test_legacy_colon_local(self):
-        """Backward compatibility: colon format still parses (local:skill)."""
-        assert installed_name_to_toml_handle("local:my-skill") == "my-skill"
 
 
 class TestRepoCandidates:

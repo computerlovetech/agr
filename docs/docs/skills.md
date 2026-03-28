@@ -1,11 +1,41 @@
 ---
-title: Skill Directory
+title: "Skill Directory — Browse and Install AI Agent Skills for Claude Code, Cursor, Codex, and More"
+description: Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.
+keywords:
+  - agr skill directory
+  - AI agent skills list
+  - browse AI agent skills
+  - Claude Code skills directory
+  - Cursor skills directory
+  - Codex skills directory
+  - OpenCode skills
+  - GitHub Copilot skills
+  - Antigravity skills
+  - install AI coding skills
+  - PDF skill agr
+  - frontend design skill
+  - community AI skills
+  - SKILL.md
 ---
 
 # Skill Directory
 
+!!! tldr
+    **Official skills** from Anthropic cover documents (PDF, DOCX, XLSX, PPTX),
+    design, frontend, API integration, and productivity. **Community skills** add
+    Go, Drupal, workflow automation, and more. Try any skill instantly with
+    `agrx user/skill` or install with `agr add user/skill`.
+
 Browse available skills and find ones that fit your workflow. Every skill below
-can be tried instantly without installing:
+works with all [supported tools](tools.md) — Claude Code, Cursor, Codex,
+OpenCode, GitHub Copilot, and Antigravity — and can be tried instantly without
+installing using [`agrx`](agrx.md):
+
+**Key terms:** A **skill** is a directory containing a `SKILL.md` file with
+YAML frontmatter (`name`, `description`) and markdown instructions for an AI
+coding agent. A **[handle](concepts.md#handles)** like `anthropics/skills/pdf`
+identifies a skill on GitHub. Install permanently with
+[`agr add`](reference.md#agr-add) or run once with [`agrx`](agrx.md).
 
 ```bash
 agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
@@ -92,27 +122,33 @@ Skills built and shared by the community.
 
 ### Search GitHub
 
-Any GitHub repository with a `SKILL.md` file can be installed with agr:
+Any GitHub repository with a [`SKILL.md`](creating.md#skillmd-format) file can be installed as a [handle](concepts.md#handles):
 
 - [Search for SKILL.md files on GitHub](https://github.com/search?q=filename%3ASKILL.md&type=code)
 
 ### List skills in a repository
 
-Use the Python SDK to list all skills in any repo:
+Use the [Python SDK](sdk.md) to list all skills in any repo:
 
 ```python
-from agr import list_skills
+from agr import list_skills, skill_info
 
 for info in list_skills("anthropics/skills"):
-    print(f"{info.handle}: {info.description}")
+    details = skill_info(info.handle)
+    print(f"{details.handle}: {details.description}")
 ```
+
+!!! note
+    `list_skills()` discovers skills without downloading each `SKILL.md`, so
+    `description` is `None`. Use `skill_info()` to fetch the description for
+    a specific skill.
 
 Or check a repo manually — agr looks for any directory containing a `SKILL.md`
 file.
 
 ### Try before you install
 
-Use `agrx` to run any skill without adding it to your project:
+Use [`agrx`](agrx.md) to run any skill without adding it to your project:
 
 ```bash
 agrx anthropics/skills/webapp-testing
@@ -129,13 +165,13 @@ agrx anthropics/skills/pdf -i   # Interactive: continue chatting after the skill
 agr init my-skill
 ```
 
-Edit the generated `my-skill/SKILL.md` with your instructions.
+Edit the generated `my-skill/SKILL.md` with your instructions. See [`agr init`](reference.md#agr-init) for all options.
 
 ### 2. Push to GitHub
 
 Push your skill to a GitHub repository. The recommended structure is a repo named `skills` with one directory per skill:
 
-```
+```text
 your-username/skills/
 ├── my-skill/
 │   └── SKILL.md
@@ -151,6 +187,17 @@ agr add your-username/my-skill
 
 ### 3. List it here
 
-Open an issue at [github.com/kasperjunge/agent-resources](https://github.com/kasperjunge/agent-resources/issues) to get your skill added to this directory.
+Open an issue at [github.com/kasperjunge/agent-resources](https://github.com/kasperjunge/agent-resources/issues) to get your skill added to this directory. For [team-wide sharing](teams.md), you can also use a private repository with [`agr.toml`](configuration.md).
 
 See [Creating Skills](creating.md) for a full guide on writing effective skills.
+
+---
+
+## Next Steps
+
+- [Tutorial](tutorial.md) — Get started with agr from scratch
+- [Creating Skills](creating.md) — Write and publish your own skills
+- [Try Skills with agrx](agrx.md) — Run any skill instantly without installing
+- [Python SDK](sdk.md) — Discover and manage skills programmatically
+- [Troubleshooting](troubleshooting.md) — Fix install errors and common issues
+- [What's New](changelog.md) — Latest skill support and feature updates

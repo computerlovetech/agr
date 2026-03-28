@@ -5,7 +5,7 @@ import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 
 SCHEMA = """
@@ -64,7 +64,7 @@ def init_db(db_path: Path) -> None:
     conn.close()
 
 
-def load_json_arg(value: Optional[str]) -> str:
+def load_json_arg(value: str | None) -> str:
     if value is None:
         return "{}"
     try:
@@ -137,7 +137,7 @@ def list_nodes(
     conn: sqlite3.Connection,
     workspace_id: int,
     node_type: str,
-) -> List[sqlite3.Row]:
+) -> list[sqlite3.Row]:
     return conn.execute(
         "SELECT id, title, data FROM nodes WHERE workspace_id = ? AND type = ? ORDER BY id",
         (workspace_id, node_type),
@@ -149,7 +149,7 @@ def list_children(
     parent_id: int,
     child_type: str,
     edge_type: str,
-) -> List[sqlite3.Row]:
+) -> list[sqlite3.Row]:
     return conn.execute(
         "SELECT n.id, n.title, n.data FROM nodes n "
         "JOIN edges e ON e.to_id = n.id "

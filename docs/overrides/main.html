@@ -1,32 +1,51 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
+  {% if page and page.meta and page.meta.description %}
+    {% set page_description = page.meta.description %}
+  {% else %}
+    {% set page_description = config.site_description %}
+  {% endif %}
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ page.canonical_url }}" />
-  <meta property="og:title" content="{{ page.title }} - Agent Resources" />
-  <meta property="og:description" content="{{ config.site_description }}" />
-  <meta property="og:site_name" content="Agent Resources" />
+  <meta property="og:title" content="{{ page.title }} - agr" />
+  <meta property="og:description" content="{{ page_description }}" />
+  <meta property="og:site_name" content="agr" />
   <meta property="og:image" content="{{ config.site_url }}images/og-image.png" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="{{ page.title }} - Agent Resources" />
-  <meta name="twitter:description" content="{{ config.site_description }}" />
+  <meta name="twitter:title" content="{{ page.title }} - agr" />
+  <meta name="twitter:description" content="{{ page_description }}" />
   <meta name="twitter:image" content="{{ config.site_url }}images/og-image.png" />
+
+  <!-- Keywords -->
+  {% if page and page.meta and page.meta.keywords %}
+    <meta name="keywords" content="{{ page.meta.keywords | join(', ') }}" />
+  {% endif %}
 
   <!-- Additional SEO -->
   <meta name="author" content="Kasper Junge" />
+  {% if page and page.meta and page.meta.robots %}
+  <meta name="robots" content="{{ page.meta.robots }}" />
+  {% else %}
   <meta name="robots" content="index, follow" />
+  {% endif %}
   <link rel="canonical" href="{{ page.canonical_url }}" />
+
+  <!-- LLM-readable documentation (llms.txt) -->
+  <link rel="alternate" type="text/plain" href="{{ config.site_url }}llms.txt" title="LLM-readable summary" />
+  <link rel="alternate" type="text/plain" href="{{ config.site_url }}llms-full.txt" title="LLM-readable full documentation" />
 
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Agent Resources",
-    "alternateName": "agr",
+    "name": "agr",
+    "alternateName": "Agent Resources",
     "description": "A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Cross-platform",
@@ -71,7 +90,7 @@
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "Agent Resources Documentation",
+    "name": "agr Documentation",
     "url": "https://kasperjunge.github.io/agent-resources/",
     "description": "Documentation for agr - a package manager for AI agent skills",
     "potentialAction": {
@@ -87,7 +106,7 @@
   {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "Agent Resources",
+    "name": "agr",
     "url": "https://github.com/kasperjunge/agent-resources",
     "logo": "https://github.com/kasperjunge.png",
     "sameAs": [
@@ -96,4 +115,1516 @@
     ]
   }
   </script>
+
+  <!-- BreadcrumbList Schema for rich breadcrumb trails in search results -->
+  {% if page and page.file %}
+  {% set src = page.file.src_path %}
+  {% set base = "https://kasperjunge.github.io/agent-resources/" %}
+  {% if src == "index.md" %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ base }}"}
+    ]
+  }
+  </script>
+  {% elif src in ("tutorial.md", "concepts.md") %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ base }}"},
+      {"@type": "ListItem", "position": 2, "name": "Getting Started", "item": "{{ base }}tutorial/"},
+      {"@type": "ListItem", "position": 3, "name": "{{ page.title }}"}
+    ]
+  }
+  </script>
+  {% elif src in ("tools.md", "skills.md", "teams.md", "configuration.md", "agrx.md") %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ base }}"},
+      {"@type": "ListItem", "position": 2, "name": "Guides", "item": "{{ base }}tools/"},
+      {"@type": "ListItem", "position": 3, "name": "{{ page.title }}"}
+    ]
+  }
+  </script>
+  {% elif src in ("creating.md", "sdk.md") %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ base }}"},
+      {"@type": "ListItem", "position": 2, "name": "Building Skills", "item": "{{ base }}creating/"},
+      {"@type": "ListItem", "position": 3, "name": "{{ page.title }}"}
+    ]
+  }
+  </script>
+  {% elif src in ("reference.md", "troubleshooting.md", "changelog.md") %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ base }}"},
+      {"@type": "ListItem", "position": 2, "name": "Reference", "item": "{{ base }}reference/"},
+      {"@type": "ListItem", "position": 3, "name": "{{ page.title }}"}
+    ]
+  }
+  </script>
+  {% endif %}
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "troubleshooting.md" %}
+  <!-- FAQPage Schema for troubleshooting rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Repository not found\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The repository doesn't exist or is private. Check for typos in the handle, set GITHUB_TOKEN for private repos, or use the three-part handle format (user/repo/skill) for non-default repo names."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Authentication failed\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your GitHub token is missing, expired, or lacks permissions. Export a token with: export GITHUB_TOKEN=\"ghp_your_token_here\" or export GH_TOKEN=\"$(gh auth token)\". The token needs Contents: Read-only access."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Skill not found in repository\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The repo exists but doesn't contain a skill with that name. agr searches recursively for a directory matching the skill name that contains a SKILL.md file. Check the repo on GitHub to see available skills. If you used a two-part handle, agr may suggest the correct three-part handles."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Skill already exists\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The skill is already installed. To update it to the latest version, use: agr add user/skill --overwrite"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Invalid handle\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A single word is treated as a local path. For remote skills, include the username: agr add kasperjunge/commit (not agr add commit). Handles support at most three parts: user/repo/skill."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"No agr.toml found\"?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You're running a command that requires agr.toml but the file doesn't exist yet. Run 'agr init' to create one, or use 'agr onboard' for interactive setup."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"GitHub API rate limit exceeded\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "This mainly affects the Python SDK (list_skills, skill_info), not agr add or agr sync. Set GITHUB_TOKEN to raise your limit from 60/hour (unauthenticated) to 5,000/hour. Rate limits reset hourly."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Invalid skill name\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Skill names must be 1-64 characters, lowercase alphanumeric and hyphens only. Names cannot start or end with a hyphen, and consecutive hyphens (--) are not allowed. Use names like my-skill or code-reviewer."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"git CLI not found\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr uses git for all remote operations. Install it: on macOS run xcode-select --install, on Ubuntu/Debian run sudo apt install git, on Windows download from git-scm.com."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Not in a git repository\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Project-level agr commands need to run inside a git repo. Either cd into a git repository or run git init to create one. For agrx, use the --global flag to run outside a repo."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unknown tool\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Check your agr.toml for typos in the tools list. Available tools are: claude (Claude Code), cursor (Cursor), codex (OpenAI Codex), opencode (OpenCode), copilot (GitHub Copilot), and antigravity (Antigravity)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why does agr init detect a tool I don't use?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Some detection signals are shared between tools. For example, the .agents/ directory detects both OpenAI Codex and Antigravity because both tools use that path. Override detection with: agr init --tools claude,codex — or remove unwanted tools after setup with: agr config remove tools antigravity."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why is my skill not showing up in my AI coding tool after running agr add?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Verify the skill directory exists in your tool's skills folder (e.g., .claude/skills/my-skill/SKILL.md). Check that SKILL.md has valid frontmatter with both name and description fields. Some tools require a restart to pick up new skills. Run agr list to confirm the skill is registered."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Tool CLI not found\" in agrx?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agrx needs the selected tool's CLI installed. Claude Code uses 'claude', Cursor uses 'agent', Codex uses 'codex' (npm i -g @openai/codex), OpenCode uses 'opencode'. Check that the CLI is on your PATH with: which claude (or the relevant command)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I use agrx outside a git repository?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "By default agrx requires a git repo to find agr.toml for configuration. Use --global to skip this: agrx anthropics/skills/pdf --global. This installs to the tool's global skills directory, runs, and cleans up."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Invalid TOML in agr.toml\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your agr.toml has a syntax error. Common causes: missing quotes around string values, unclosed brackets in dependencies or [[source]], and trailing commas after the last item in a list (TOML doesn't allow them). Validate with a TOML linter or paste your file into toml-lint.com."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Network error: could not resolve host\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "DNS resolution failed. Check your internet connection, VPN, or proxy settings. If you're behind a corporate firewall, ensure github.com is reachable."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why does agr sync show \"Up to date\" but my skill seems outdated?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr sync skips skills that are already installed. To force a fresh install from the latest version, use: agr add user/skill --overwrite. This re-downloads the skill from GitHub and replaces your local copy."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why does instruction sync not do anything in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Two common causes: (1) Only one tool configured — instruction syncing requires two or more tools. Add another tool with agr config set tools claude cursor. (2) All tools use the same instruction file — syncing only helps when tools need different files (e.g., Claude uses CLAUDE.md, Codex uses AGENTS.md)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"not a valid skill (missing SKILL.md)\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The path you specified doesn't contain a SKILL.md file. Every skill needs one. Create it with: touch my-skill/SKILL.md — then add the required frontmatter (name and description fields). See the Creating Skills guide for the format."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"default_tool must be listed in tools\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your default_tool value isn't in your tools list. Either add the tool to your tools list (agr config add tools <name>) or change the default_tool to one that's already listed (agr config set default_tool <name>)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why can't I use agrx with Antigravity?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Antigravity does not have a standalone CLI, so agrx cannot run skills with it. Use agr add to install skills permanently, then invoke them through the Antigravity IDE interface."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Cannot remove default source\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can't remove a source that is currently set as default_source. Change the default first: agr config set default_source github, then agr config remove sources my-server."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Too many path segments\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Handles support at most three parts: user/repo/skill. Check for extra slashes in your handle. The format is either user/skill (two parts) or user/repo/skill (three parts)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Contains reserved sequence '--'\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Skill names cannot contain consecutive hyphens (--). Rename the skill to use single hyphens, for example my-skill instead of my--skill."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"No dependencies in agr.toml. Nothing to sync.\"?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your agr.toml exists but has no dependencies entry. Add skills first with agr add user/skill — this both installs the skill and adds it to agr.toml."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Instruction sync skipped: CLAUDE.md not found\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You have sync_instructions = true but the canonical instruction file doesn't exist yet. Create the file (e.g., touch CLAUDE.md) then run agr sync again."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"default_source not found in [[source]] list\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your default_source refers to a source that doesn't exist. Either add the source with agr config add sources <name> --type git --url <url>, or fix the default with agr config set default_source github."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"dependencies must be declared before [[source]] blocks\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "In agr.toml, the dependencies array must come before any [[source]] entries. Move your dependencies block above the [[source]] blocks in the file."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unknown source in dependency\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A dependency in agr.toml specifies a source that isn't defined in your [[source]] list. Either add the missing source with agr config add sources <name>, or remove the source field from the dependency in agr.toml."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"canonical_instructions must be 'AGENTS.md', 'CLAUDE.md', or 'GEMINI.md'\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Only three instruction file names are supported for syncing: AGENTS.md, CLAUDE.md, and GEMINI.md. Other filenames like README.md or INSTRUCTIONS.md won't work. Set it with: agr config set canonical_instructions CLAUDE.md."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Source entry missing name\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A [[source]] block in your agr.toml is missing the name field. Every source needs a name, type, and url. Example: [[source]] with name = \"my-server\", type = \"git\", url = \"https://git.example.com/{owner}/{repo}.git\"."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Source missing url\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A [[source]] block in your agr.toml has a name but no url. Add a URL template with {owner} and {repo} placeholders, e.g., url = \"https://git.example.com/{owner}/{repo}.git\"."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unsupported source type\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Only git sources are currently supported. Change the type field in your [[source]] block to \"git\". Other source types like svn or hg are not available."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Local skills cannot specify a source\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The --source flag only applies to remote handles. Local paths (like ./my-skill) are installed directly from disk and don't go through any source. Remove the --source flag: agr add ./my-skill."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Directory already exists\" when running agr init?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr init won't overwrite an existing directory. Either remove the existing directory, or choose a different name for your new skill."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Local skill name is already installed\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You have two local skills with the same name. agr enforces unique names to avoid conflicts. Either rename one of the skills or remove the existing one with agr remove, then add the new one."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"No global agr.toml found\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "There's no global config yet. Install a skill globally to create one: agr add -g user/skill. The global config lives at ~/.agr/agr.toml."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Cannot remove all tools. At least one must remain.\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr requires at least one tool in the tools list — there'd be nowhere to install skills. If you want to switch tools entirely, add the new one before removing the old: agr config add tools codex, then agr config remove tools claude."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Dependency cannot have both handle and path\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A dependency in agr.toml has both a handle and a path field. Each dependency must use one or the other: use handle for remote skills (e.g., handle = \"user/skill\") or path for local skills (e.g., path = \"./skills/my-skill\")."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Dependency must have either handle or path\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A dependency in agr.toml is missing both handle and path. Every dependency needs one: use handle for remote GitHub skills or path for local directory skills."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unknown config key\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You used a key name that agr config doesn't recognize. Valid keys are: canonical_instructions, default_source, default_tool, sources, sync_instructions, tools. Common mistakes: tool instead of tools, source instead of sources, instructions instead of sync_instructions."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Cannot set sources directly\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sources can't be replaced in one shot with agr config set. Add and remove them individually: agr config add sources my-server --url \"https://...\" and agr config remove sources old-server."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"--url is required when adding a source\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "When adding a source, you must provide a URL template with {owner} and {repo} placeholders: agr config add sources my-server --url \"https://git.example.com/{owner}/{repo}.git\"."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Source already exists\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You're trying to add a source with a name that's already configured. Remove the old one first, then re-add it: agr config remove sources github, then agr config add sources github --url \"https://...\"."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Tool is not in configured tools\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You tried to set default_tool to a tool that isn't in your tools list. Add it first: agr config add tools codex, then agr config set default_tool codex."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unknown tool(s)\" from agr config?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You passed an unrecognized tool name to agr config set tools, agr config add tools, or agr config remove tools. Check for typos — valid names are: claude, cursor, codex, opencode, copilot, antigravity."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Unknown default_tool in agr.toml\"?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your default_tool is set to a tool name that agr doesn't recognize. This is different from 'default_tool must be listed in tools' — that error means the tool is valid but not in your tools list. This one means the name itself is wrong. Fix with: agr config set default_tool claude."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Source name is required\" or \"Only one source name allowed\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "When adding or removing sources, provide exactly one source name: agr config add sources gitlab --url \"https://gitlab.com/{owner}/{repo}.git\" or agr config remove sources gitlab."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"--type and --url are only valid for 'sources'\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The --type and --url flags only work with agr config add sources. You passed them to a different key like tools. Use them only when adding sources: agr config add sources my-server --url \"https://git.example.com/{owner}/{repo}.git\"."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Failed to clone repository\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "This is a catch-all error when git clone fails for a reason agr can't classify. Common causes: disk full, file permission issues on the temp directory, corporate proxy or firewall blocking git, or corrupt local git state. Try cloning manually with git clone https://github.com/user/repo.git. If manual clone works, clear the agr cache and retry."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"agr onboard requires an interactive terminal\"?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr onboard is an interactive wizard that needs a real terminal (TTY). It won't work in CI/CD, scripts, or piped commands. Use agr init instead: agr init --tools claude,cursor."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Neither $VISUAL nor $EDITOR is set\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr config edit opens agr.toml in your default editor, but no editor is configured. Set one with: export EDITOR=\"vim\" (or nano, code, etc.). Add the export to your shell profile to make it permanent."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"sync_instructions must be 'true' or 'false'\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The sync_instructions setting only accepts boolean values. Use: agr config set sync_instructions true (or false). Values like yes, 1, or on are not accepted."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"No global config found\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You ran a global config command (agr config -g) but no global config exists yet. Create one by installing a skill globally: agr add -g user/skill."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Source not found\" when removing a source in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The source you're trying to remove doesn't exist. Check current sources with agr config get sources to see what's configured."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Skill not found in sources\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agr searched all configured sources and couldn't find a matching skill. Check the handle for typos, try the three-part format (user/repo/skill) if the skill is in a non-default repo, and verify your sources with agr config get sources."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"GitHub API authentication failed\" in the agr Python SDK?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your GITHUB_TOKEN was rejected by the GitHub API. This SDK-specific error fires from list_skills() and skill_info(), not agr add. Check if the token is revoked or expired (regenerate at github.com/settings/tokens), and ensure fine-grained tokens have Contents: Read-only permission."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"Failed to connect to GitHub API\" in the agr Python SDK?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The SDK couldn't reach api.github.com. This affects list_skills(), skill_info(), and other SDK functions. Check your internet connection, corporate proxy or firewall settings (try curl -s https://api.github.com), and DNS/VPN configuration."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix \"agrx only works with remote handles\" in agr?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "agrx downloads skills from GitHub and cleans up after running — it doesn't work with local paths. For local skills, use agr add ./my-skill to install permanently. For remote skills, use the handle format: agrx user/skill."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- TechArticle Schema for troubleshooting reference rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Fix agr Errors — Troubleshooting Installs, Auth, Sync, Handles, and Skills",
+    "description": "Fix common agr problems — installation errors, GitHub auth, sync failures, handle formats, skill conflicts, and configuration issues.",
+    "url": "https://kasperjunge.github.io/agent-resources/troubleshooting/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Installation errors",
+        "description": "Fix git CLI not found, repository not found, authentication failed, and network errors when installing skills"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Handle format errors",
+        "description": "Fix invalid handle, too many path segments, and reserved sequence errors in skill handles"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Configuration errors",
+        "description": "Fix agr.toml issues — missing config, invalid TOML, unknown tools, default_tool and default_source mismatches"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Sync errors",
+        "description": "Fix agr sync issues — outdated skills, instruction sync not working, missing dependencies"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Skill errors",
+        "description": "Fix invalid skill names, missing SKILL.md, skills not appearing in tools, and name conflicts"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agrx errors",
+        "description": "Fix tool CLI not found, Antigravity not supported, and running agrx outside a git repository"
+      }
+    ],
+    "keywords": ["agr troubleshooting", "agr errors", "fix agr", "agr sync not working", "GitHub authentication agr", "skill not found agr"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "creating.md" %}
+  <!-- HowTo Schema for creating skills rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Create, Test, and Publish AI Agent Skills with agr",
+    "description": "Step-by-step guide to creating your own AI agent skills — scaffold with agr init, write SKILL.md instructions, test locally, and publish to GitHub for others to install.",
+    "totalTime": "PT15M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "agr CLI"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "An AI coding tool (Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity)"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "GitHub account (for publishing)"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Scaffold the skill",
+        "text": "Run agr init my-skill to create a skill directory with a SKILL.md template containing name and description frontmatter.",
+        "url": "https://kasperjunge.github.io/agent-resources/creating/#scaffold-a-new-skill-with-agr-init"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Write the SKILL.md",
+        "text": "Edit the SKILL.md file with a description field and detailed agent instructions. Include specific steps, examples, boundaries, and output formats for consistent results.",
+        "url": "https://kasperjunge.github.io/agent-resources/creating/#skillmd-format"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add supporting files",
+        "text": "For complex skills, add reference docs in references/, helper scripts in scripts/, and templates in assets/ alongside SKILL.md.",
+        "url": "https://kasperjunge.github.io/agent-resources/creating/#add-scripts-references-and-templates-alongside-skillmd"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Test the skill locally",
+        "text": "Install locally with agr add ./my-skill, invoke it in your AI tool, then iterate with agr add ./my-skill --overwrite after each edit.",
+        "url": "https://kasperjunge.github.io/agent-resources/creating/#test-your-skill"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Publish to GitHub",
+        "text": "Push the skill directory to a GitHub repository. Others can then install it with agr add your-username/my-skill.",
+        "url": "https://kasperjunge.github.io/agent-resources/creating/#publish-your-skill-to-github"
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "tutorial.md" %}
+  <!-- HowTo Schema for tutorial rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Get Started with agr: Install, Add, and Share AI Agent Skills",
+    "description": "Step-by-step guide to installing agr, adding AI agent skills to Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity, syncing skills across a team, and creating your own.",
+    "totalTime": "PT10M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "Python 3.10+"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "git"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "uv, pipx, or pip"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Install agr",
+        "text": "Install the agr CLI with uv tool install agr (recommended), pipx install agr, or pip install agr. This installs two commands: agr (the main CLI) and agrx (an ephemeral skill runner).",
+        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-1-install-agr"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Set up a project",
+        "text": "Navigate to your project and optionally run agr init to create agr.toml. agr auto-detects which AI tools you use from repo signals like .claude/ or CLAUDE.md.",
+        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-2-set-up-a-project"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add your first skill",
+        "text": "Run agr add anthropics/skills/frontend-design to install a skill from GitHub. agr clones the repo, finds the skill, copies it into your tool's skills folder, and updates agr.toml.",
+        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-3-add-your-first-skill"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Sync skills across a team",
+        "text": "Commit agr.toml to version control. Teammates run agr sync to install all skills listed in agr.toml — like npm install for agent skills.",
+        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-5-team-sync"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Create your own skill",
+        "text": "Run agr init my-skill to scaffold a new skill with a SKILL.md template. Edit the file, test locally with agr add ./my-skill, then push to GitHub so others can install it.",
+        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-7-create-your-own-skill"
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "teams.md" %}
+  <!-- HowTo Schema for teams setup rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Share AI Agent Skills Across a Team with agr",
+    "description": "Set up agr so your team shares the same AI coding agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — with agr.toml as a single source of truth.",
+    "totalTime": "PT10M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "agr CLI"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "git"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Initialize agr in your project",
+        "text": "Run agr init in your repo root to create agr.toml. agr auto-detects which tools your team uses. Use --tools to target specific tools like claude, cursor, and codex.",
+        "url": "https://kasperjunge.github.io/agent-resources/teams/#1-initialize-agr"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add skills for the team",
+        "text": "Install the skills your team needs with agr add. Each command updates agr.toml with the dependency. Local skills with ./path work too.",
+        "url": "https://kasperjunge.github.io/agent-resources/teams/#2-add-skills"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Commit agr.toml to version control",
+        "text": "Commit agr.toml so every clone starts with the same skills. It acts as a skill lockfile, similar to package.json or pyproject.toml.",
+        "url": "https://kasperjunge.github.io/agent-resources/teams/#3-commit-agrtoml"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Teammates install with agr sync",
+        "text": "After cloning the repo, teammates run uv tool install agr (one-time) then agr sync to install all skills from agr.toml. Everyone gets the same skills.",
+        "url": "https://kasperjunge.github.io/agent-resources/teams/#4-teammates-install"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Configure multi-tool and private repos",
+        "text": "Set tools list with agr config set tools for multi-tool teams. Export GITHUB_TOKEN for private skill repositories. Add agr sync to CI/CD pipelines.",
+        "url": "https://kasperjunge.github.io/agent-resources/teams/#multi-tool-teams"
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "agrx.md" %}
+  <!-- HowTo Schema for agrx rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Try AI Agent Skills Without Installing — agrx",
+    "description": "Use agrx to download and run AI agent skills ephemerally in Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity — no agr.toml changes, no cleanup needed.",
+    "totalTime": "PT2M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "agr CLI (includes agrx)"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "An AI coding tool CLI (claude, agent, codex, opencode, or copilot)"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Run a skill once",
+        "text": "Run agrx with a skill handle to download, execute, and clean up in one command. Example: agrx anthropics/skills/pdf -p \"Extract tables from report.pdf\"",
+        "url": "https://kasperjunge.github.io/agent-resources/agrx/#quick-start"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Choose a tool",
+        "text": "Use --tool to pick which AI coding tool runs the skill. Example: agrx anthropics/skills/pdf --tool codex",
+        "url": "https://kasperjunge.github.io/agent-resources/agrx/#run-with-a-specific-tool"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Use interactive mode",
+        "text": "Add -i to continue chatting after the skill runs. Example: agrx kasperjunge/commit -i",
+        "url": "https://kasperjunge.github.io/agent-resources/agrx/#interactive-mode"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Run outside a git repo",
+        "text": "Use --global to run agrx anywhere without needing a git repository. Example: agrx anthropics/skills/pdf --global",
+        "url": "https://kasperjunge.github.io/agent-resources/agrx/#run-outside-a-git-repo"
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "configuration.md" %}
+  <!-- HowTo Schema for configuration rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Configure agr for Multi-Tool Setup, Sources, and Instruction Syncing",
+    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.",
+    "totalTime": "PT5M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "agr CLI"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Configure multiple AI tools",
+        "text": "Run agr config set tools claude cursor codex to install skills into multiple tools at once. Use agr init --tools to set tools during initial setup.",
+        "url": "https://kasperjunge.github.io/agent-resources/configuration/#multi-tool-setup"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add a custom Git source",
+        "text": "Run agr config add sources my-server --type git --url 'https://git.example.com/{owner}/{repo}.git' to fetch skills from a self-hosted Git server or GitLab.",
+        "url": "https://kasperjunge.github.io/agent-resources/configuration/#adding-a-custom-source"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Enable instruction syncing",
+        "text": "Run agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md to keep CLAUDE.md, AGENTS.md, and GEMINI.md in sync across tools.",
+        "url": "https://kasperjunge.github.io/agent-resources/configuration/#instruction-syncing"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Set up private repositories",
+        "text": "Export GITHUB_TOKEN or GH_TOKEN with Contents: Read-only access. agr injects the token into HTTPS clone URLs automatically — no config changes needed.",
+        "url": "https://kasperjunge.github.io/agent-resources/configuration/#private-repositories"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Install skills globally",
+        "text": "Use the -g flag to install skills available in all projects: agr add -g anthropics/skills/pdf. Global config lives at ~/.agr/agr.toml.",
+        "url": "https://kasperjunge.github.io/agent-resources/configuration/#global-installs"
+      }
+    ]
+  }
+  </script>
+
+
+  <!-- TechArticle Schema for configuration reference rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Configure agr.toml — Multi-Tool Setup, Sources, and Instruction Syncing",
+    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.",
+    "url": "https://kasperjunge.github.io/agent-resources/configuration/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "tools",
+        "description": "List of AI coding tools to install skills into — claude, cursor, codex, opencode, copilot, antigravity"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "default_tool",
+        "description": "Tool used by agrx and for instruction sync — defaults to the first tool in the tools list"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "sources",
+        "description": "Git host configurations with URL templates using {owner} and {repo} placeholders for fetching remote skills"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "sync_instructions",
+        "description": "When true, agr sync copies the canonical instruction file (CLAUDE.md, AGENTS.md, or GEMINI.md) to other tools' instruction files"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "dependencies",
+        "description": "Array of skill dependencies with handle (remote) or path (local), type, and optional source fields"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agr config",
+        "description": "CLI command for managing agr.toml — subcommands: show, path, edit, get, set, add, remove, unset"
+      }
+    ],
+    "keywords": ["agr.toml", "agr config", "multi-tool setup", "custom Git sources", "instruction syncing", "private repositories", "global installs"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "tools.md" %}
+  <!-- HowTo Schema for multi-tool setup rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Install AI Skills Across Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity",
+    "description": "Configure agr to install AI agent skills into multiple coding tools at once — Claude Code, Cursor, OpenAI Codex, OpenCode, GitHub Copilot, and Antigravity.",
+    "totalTime": "PT5M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "agr CLI"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Target multiple tools",
+        "text": "Run agr config set tools claude cursor codex to install skills into multiple AI coding tools at once. Or use agr init --tools claude,cursor,codex during initial setup.",
+        "url": "https://kasperjunge.github.io/agent-resources/tools/#target-multiple-tools-at-once"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add or remove a tool",
+        "text": "Run agr config add tools cursor to start syncing to a new tool — existing dependencies are installed automatically. Run agr config remove tools cursor to stop (this deletes skills from that tool).",
+        "url": "https://kasperjunge.github.io/agent-resources/tools/#add-or-remove-a-tool-after-setup"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Sync instruction files",
+        "text": "Enable instruction syncing with agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md. On agr sync, the canonical file is copied to AGENTS.md and GEMINI.md as needed.",
+        "url": "https://kasperjunge.github.io/agent-resources/tools/#keep-instruction-files-in-sync-across-tools"
+      }
+    ]
+  }
+  </script>
+
+  <!-- TechArticle Schema for tools reference rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Install AI Skills in Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity",
+    "description": "How agr installs skills into Claude Code, Cursor, Codex, GitHub Copilot, OpenCode, and Antigravity — directories, detection signals, and multi-tool setup.",
+    "url": "https://kasperjunge.github.io/agent-resources/tools/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Claude Code",
+        "description": "Anthropic's AI coding agent — skills in .claude/skills/, invoked with /skill-name, detected by .claude/ and CLAUDE.md"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Cursor",
+        "description": "AI-first code editor — skills in .cursor/skills/, invoked with /skill-name, detected by .cursor/ and .cursorrules"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "OpenAI Codex",
+        "description": "OpenAI's coding agent — skills in .agents/skills/, invoked with $skill-name, detected by .agents/ and .codex"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "OpenCode",
+        "description": "Open-source AI coding agent — skills in .opencode/skills/, invoked by name without prefix, detected by .opencode/, opencode.json, opencode.jsonc"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "GitHub Copilot",
+        "description": "GitHub's AI assistant — skills in .github/skills/, invoked with /skill-name, detected by .github/copilot, .github/skills, .github/copilot-instructions.md, .github/instructions"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Antigravity",
+        "description": "Google's AI coding agent — skills in .gemini/skills/, no CLI available, detected by .gemini/ and .agents/"
+      }
+    ],
+    "keywords": ["agr supported tools", "Claude Code skills", "Cursor skills", "Codex skills", "OpenCode skills", "GitHub Copilot skills", "Antigravity skills", "multi-tool AI setup"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "sdk.md" %}
+  <!-- HowTo Schema for Python SDK rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Use agr as a Python Library to Load and Discover AI Agent Skills",
+    "description": "Install agr as a Python dependency and use Skill.from_git() to load skills from GitHub, list_skills() to discover skills in repositories, and cache.clear() to manage the download cache.",
+    "totalTime": "PT5M",
+    "tool": [
+      {
+        "@type": "HowToTool",
+        "name": "Python 3.10+"
+      },
+      {
+        "@type": "HowToTool",
+        "name": "pip, uv, or pipx"
+      }
+    ],
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Install agr as a library",
+        "text": "Install agr with pip install agr. For the CLI tools as well, use uv tool install agr or pipx install agr instead.",
+        "url": "https://kasperjunge.github.io/agent-resources/sdk/#install"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Load a skill from GitHub",
+        "text": "Use Skill.from_git('owner/repo/skill') to download and cache a skill. Access skill.prompt for the SKILL.md contents and skill.files for the list of files.",
+        "url": "https://kasperjunge.github.io/agent-resources/sdk/#from-github"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Load a local skill",
+        "text": "Use Skill.from_local('./my-skill') to load a skill from a local directory. The directory must contain a SKILL.md file.",
+        "url": "https://kasperjunge.github.io/agent-resources/sdk/#from-a-local-directory"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Discover skills in a repository",
+        "text": "Use list_skills('owner/repo') to list all skills in a GitHub repository, or skill_info('owner/repo/skill') to get details about a specific skill.",
+        "url": "https://kasperjunge.github.io/agent-resources/sdk/#discovering-skills"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Manage the download cache",
+        "text": "Use cache.info() to see cache statistics, cache.clear() to clear all cached skills, or cache.clear('pattern') to clear specific skills by glob pattern.",
+        "url": "https://kasperjunge.github.io/agent-resources/sdk/#cache-management"
+      }
+    ]
+  }
+  </script>
+
+  <!-- TechArticle Schema for SDK API reference rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "agr Python SDK — Load, Discover, and Cache AI Agent Skills Programmatically",
+    "description": "Use agr as a Python library to load skills from GitHub or local paths, discover skills in repositories, manage the download cache, and handle errors.",
+    "url": "https://kasperjunge.github.io/agent-resources/sdk/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Skill",
+        "description": "Main class for loading and accessing skills — use Skill.from_git() for GitHub or Skill.from_local() for local directories"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Skill.from_git()",
+        "description": "Download and cache a skill from GitHub by handle, with automatic revision tracking and cache management"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Skill.from_local()",
+        "description": "Load a skill from a local directory containing a SKILL.md file"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "list_skills()",
+        "description": "List all skills in a GitHub repository, returning SkillInfo objects with name, handle, and description"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "skill_info()",
+        "description": "Get details about a specific skill in a GitHub repository"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "cache",
+        "description": "Cache manager for inspecting and clearing downloaded skills stored in ~/.cache/agr/skills/"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "AgrError",
+        "description": "Base exception class for all SDK errors including InvalidHandleError, SkillNotFoundError, RepoNotFoundError, AuthenticationError, and RateLimitError"
+      }
+    ],
+    "keywords": ["agr Python SDK", "Skill.from_git", "list_skills", "skill_info", "agr cache", "AgrError", "AI agent skill API"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "reference.md" %}
+  <!-- TechArticle Schema for CLI reference rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "CLI Reference — All agr and agrx Commands, Flags, and Options",
+    "description": "Complete CLI reference for agr and agrx — all commands, flags, and handle formats for managing AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
+    "url": "https://kasperjunge.github.io/agent-resources/reference/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "agr add",
+        "description": "Install AI agent skills from GitHub or local paths into your tool's skills folder"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agr remove",
+        "description": "Uninstall skills and remove them from agr.toml"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agr sync",
+        "description": "Install all dependencies from agr.toml, sync instruction files, and run directory migrations"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agr config",
+        "description": "Manage agr.toml configuration — tools, sources, instruction syncing, and defaults"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agrx",
+        "description": "Run a skill temporarily without adding to agr.toml — downloads, executes, and cleans up"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "agr.toml",
+        "description": "Manifest file that tracks skill dependencies and configuration, similar to package.json"
+      }
+    ],
+    "keywords": ["agr CLI", "agrx CLI", "agr commands", "agr add", "agr sync", "agr config", "agr.toml format", "AI agent skill management"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "concepts.md" %}
+  <!-- Article Schema for core concepts rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "How agr Works — Skills, Handles, Sources, Scopes, and the Sync Lifecycle",
+    "description": "Understand how agr works — skills, handles, sources, and the sync lifecycle that keeps your AI tools in sync.",
+    "url": "https://kasperjunge.github.io/agent-resources/concepts/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Skill",
+        "description": "A folder containing a SKILL.md file with YAML frontmatter and instructions for an AI coding agent"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Handle",
+        "description": "A reference string (user/skill, user/repo/skill, or ./path) that tells agr where to find a skill"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Tool",
+        "description": "An AI coding agent (Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity) that reads and executes skills"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Source",
+        "description": "A Git host configuration that defines where agr fetches remote skills from"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Scope",
+        "description": "Whether a skill is installed locally (per-project) or globally (available in all projects)"
+      }
+    ],
+    "keywords": ["agr", "AI agent skills", "skill handles", "SKILL.md format", "agr.toml", "agr sync lifecycle"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "changelog.md" %}
+  <!-- TechArticle Schema for changelog rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "agr Changelog — New Features, Fixes, and Breaking Changes by Release",
+    "description": "User-facing changes in each agr release — new features, bug fixes, and breaking changes for the AI agent skill manager.",
+    "url": "https://kasperjunge.github.io/agent-resources/changelog/",
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Agent Resources",
+      "url": "https://github.com/kasperjunge/agent-resources"
+    },
+    "about": [
+      {
+        "@type": "DefinedTerm",
+        "name": "Antigravity .gemini/ migration",
+        "description": "Skills now install to .gemini/skills/ with automatic migration from .agent/skills/"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Cursor flat naming",
+        "description": "Cursor skills now use flat directory names instead of nested owner/repo/skill structure"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Content hashes",
+        "description": "Installed skills include SHA-256 content hashes to detect on-disk modifications"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Multi-tool support",
+        "description": "Skills install to Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity simultaneously"
+      },
+      {
+        "@type": "DefinedTerm",
+        "name": "Python SDK",
+        "description": "Programmatic API for loading, discovering, and caching AI agent skills"
+      }
+    ],
+    "keywords": ["agr changelog", "agr release notes", "agr new features", "agr breaking changes", "agr version history"]
+  }
+  </script>
+  {% endif %}
+
+  {% if page and page.file and page.file.src_path == "skills.md" %}
+  <!-- ItemList Schema for skill directory rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "AI Agent Skill Directory — Browse and Install Skills for Claude Code, Cursor, Codex, and More",
+    "description": "Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.",
+    "url": "https://kasperjunge.github.io/agent-resources/skills/",
+    "mainEntity": {
+      "@type": "ItemList",
+      "name": "Available AI Agent Skills",
+      "numberOfItems": 26,
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "PDF",
+          "description": "Read, extract, create, and modify PDF files",
+          "url": "https://github.com/anthropics/skills/tree/main/pdf"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "DOCX",
+          "description": "Create, read, edit, and manipulate Word documents",
+          "url": "https://github.com/anthropics/skills/tree/main/docx"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "PPTX",
+          "description": "Create and work with PowerPoint slide decks",
+          "url": "https://github.com/anthropics/skills/tree/main/pptx"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "XLSX",
+          "description": "Create and manipulate spreadsheet files",
+          "url": "https://github.com/anthropics/skills/tree/main/xlsx"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "name": "Doc Co-authoring",
+          "description": "Structured workflow for co-authoring documentation",
+          "url": "https://github.com/anthropics/skills/tree/main/doc-coauthoring"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "name": "Frontend Design",
+          "description": "Build distinctive, production-grade frontend interfaces",
+          "url": "https://github.com/anthropics/skills/tree/main/frontend-design"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
+          "name": "Canvas Design",
+          "description": "Create visual art in PNG and PDF using design principles",
+          "url": "https://github.com/anthropics/skills/tree/main/canvas-design"
+        },
+        {
+          "@type": "ListItem",
+          "position": 8,
+          "name": "Algorithmic Art",
+          "description": "Create algorithmic art with p5.js and seeded randomness",
+          "url": "https://github.com/anthropics/skills/tree/main/algorithmic-art"
+        },
+        {
+          "@type": "ListItem",
+          "position": 9,
+          "name": "Theme Factory",
+          "description": "Style artifacts (slides, docs, landing pages) with themes",
+          "url": "https://github.com/anthropics/skills/tree/main/theme-factory"
+        },
+        {
+          "@type": "ListItem",
+          "position": 10,
+          "name": "Brand Guidelines",
+          "description": "Apply Anthropic's official brand colors and typography",
+          "url": "https://github.com/anthropics/skills/tree/main/brand-guidelines"
+        },
+        {
+          "@type": "ListItem",
+          "position": 11,
+          "name": "Claude API",
+          "description": "Build apps with the Claude API and Anthropic SDKs",
+          "url": "https://github.com/anthropics/skills/tree/main/claude-api"
+        },
+        {
+          "@type": "ListItem",
+          "position": 12,
+          "name": "MCP Builder",
+          "description": "Create MCP servers for LLM-to-service interaction",
+          "url": "https://github.com/anthropics/skills/tree/main/mcp-builder"
+        },
+        {
+          "@type": "ListItem",
+          "position": 13,
+          "name": "Web Artifacts Builder",
+          "description": "Create multi-component HTML artifacts with modern frontend tech",
+          "url": "https://github.com/anthropics/skills/tree/main/web-artifacts-builder"
+        },
+        {
+          "@type": "ListItem",
+          "position": 14,
+          "name": "Webapp Testing",
+          "description": "Test local web applications using Playwright",
+          "url": "https://github.com/anthropics/skills/tree/main/webapp-testing"
+        },
+        {
+          "@type": "ListItem",
+          "position": 15,
+          "name": "Skill Creator",
+          "description": "Create, modify, and improve skills",
+          "url": "https://github.com/anthropics/skills/tree/main/skill-creator"
+        },
+        {
+          "@type": "ListItem",
+          "position": 16,
+          "name": "Internal Comms",
+          "description": "Write internal communications in your company's formats",
+          "url": "https://github.com/anthropics/skills/tree/main/internal-comms"
+        },
+        {
+          "@type": "ListItem",
+          "position": 17,
+          "name": "Slack GIF Creator",
+          "description": "Create animated GIFs optimized for Slack",
+          "url": "https://github.com/anthropics/skills/tree/main/slack-gif-creator"
+        },
+        {
+          "@type": "ListItem",
+          "position": 18,
+          "name": "Go Pro",
+          "description": "Expert Go 1.21+ development for concurrent, scalable systems",
+          "url": "https://github.com/dsjacobsen/agent-resources/tree/main/golang-pro"
+        },
+        {
+          "@type": "ListItem",
+          "position": 19,
+          "name": "Drupal Expert",
+          "description": "Drupal 10/11 modules, themes, hooks, services, and config",
+          "url": "https://github.com/madsnorgaard/drupal-agent-resources/tree/main/drupal-expert"
+        },
+        {
+          "@type": "ListItem",
+          "position": 20,
+          "name": "Drupal Security",
+          "description": "Prevent XSS, SQL injection, and access bypass in Drupal",
+          "url": "https://github.com/madsnorgaard/drupal-agent-resources/tree/main/drupal-security"
+        },
+        {
+          "@type": "ListItem",
+          "position": 21,
+          "name": "Drupal Migration",
+          "description": "D7-to-D10 migrations, CSV imports, and migration plugins",
+          "url": "https://github.com/madsnorgaard/drupal-agent-resources/tree/main/drupal-migration"
+        },
+        {
+          "@type": "ListItem",
+          "position": 22,
+          "name": "DDEV Expert",
+          "description": "DDEV local development, containers, and configuration",
+          "url": "https://github.com/madsnorgaard/drupal-agent-resources/tree/main/ddev-expert"
+        },
+        {
+          "@type": "ListItem",
+          "position": 23,
+          "name": "Docker Local",
+          "description": "Docker Compose local development patterns",
+          "url": "https://github.com/madsnorgaard/drupal-agent-resources/tree/main/docker-local"
+        },
+        {
+          "@type": "ListItem",
+          "position": 24,
+          "name": "Collaboration",
+          "description": "Contributing to GitHub projects, PRs, and code reviews",
+          "url": "https://github.com/maragudk/skills/tree/main/collaboration"
+        },
+        {
+          "@type": "ListItem",
+          "position": 25,
+          "name": "Commit Work",
+          "description": "Run quality checks, update changelog, and create commits",
+          "url": "https://github.com/kasperjunge/skills/tree/main/commit-work"
+        },
+        {
+          "@type": "ListItem",
+          "position": 26,
+          "name": "Migrate to Skills",
+          "description": "Convert legacy agent resources to the Agent Skills format",
+          "url": "https://github.com/kasperjunge/agent-resources/tree/main/migrate-to-skills"
+        }
+      ]
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Kasper Junge",
+      "url": "https://github.com/kasperjunge"
+    },
+    "keywords": ["agr skill directory", "AI agent skills list", "browse AI agent skills", "Claude Code skills", "Cursor skills", "install AI coding skills"]
+  }
+  </script>
+  {% endif %}
 {% endblock %}

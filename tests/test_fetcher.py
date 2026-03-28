@@ -15,7 +15,6 @@ from agr.exceptions import (
 from agr.fetcher import (
     _cleanup_empty_parents,
     fetch_and_install_to_tools,
-    get_installed_skills,
     install_local_skill,
     install_skill_from_repo,
     is_skill_installed,
@@ -69,9 +68,10 @@ class TestDownloadedRepoE2E:
             type="git",
             url="https://github.com/{owner}/{repo}.git",
         )
-        with pytest.raises(AgrError, match="git CLI not found"):
-            with downloaded_repo(source, "user", "repo"):
-                pass
+        with pytest.raises(AgrError, match="git CLI not found"), downloaded_repo(
+            source, "user", "repo"
+        ):
+            pass
 
     def test_git_clone_success(self, monkeypatch, tmp_path):
         """Successful clone yields repo dir."""
@@ -176,9 +176,10 @@ class TestDownloadedRepoE2E:
             type="git",
             url="https://github.com/{owner}/{repo}.git",
         )
-        with pytest.raises(RepoNotFoundError):
-            with downloaded_repo(source, "user", "repo"):
-                pass
+        with pytest.raises(RepoNotFoundError), downloaded_repo(
+            source, "user", "repo"
+        ):
+            pass
 
     def test_git_clone_auth_failure(self, monkeypatch):
         """Authentication failures are classified."""
@@ -196,9 +197,10 @@ class TestDownloadedRepoE2E:
             type="git",
             url="https://github.com/{owner}/{repo}.git",
         )
-        with pytest.raises(AuthenticationError):
-            with downloaded_repo(source, "user", "repo"):
-                pass
+        with pytest.raises(AuthenticationError), downloaded_repo(
+            source, "user", "repo"
+        ):
+            pass
 
 
 class TestListRemoteRepoSkills:
@@ -469,33 +471,6 @@ class TestMetadataMatching:
         assert (skills_dir / "test-skill").exists()
 
 
-class TestGetInstalledSkills:
-    """Tests for get_installed_skills function."""
-
-    def test_no_skills_dir(self, tmp_path):
-        """Returns empty list when skills dir doesn't exist."""
-        repo_root = tmp_path / "repo"
-        repo_root.mkdir()
-        (repo_root / ".git").mkdir()
-
-        skills = get_installed_skills(repo_root, CLAUDE)
-        assert skills == []
-
-    def test_with_skills(self, tmp_path, skill_fixture):
-        """Returns list of installed skill names."""
-        repo_root = tmp_path / "repo"
-        repo_root.mkdir()
-        (repo_root / ".git").mkdir()
-        skills_dir = repo_root / ".claude" / "skills"
-        skills_dir.mkdir(parents=True)
-
-        install_local_skill(skill_fixture, skills_dir, CLAUDE)
-
-        skills = get_installed_skills(repo_root, CLAUDE)
-        assert len(skills) == 1
-        assert skills[0] == skill_fixture.name
-
-
 class TestIsSkillInstalled:
     """Tests for is_skill_installed function."""
 
@@ -567,11 +542,10 @@ class TestDownloadedRepo:
             type="git",
             url="https://github.com/{owner}/{repo}.git",
         )
-        with pytest.raises(RepoNotFoundError):
-            with downloaded_repo(
-                source, "nonexistent-user-12345", "nonexistent-repo-67890"
-            ):
-                pass
+        with pytest.raises(RepoNotFoundError), downloaded_repo(
+            source, "nonexistent-user-12345", "nonexistent-repo-67890"
+        ):
+            pass
 
 
 class TestCleanupEmptyParents:
@@ -739,17 +713,21 @@ class TestFetchAndInstallToTools:
         assert results["cursor"].exists()
         # Claude uses flat naming (default skill name)
         assert results["claude"].name == skill_fixture.name
-        # Cursor uses nested directories
-        assert results["cursor"].parent.name == "local"
+        # Cursor also uses flat naming
+        assert results["cursor"].name == skill_fixture.name
 
     def test_rollback_on_partial_failure(self, tmp_path, skill_fixture):
         """If second tool fails, first tool installation is rolled back."""
+        from agr.exceptions import AgrError
+
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         (repo_root / ".git").mkdir()
 
-        # Pre-install to cursor so it will fail without overwrite
-        cursor_skills = repo_root / ".cursor" / "skills" / "local"
+        # Pre-install to cursor so it will fail without overwrite.
+        # The existing skill has no metadata, so the local-conflict
+        # check treats it as an unknown install and raises AgrError.
+        cursor_skills = repo_root / ".cursor" / "skills"
         cursor_skills.mkdir(parents=True)
         (cursor_skills / skill_fixture.name).mkdir()
         (cursor_skills / skill_fixture.name / "SKILL.md").write_text("# existing")
@@ -758,8 +736,8 @@ class TestFetchAndInstallToTools:
             is_local=True, name=skill_fixture.name, local_path=skill_fixture
         )
 
-        # This should fail on cursor (file exists) and rollback claude
-        with pytest.raises(FileExistsError):
+        # This should fail on cursor (conflict) and rollback claude
+        with pytest.raises(AgrError, match="already installed"):
             fetch_and_install_to_tools(
                 handle, repo_root, [CLAUDE, CURSOR], overwrite=False
             )

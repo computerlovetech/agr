@@ -1,36 +1,89 @@
 ---
-title: Creating Skills
+title: "How to Create Custom AI Agent Skills — Write, Test, and Share SKILL.md Files"
+description: Step-by-step guide to creating reusable AI agent skills — scaffold with agr init, write SKILL.md instructions with YAML frontmatter, test locally, and publish to GitHub for Claude Code, Cursor, Codex, and more.
+keywords:
+  - create AI agent skill
+  - SKILL.md format
+  - SKILL.md frontmatter
+  - SKILL.md YAML
+  - agr init scaffold
+  - publish skill to GitHub
+  - write AI agent instructions
+  - skill testing
+  - skill best practices
+  - custom AI coding agent prompts
+  - write custom rules for Cursor
+  - Claude Code custom skills
+  - Codex custom agents instructions
+  - reusable AI agent prompts
+  - how to write SKILL.md
+  - share AI coding prompts GitHub
+  - agent skill template
+  - AI pair programming instructions
 ---
 
-# Creating Skills
+# How to Create Custom AI Agent Skills
+
+!!! tldr
+    Run `agr init my-skill`, edit `my-skill/SKILL.md` with your instructions,
+    test with `agr add ./my-skill`, then push to GitHub so others can
+    `agr add your-username/my-skill`.
 
 Skills are folders of instructions that give AI agents new capabilities. This
 guide helps you create, test, and share a skill with minimal ceremony.
 
-## Quick Start
+**Prerequisites:** [agr installed](tutorial.md#step-1-install-agr), a project
+with at least one [supported AI tool](tools.md)
+
+**Key terms:** A **skill** is a directory containing a `SKILL.md` file with
+YAML frontmatter (`name`, `description`) and markdown instructions for an AI
+coding agent. A **handle** like `user/skill` or `user/repo/skill` identifies a
+skill on GitHub. **agr.toml** is the manifest file that tracks your project's
+skill dependencies — similar to `package.json` or `Cargo.toml`. **agr** installs
+skills into tools like Claude Code, Cursor, Codex, OpenCode, Copilot, and
+Antigravity. See [Core Concepts](concepts.md) for details.
+
+## Scaffold a New Skill with `agr init`
 
 ```bash
 agr init my-skill
 ```
 
-Creates `my-skill/SKILL.md` in your current directory:
-
-```
-my-skill/
-└── SKILL.md
+```text
+Created skill scaffold: my-skill
+  Edit my-skill/SKILL.md to customize your skill
 ```
 
-If you're adding the skill to this repo, place it under `./skills/`:
+This creates `my-skill/SKILL.md` with a starter template:
 
+```markdown
+---
+name: my-skill
+description: TODO — describe what this skill does and when to use it
+---
+
+# my-skill
+
+## When to use
+
+Describe when this skill should be used.
+
+## Instructions
+
+Provide detailed instructions here.
 ```
-skills/
-└── my-skill/
-    └── SKILL.md
+
+If you want to keep the skill in your project, scaffold it then move it under
+`./skills/`:
+
+```bash
+agr init my-skill
+mv my-skill skills/
 ```
 
 From there you can:
 
-1. Write the instructions in `SKILL.md`
+1. Edit the `description` and body in `skills/my-skill/SKILL.md`
 2. Add the skill to your tool with `agr add ./skills/my-skill`
 3. Add it to `agr.toml` for team sync (see below)
 
@@ -53,7 +106,7 @@ Instructions for the agent go here.
 
 | Field | Constraints |
 |-------|-------------|
-| `name` | Max 64 chars. Lowercase letters, numbers, hyphens. Must match directory name. |
+| `name` | 1–64 chars. Lowercase alphanumeric and hyphens only. Cannot start/end with a hyphen or contain consecutive hyphens (`--`). Must match directory name. |
 | `description` | Max 1024 chars. Describes what the skill does and when to use it. |
 
 ### Optional Fields
@@ -88,44 +141,71 @@ You are a code review expert. When reviewing code:
 Be specific and actionable in your feedback. Reference line numbers when possible.
 ```
 
-## Skills with Supporting Files
+## Add Scripts, References, and Templates Alongside SKILL.md
 
-For complex skills, add supporting files:
+For complex skills, add supporting files alongside SKILL.md:
 
-```
+```text
 my-skill/
 ├── SKILL.md
-├── references/       # Additional documentation
+├── references/       # Domain knowledge the agent reads at runtime
 │   └── style-guide.md
-├── scripts/          # Executable code
-│   └── validate.py
+├── scripts/          # Executable code for deterministic tasks
+│   └── validate.sh
 └── assets/           # Templates, data files
     └── template.json
 ```
 
+| What | Where | Why |
+|------|-------|-----|
+| Reference docs the agent reads at runtime | `references/` | Keeps SKILL.md focused on workflow |
+| Scripts the agent should execute | `scripts/` | Reproducible results for mechanical tasks |
+| Templates or data files | `assets/` | Reusable artifacts the agent fills in |
+
 Reference them in your SKILL.md:
 
 ```markdown
-See [style guide](references/style-guide.md) for formatting rules.
+Before generating code, read [the style guide](references/style-guide.md).
 
-Run the validation script:
-scripts/validate.py
+After making changes, run the validation script:
+scripts/validate.sh
 ```
 
 Keep your main SKILL.md under 500 lines. Put detailed reference material in the `references/` folder.
 
 ## Test Your Skill
 
-Add your local skill and test it:
+The fastest way to iterate on a skill:
 
 ```bash
 agr add ./skills/my-skill
 ```
 
-(If your skill is elsewhere, point to that path instead.)
+```text
+Added: ./skills/my-skill
+  Installed to claude: .claude/skills/my-skill
+```
 
-Your skill is now available in your configured tool. Test it by starting your
-agent and invoking the skill.
+Test it in your AI tool — invoke the skill and see if it works. Edit
+`SKILL.md`, then reinstall:
+
+```bash
+agr add ./skills/my-skill --overwrite
+```
+
+```text
+Added: ./skills/my-skill
+  Installed to claude: .claude/skills/my-skill (overwritten)
+```
+
+Repeat until the skill works well.
+
+**What to test:**
+
+- **Happy path:** Does the skill do the right thing with a clear, simple request?
+- **Edge cases:** What happens with empty input, large files, or ambiguous requests?
+- **Boundaries:** Does the skill stay in scope, or does it try to do things you didn't intend?
+- **Different tools:** If targeting multiple tools, test in each one — behavior can vary
 
 ## Add to agr.toml (Team Sync)
 
@@ -144,15 +224,26 @@ Teammates run:
 agr sync
 ```
 
-## Share with Others
+## Publish Your Skill to GitHub
 
-Push to GitHub. Others install with:
+Push your skill to GitHub. The recommended structure is a repo named `skills`
+under your GitHub username — this lets people install with the short two-part
+handle:
+
+```text
+your-username/skills/
+├── my-skill/
+│   └── SKILL.md
+└── another-skill/
+    └── SKILL.md
+```
 
 ```bash
 agr add your-username/my-skill
 ```
 
-Or from a specific repo:
+If your skills live in a differently named repo, users use the three-part
+handle instead:
 
 ```bash
 agr add your-username/my-repo/my-skill
@@ -229,7 +320,7 @@ one-line summary at the top.
 **Output:** Findings formatted as file:line, severity, description, and fix.
 ```
 
-### Set boundaries
+### Define what the skill should not do
 
 Tell the agent what *not* to do. This prevents the skill from drifting into
 unrelated territory.
@@ -243,7 +334,7 @@ unrelated territory.
 - Never modify files directly — output your review as text
 ```
 
-### Use structured output formats
+### Define the output format for consistent results
 
 When the skill produces structured output, define the exact format so results
 are consistent and machine-parseable.
@@ -266,215 +357,128 @@ Return a JSON array of findings:
 
 ---
 
-## Structuring Complex Skills
+## Full Skill Examples by Type
 
-### When to add supporting files
+These full examples show how to structure different types of skills. Expand
+each to see the complete SKILL.md.
 
-Keep your SKILL.md under 500 lines. If the skill needs more detail, extract it
-into supporting files:
+??? example "Code generation — React component generator"
+    ```markdown
+    ---
+    name: react-component
+    description: >
+      Generates React components following project conventions.
+      Use when asked to create a new component, page, or UI element.
+    ---
 
-| What | Where | Why |
-|------|-------|-----|
-| Reference docs the agent reads at runtime | `references/` | Keeps SKILL.md focused on workflow |
-| Scripts the agent should execute | `scripts/` | Executable logic separate from instructions |
-| Templates or data files | `assets/` | Reusable artifacts the agent fills in |
+    # React Component Generator
 
-### Reference files for domain knowledge
+    When creating a new React component:
 
-If your skill needs domain-specific knowledge (a style guide, API docs, schema
-definitions), put it in `references/` and point to it from SKILL.md:
+    1. Read the project's existing components to understand conventions
+    2. Use TypeScript with explicit prop types
+    3. Use functional components with hooks (no class components)
+    4. Place the component in the appropriate directory based on its purpose
+    5. Include a basic test file alongside the component
 
-```markdown
-Before generating code, read [the API schema](references/api-schema.json)
-and [the style guide](references/style-guide.md).
-```
+    ## File structure
 
-This keeps the main instructions short while giving the agent access to all the
-context it needs.
+        ComponentName/
+        ├── ComponentName.tsx
+        ├── ComponentName.test.tsx
+        └── index.ts          # Re-export
 
-### Scripts for deterministic work
+    ## Conventions
 
-For tasks that have a deterministic correct answer (formatting, linting,
-validation), use a script rather than asking the agent to do it:
+    - Props interface named `{ComponentName}Props`
+    - Default export from the component file
+    - Named re-export from index.ts
+    - Tests use React Testing Library, not Enzyme
+    ```
 
-```markdown
-After making changes, run the validation script:
+??? example "Workflow automation — Release preparation"
+    ```markdown
+    ---
+    name: release-prep
+    description: >
+      Prepares a release by updating changelog, bumping version, and creating
+      a release branch. Use when asked to prepare, cut, or create a release.
+    ---
 
-    scripts/validate.sh
+    # Release Preparation
 
-If it fails, fix the issues it reports before continuing.
-```
+    ## Steps
 
-This gives you reproducible results and keeps the agent focused on judgment
-calls, not mechanical tasks.
+    1. Determine the next version from conventional commits since the last tag
+    2. Update CHANGELOG.md with the new version's entries
+    3. Bump the version in package.json (or pyproject.toml)
+    4. Create a release branch: `release/v{version}`
+    5. Commit with message: `chore: prepare release v{version}`
+    6. Print a summary of what changed and what to do next
 
----
+    ## Rules
 
-## Skill Patterns
+    - Never push or create tags — only prepare the branch locally
+    - If there are uncommitted changes, stop and ask the user to commit first
+    - Group changelog entries by type: Added, Changed, Fixed, Removed
+    ```
 
-### Code generation skill
+??? example "Analysis — Dependency audit"
+    ```markdown
+    ---
+    name: dependency-audit
+    description: >
+      Audits project dependencies for security issues, outdated packages, and
+      license compliance. Use when asked to check or audit dependencies.
+    ---
 
-```markdown
----
-name: react-component
-description: >
-  Generates React components following project conventions.
-  Use when asked to create a new component, page, or UI element.
----
+    # Dependency Audit
 
-# React Component Generator
+    Analyze the project's dependencies and produce a report covering:
 
-When creating a new React component:
+    ## Security
 
-1. Read the project's existing components to understand conventions
-2. Use TypeScript with explicit prop types
-3. Use functional components with hooks (no class components)
-4. Place the component in the appropriate directory based on its purpose
-5. Include a basic test file alongside the component
+    - Run the package manager's audit command (npm audit, pip-audit, cargo audit)
+    - List any known vulnerabilities with severity and affected package
+    - For each vulnerability, suggest an upgrade path or workaround
 
-## File structure
+    ## Freshness
 
-    ComponentName/
-    ├── ComponentName.tsx
-    ├── ComponentName.test.tsx
-    └── index.ts          # Re-export
+    - Identify packages more than 2 major versions behind
+    - Flag packages that haven't been updated in over 2 years
+    - Note any deprecated packages
 
-## Conventions
+    ## Output
 
-- Props interface named `{ComponentName}Props`
-- Default export from the component file
-- Named re-export from index.ts
-- Tests use React Testing Library, not Enzyme
-```
+    Present findings as a markdown table:
 
-### Workflow automation skill
+    | Package | Issue | Severity | Action |
+    |---------|-------|----------|--------|
+    | lodash  | CVE-2021-23337 | High | Upgrade to 4.17.21+ |
 
-```markdown
----
-name: release-prep
-description: >
-  Prepares a release by updating changelog, bumping version, and creating
-  a release branch. Use when asked to prepare, cut, or create a release.
----
-
-# Release Preparation
-
-## Steps
-
-1. Determine the next version from conventional commits since the last tag
-2. Update CHANGELOG.md with the new version's entries
-3. Bump the version in package.json (or pyproject.toml)
-4. Create a release branch: `release/v{version}`
-5. Commit with message: `chore: prepare release v{version}`
-6. Print a summary of what changed and what to do next
-
-## Rules
-
-- Never push or create tags — only prepare the branch locally
-- If there are uncommitted changes, stop and ask the user to commit first
-- Group changelog entries by type: Added, Changed, Fixed, Removed
-```
-
-### Analysis skill
-
-```markdown
----
-name: dependency-audit
-description: >
-  Audits project dependencies for security issues, outdated packages, and
-  license compliance. Use when asked to check or audit dependencies.
----
-
-# Dependency Audit
-
-Analyze the project's dependencies and produce a report covering:
-
-## Security
-
-- Run the package manager's audit command (npm audit, pip-audit, cargo audit)
-- List any known vulnerabilities with severity and affected package
-- For each vulnerability, suggest an upgrade path or workaround
-
-## Freshness
-
-- Identify packages more than 2 major versions behind
-- Flag packages that haven't been updated in over 2 years
-- Note any deprecated packages
-
-## Output
-
-Present findings as a markdown table:
-
-| Package | Issue | Severity | Action |
-|---------|-------|----------|--------|
-| lodash  | CVE-2021-23337 | High | Upgrade to 4.17.21+ |
-
-End with a summary: total dependencies, issues found, and recommended next steps.
-```
+    End with a summary: total dependencies, issues found, and recommended next steps.
+    ```
 
 ---
 
-## Testing and Iterating
+## Common Pitfalls
 
-### Local development loop
+Avoid these mistakes that make skills produce poor or inconsistent results:
 
-The fastest way to iterate on a skill:
-
-```bash
-# 1. Create the skill
-agr init my-skill
-
-# 2. Edit SKILL.md with your instructions
-$EDITOR my-skill/SKILL.md
-
-# 3. Install it locally
-agr add ./my-skill
-
-# 4. Test it in your AI tool — invoke the skill and see if it works
-
-# 5. Edit SKILL.md again, then reinstall
-agr add ./my-skill --overwrite
-
-# Repeat steps 4-5 until the skill works well
-```
-
-### Try before installing
-
-Use `agrx` to test a remote skill without modifying your project:
-
-```bash
-agrx ./my-skill -p "Review the changes in src/"
-```
-
-### What to test
-
-- **Happy path:** Does the skill do the right thing with a clear, simple request?
-- **Edge cases:** What happens with empty input, large files, or ambiguous requests?
-- **Boundaries:** Does the skill stay in scope, or does it try to do things you didn't intend?
-- **Different tools:** If targeting multiple tools, test in each one — behavior can vary
+| Pitfall | Why it fails | Fix |
+|---------|-------------|-----|
+| **Too broad** | A skill that tries to do everything ("helps with all coding tasks") is mediocre at all of them | Make focused skills that do one thing well |
+| **Too short** | A three-line SKILL.md gives the agent no context — output will be generic | Include specific steps, constraints, and expected behavior |
+| **No examples** | Without input/output examples, agents guess at what you want | Show at least one concrete example of expected input and output |
+| **Hardcoded paths** | Skills should work in any project, not just yours | Avoid paths like `/Users/me/project/` or assuming specific tools unless stated in `compatibility` |
 
 ---
 
-## Common Mistakes
+## Next Steps
 
-**Skill too broad.** A skill that tries to do everything ("helps with all
-coding tasks") will be mediocre at all of them. Make focused skills that do one
-thing well.
-
-**Instructions too short.** Agents need context. A three-line SKILL.md will
-produce generic output. Give the agent enough detail to produce specific,
-useful results.
-
-**No examples.** Without examples, agents guess at what you want. Include at
-least one input/output example so the agent understands the expected behavior.
-
-**Hardcoded paths or tools.** Skills should work in any project. Avoid
-hardcoding paths like `/Users/me/project/` or assuming specific tools are
-installed unless stated in the `compatibility` field.
-
----
-
-## Learn More
-
+- [**Skill Directory**](skills.md) — Browse official and community skills for inspiration
+- [**Python SDK**](sdk.md) — Load and inspect skills programmatically
+- [**Core Concepts**](concepts.md) — Understand handles, sources, and the sync lifecycle
+- [**CLI Reference**](reference.md) — Every command, flag, and option for managing skills
 - [Agent Skills Specification](https://agentskills.io/specification) — Full format details
 - [Example Skills](https://github.com/anthropics/skills) — Reference implementations

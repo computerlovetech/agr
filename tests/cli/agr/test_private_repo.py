@@ -119,15 +119,8 @@ class TestPrivateRepoRealNetwork:
         # Claude (flat)
         claude_installed = cli_project / ".claude" / "skills" / "test-skill"
         assert claude_installed.exists()
-        # Cursor (nested)
-        cursor_installed = (
-            cli_project
-            / ".cursor"
-            / "skills"
-            / "kasperjunge"
-            / "agent-resources-private-test-repo"
-            / "test-skill"
-        )
+        # Cursor (flat)
+        cursor_installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert cursor_installed.exists()
 
 

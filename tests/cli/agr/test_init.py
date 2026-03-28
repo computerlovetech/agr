@@ -151,8 +151,18 @@ class TestAgrInit:
         assert config.canonical_instructions == "CLAUDE.md"
 
     def test_init_detects_antigravity_tools(self, agr, cli_project):
-        """agr init detects Antigravity tools when .agent/ exists."""
-        (cli_project / ".agent").mkdir()
+        """agr init detects Antigravity tools when .gemini/ exists."""
+        (cli_project / ".gemini").mkdir()
+
+        result = agr("init")
+
+        assert_cli(result).succeeded()
+        config = AgrConfig.load(cli_project / "agr.toml")
+        assert "antigravity" in config.tools
+
+    def test_init_detects_antigravity_from_agents_dir(self, agr, cli_project):
+        """agr init detects Antigravity from .agents/ directory (shared with Codex)."""
+        (cli_project / ".agents").mkdir()
 
         result = agr("init")
 

@@ -187,7 +187,7 @@ class TestToolDocumentation:
         assert section_marker in content, (
             "configuration.md missing 'Multi-Tool Setup' section"
         )
-        section = content[content.index(section_marker):]
+        section = content[content.index(section_marker) :]
         for tool in self.ALL_TOOL_NAMES:
             assert tool in section.lower(), (
                 f"Tool '{tool}' not in configuration.md Multi-Tool Setup section"
@@ -202,7 +202,7 @@ class TestToolDocumentation:
         assert cli_section_marker in content, (
             "agrx.md missing 'Tool CLI Requirements' section"
         )
-        cli_section = content[content.index(cli_section_marker):]
+        cli_section = content[content.index(cli_section_marker) :]
         for tool in self.ALL_TOOL_NAMES:
             assert tool in cli_section.lower(), (
                 f"Tool '{tool}' not in agrx.md CLI Requirements table"
@@ -215,6 +215,26 @@ class TestToolDocumentation:
             assert tool in content.lower(), (
                 f"Tool '{tool}' not mentioned in reference.md"
             )
+
+    def test_tools_page_detection_signals_match_code(self):
+        """tools.md Detection Signals table matches ToolConfig.detection_signals."""
+        content = (DOCS_DIR / "tools.md").read_text()
+        section_marker = "## Detection Signals"
+        assert section_marker in content, (
+            "tools.md missing 'Detection Signals' section"
+        )
+        section = content[content.index(section_marker) :]
+        # Stop at the next h2 section
+        next_h2 = section.find("\n## ", 1)
+        if next_h2 != -1:
+            section = section[:next_h2]
+
+        for name, tool in self.TOOLS.items():
+            for signal in tool.detection_signals:
+                assert signal in section, (
+                    f"Detection signal '{signal}' for tool '{name}' "
+                    f"missing from tools.md Detection Signals table"
+                )
 
 
 class TestContentQuality:
@@ -252,7 +272,11 @@ class TestContentQuality:
         links = extract_internal_links(content)
 
         for link in links:
-            target = DOCS_DIR / link
+            # Strip fragment anchors (e.g. "concepts.md#handles" -> "concepts.md")
+            path_part = link.split("#")[0] if "#" in link else link
+            if not path_part:
+                continue
+            target = DOCS_DIR / path_part
             if not target.exists() and not target.suffix:
                 target = target.with_suffix(".md")
             assert target.exists(), f"Broken next steps link: {link}"

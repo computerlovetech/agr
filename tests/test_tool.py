@@ -1,5 +1,7 @@
 """Tests for agr.tool module."""
 
+from pathlib import Path
+
 from agr.tool import (
     ANTIGRAVITY,
     CLAUDE,
@@ -8,7 +10,10 @@ from agr.tool import (
     CURSOR,
     OPENCODE,
     TOOLS,
+    available_tools_string,
+    build_global_skills_dirs,
     get_tool,
+    lookup_skills_dir,
 )
 
 
@@ -36,8 +41,8 @@ class TestToolConfig:
 
         # Each tool has its own force flag
         assert CLAUDE.cli_force_flag == "--dangerously-skip-permissions"
-        assert CURSOR.cli_force_flag == "--force"
-        assert CODEX.cli_force_flag is None
+        assert CURSOR.cli_force_flag is None
+        assert CODEX.cli_force_flag == "--full-auto"
         assert OPENCODE.cli_force_flag is None
         assert COPILOT.cli_force_flag == "--allow-all-tools"
         assert ANTIGRAVITY.cli_force_flag is None
@@ -79,7 +84,7 @@ class TestToolConfig:
         """ToolConfig includes interactive prompt mode controls."""
         assert CLAUDE.cli_interactive_prompt_positional is True
         assert CURSOR.cli_interactive_prompt_positional is True
-        assert CODEX.cli_interactive_prompt_positional is False
+        assert CODEX.cli_interactive_prompt_positional is True
         assert OPENCODE.cli_interactive_prompt_positional is False
         assert COPILOT.cli_interactive_prompt_positional is False
         assert ANTIGRAVITY.cli_interactive_prompt_positional is False
@@ -162,3 +167,144 @@ class TestGetTool:
 
         with pytest.raises(AgrError, match="Unknown tool"):
             get_tool("unknown-tool")
+
+
+class TestSkillsDirPaths:
+    """Tests for project and global skills directory resolution.
+
+    These lock down the exact paths each tool uses so that any drift from
+    the upstream documentation is caught immediately.
+    """
+
+    def test_claude_project_skills_dir(self, tmp_path):
+        assert CLAUDE.get_skills_dir(tmp_path) == tmp_path / ".claude" / "skills"
+
+    def test_claude_global_skills_dir(self):
+        assert CLAUDE.get_global_skills_dir() == Path.home() / ".claude" / "skills"
+
+    def test_cursor_project_skills_dir(self, tmp_path):
+        assert CURSOR.get_skills_dir(tmp_path) == tmp_path / ".cursor" / "skills"
+
+    def test_cursor_global_skills_dir(self):
+        assert CURSOR.get_global_skills_dir() == Path.home() / ".cursor" / "skills"
+
+    def test_codex_project_skills_dir(self, tmp_path):
+        assert CODEX.get_skills_dir(tmp_path) == tmp_path / ".agents" / "skills"
+
+    def test_codex_global_skills_dir(self):
+        assert CODEX.get_global_skills_dir() == Path.home() / ".agents" / "skills"
+
+    def test_opencode_project_skills_dir(self, tmp_path):
+        assert OPENCODE.get_skills_dir(tmp_path) == tmp_path / ".opencode" / "skills"
+
+    def test_opencode_global_skills_dir(self):
+        """OpenCode uses ~/.config/opencode/skills/ for personal skills."""
+        assert OPENCODE.get_global_skills_dir() == (
+            Path.home() / ".config" / "opencode" / "skills"
+        )
+
+    def test_copilot_project_skills_dir(self, tmp_path):
+        assert COPILOT.get_skills_dir(tmp_path) == tmp_path / ".github" / "skills"
+
+    def test_copilot_global_skills_dir(self):
+        """Copilot uses ~/.copilot/skills/ (asymmetric from .github project path)."""
+        assert COPILOT.get_global_skills_dir() == (Path.home() / ".copilot" / "skills")
+
+    def test_antigravity_project_skills_dir(self, tmp_path):
+        assert ANTIGRAVITY.get_skills_dir(tmp_path) == (tmp_path / ".gemini" / "skills")
+
+    def test_antigravity_global_skills_dir(self):
+        """Antigravity uses ~/.gemini/skills/ for personal skills."""
+        assert ANTIGRAVITY.get_global_skills_dir() == (
+            Path.home() / ".gemini" / "skills"
+        )
+
+
+class TestDetectionSignals:
+    """Tests for tool detection signals.
+
+    Each tool declares filesystem paths whose presence indicates the tool
+    is in use. These tests lock down the exact values.
+    """
+
+    def test_claude_detection_signals(self):
+        assert CLAUDE.detection_signals == (".claude", "CLAUDE.md")
+
+    def test_cursor_detection_signals(self):
+        assert CURSOR.detection_signals == (".cursor", ".cursorrules")
+
+    def test_codex_detection_signals(self):
+        assert CODEX.detection_signals == (".agents", ".codex")
+
+    def test_opencode_detection_signals(self):
+        assert OPENCODE.detection_signals == (
+            ".opencode",
+            "opencode.json",
+            "opencode.jsonc",
+        )
+
+    def test_copilot_detection_signals(self):
+        assert COPILOT.detection_signals == (
+            ".github/copilot",
+            ".github/skills",
+            ".github/copilot-instructions.md",
+            ".github/instructions",
+        )
+
+    def test_antigravity_detection_signals(self):
+        assert ANTIGRAVITY.detection_signals == (".gemini", ".agents")
+
+
+class TestInstructionFiles:
+    """Tests for tool instruction file names."""
+
+    def test_claude_instruction_file(self):
+        assert CLAUDE.instruction_file == "CLAUDE.md"
+
+    def test_cursor_instruction_file(self):
+        assert CURSOR.instruction_file == "AGENTS.md"
+
+    def test_codex_instruction_file(self):
+        assert CODEX.instruction_file == "AGENTS.md"
+
+    def test_opencode_instruction_file(self):
+        assert OPENCODE.instruction_file == "AGENTS.md"
+
+    def test_copilot_instruction_file(self):
+        assert COPILOT.instruction_file == "AGENTS.md"
+
+    def test_antigravity_instruction_file(self):
+        assert ANTIGRAVITY.instruction_file == "GEMINI.md"
+
+
+class TestUtilityFunctions:
+    """Tests for tool module utility functions."""
+
+    def test_available_tools_string_contains_all_tools(self):
+        result = available_tools_string()
+        for name in TOOLS:
+            assert name in result
+
+    def test_available_tools_string_is_comma_separated(self):
+        result = available_tools_string()
+        parts = [p.strip() for p in result.split(",")]
+        assert set(parts) == set(TOOLS.keys())
+
+    def test_lookup_skills_dir_returns_path_when_present(self):
+        mapping = {"claude": Path("/some/path")}
+        assert lookup_skills_dir(mapping, CLAUDE) == Path("/some/path")
+
+    def test_lookup_skills_dir_returns_none_when_absent(self):
+        mapping = {"cursor": Path("/other/path")}
+        assert lookup_skills_dir(mapping, CLAUDE) is None
+
+    def test_lookup_skills_dir_returns_none_when_mapping_is_none(self):
+        assert lookup_skills_dir(None, CLAUDE) is None
+
+    def test_build_global_skills_dirs(self):
+        result = build_global_skills_dirs([CLAUDE, CODEX, COPILOT])
+        assert result == {
+            "claude": Path.home() / ".claude" / "skills",
+            "codex": Path.home() / ".agents" / "skills",
+            "copilot": Path.home() / ".copilot" / "skills",
+        }

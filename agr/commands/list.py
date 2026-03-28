@@ -4,12 +4,13 @@ from pathlib import Path
 
 from rich.table import Table
 
-from agr.config import AgrConfig, find_config, get_global_config_path, require_repo_root
+from agr.commands._tool_helpers import load_existing_config, print_missing_config_hint
 from agr.console import get_console
 from agr.exceptions import AgrError, InvalidHandleError
-from agr.fetcher import is_skill_installed
+from agr.metadata import METADATA_TYPE_LOCAL, METADATA_TYPE_REMOTE
+from agr.fetcher import filter_tools_needing_install
 from agr.handle import ParsedHandle
-from agr.tool import ToolConfig, build_global_skills_dirs
+from agr.tool import ToolConfig
 
 
 def _get_installation_status(
@@ -31,22 +32,17 @@ def _get_installation_status(
     Returns:
         Rich-formatted status string
     """
-    installed_tools = [
-        tool.name
-        for tool in tools
-        if is_skill_installed(
-            handle,
-            repo_root,
-            tool,
-            source,
-            skills_dir=skills_dirs.get(tool.name) if skills_dirs is not None else None,
-        )
-    ]
+    tools_needing_install = filter_tools_needing_install(
+        handle, repo_root, tools, source, skills_dirs
+    )
 
-    if len(installed_tools) == len(tools):
+    if not tools_needing_install:
         return "[green]installed[/green]"
-    elif installed_tools:
-        return f"[yellow]partial ({', '.join(installed_tools)})[/yellow]"
+    elif len(tools_needing_install) < len(tools):
+        installed_names = [
+            t.name for t in tools if t not in tools_needing_install
+        ]
+        return f"[yellow]partial ({', '.join(installed_names)})[/yellow]"
     else:
         return "[yellow]not synced[/yellow]"
 
@@ -57,28 +53,12 @@ def run_list(global_install: bool = False) -> None:
     Lists all dependencies from agr.toml with their sync status.
     """
     console = get_console()
-    skills_dirs: dict[str, Path] | None = None
-    if global_install:
-        repo_root = None
-        config_path = get_global_config_path()
-        if not config_path.exists():
-            console.print("[yellow]No global agr.toml found.[/yellow]")
-            console.print("[dim]Run 'agr add -g <handle>' to create one.[/dim]")
-            return
-    else:
-        repo_root = require_repo_root()
-
-        # Find config
-        config_path = find_config()
-        if config_path is None:
-            console.print("[yellow]No agr.toml found.[/yellow]")
-            console.print("[dim]Run 'agr init' to create one.[/dim]")
-            return
-
-    config = AgrConfig.load(config_path)
-    tools = config.get_tools()
-    if global_install:
-        skills_dirs = build_global_skills_dirs(tools)
+    loaded = load_existing_config(global_install, missing_ok=True)
+    if loaded is None:
+        print_missing_config_hint(global_install)
+        return
+    config, config_path = loaded.config, loaded.config_path
+    tools, repo_root, skills_dirs = loaded.tools, loaded.repo_root, loaded.skills_dirs
 
     if not config.dependencies:
         console.print("[yellow]No dependencies in agr.toml.[/yellow]")
@@ -95,15 +75,14 @@ def run_list(global_install: bool = False) -> None:
         # Determine display name and status
         if dep.is_local:
             display_name = dep.path or ""
-            kind = "local"
+            kind = METADATA_TYPE_LOCAL
         else:
             display_name = dep.handle or ""
-            kind = "remote"
+            kind = METADATA_TYPE_REMOTE
 
         # Check installation status
         try:
-            handle = dep.to_parsed_handle()
-            source_name = dep.resolve_source_name(config.default_source)
+            handle, source_name = dep.resolve(config.default_source)
             status = _get_installation_status(
                 handle, repo_root, tools, source_name, skills_dirs
             )

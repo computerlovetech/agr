@@ -5,10 +5,10 @@ Git operations (cloning, checkout, etc.) live in agr.git.
 
 import logging
 import shutil
-import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, NamedTuple
+from collections.abc import Generator
+from typing import NamedTuple
 
 from agr.exceptions import (
     AgrError,
@@ -23,42 +23,42 @@ from agr.git import (
 )
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
-    LEGACY_REPO_DEPRECATION_WARNING,
     ParsedHandle,
     iter_repo_candidates,
+    warn_legacy_repo,
 )
 from agr.metadata import (
+    METADATA_KEY_ID,
+    METADATA_KEY_TYPE,
+    METADATA_TYPE_LOCAL,
     build_handle_id,
-    compute_content_hash,
+    build_handle_ids,
     read_skill_metadata,
-    write_skill_metadata,
+    stamp_skill_metadata,
 )
 from agr.skill import (
     SKILL_MARKER,
     discover_skills_in_repo_listing,
     find_skill_in_repo,
-    find_skill_in_repo_listing,
+    find_skills_in_repo_listing,
     is_valid_skill_dir,
     update_skill_md_name,
 )
 from agr.source import (
-    DEFAULT_SOURCE_NAME,
     SourceConfig,
     SourceResolver,
 )
-from agr.tool import DEFAULT_TOOL, ToolConfig
+from agr.tool import DEFAULT_TOOL, ToolConfig, lookup_skills_dir
 
 logger = logging.getLogger(__name__)
 
 
-def _skill_dir_matches_handle(skill_dir: Path, handle_ids: list[str] | None) -> bool:
+def _skill_dir_matches_handle(skill_dir: Path, handle_ids: list[str]) -> bool:
     """Check whether a skill directory matches a handle via metadata."""
-    if not handle_ids:
-        return False
     meta = read_skill_metadata(skill_dir)
     if not meta:
         return False
-    return meta.get("id") in handle_ids
+    return meta.get(METADATA_KEY_ID) in handle_ids
 
 
 def _find_local_name_conflicts(
@@ -92,10 +92,10 @@ def _find_local_name_conflicts(
         meta = read_skill_metadata(path)
         if meta:
             # Remote skills at this path are not local conflicts.
-            if meta.get("type") != "local":
+            if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
                 continue
             # Same local handle — this is us, not a conflict.
-            if meta.get("id") == handle_id:
+            if meta.get(METADATA_KEY_ID) == handle_id:
                 continue
             conflicts.append(path)
             continue
@@ -117,8 +117,9 @@ def _find_existing_skill_dir(
 
     For nested tools (Cursor), the path is deterministic from the handle.
     For flat tools, we check two candidate paths in priority order:
-    1. Plain name (e.g. ``skill/``) — preferred, matched by metadata ID
-    2. Full name (e.g. ``user--repo--skill/``) — used on collision or legacy
+    1. Plain name (e.g. ``skill/``) — preferred, requires metadata ID match
+    2. Full name (e.g. ``user--repo--skill/``) — accepted without metadata
+       (covers both current installs and legacy installs without metadata)
     """
     if tool.supports_nested:
         skill_path = skills_dir / handle.to_skill_path(tool)
@@ -126,7 +127,7 @@ def _find_existing_skill_dir(
 
     # Build all possible metadata IDs for this handle, including legacy
     # formats (with/without explicit source name).
-    handle_ids = _build_handle_ids(handle, repo_root, source)
+    handle_ids = build_handle_ids(handle, repo_root, source)
     name_path = skills_dir / handle.name
     full_path = skills_dir / handle.to_installed_name()
 
@@ -135,15 +136,11 @@ def _find_existing_skill_dir(
         name_path, handle_ids
     ):
         return name_path
-    # Fall back to the full (qualified) name path.
-    if is_valid_skill_dir(full_path) and _skill_dir_matches_handle(
-        full_path, handle_ids
-    ):
-        return full_path
 
-    # Legacy fallback: older versions always used full path names
-    # (user--repo--skill) even when no collision existed. Match by
-    # directory name alone so those installs are still found.
+    # Fall back to the full (qualified) name path without requiring a
+    # metadata match.  Older versions always installed under the full
+    # name (user--repo--skill), potentially without metadata, so
+    # matching by directory name alone keeps those installs reachable.
     if is_valid_skill_dir(full_path):
         return full_path
 
@@ -201,12 +198,10 @@ def prepare_repo_for_skills(repo_dir: Path, skill_names: list[str]) -> dict[str,
         # checking out the full repo, then sparse-checkout only the
         # directories we need.
         paths = git_list_files(repo_dir)
-        rel_paths: dict[str, Path] = {}
-        for name in unique_names:
-            skill_rel = find_skill_in_repo_listing(paths, name)
-            if skill_rel is None:
-                continue
-            rel_paths[name] = Path(skill_rel)
+        rel_paths = {
+            name: Path(d)
+            for name, d in find_skills_in_repo_listing(paths, unique_names).items()
+        }
 
         if rel_paths:
             checkout_sparse_paths(repo_dir, list(rel_paths.values()))
@@ -262,29 +257,6 @@ def list_remote_repo_skills(
     return []
 
 
-def _build_handle_ids(
-    handle: ParsedHandle,
-    repo_root: Path | None,
-    source: str | None,
-) -> list[str] | None:
-    """Build handle IDs to match, including legacy ids.
-
-    Remote skills may have been installed with or without an explicit source
-    name in their metadata. To find them regardless of when they were installed,
-    we generate both the current ID and the legacy variant:
-    - source=None  → also check with DEFAULT_SOURCE_NAME ("github")
-    - source="github" → also check without explicit source
-    """
-    if handle.is_local:
-        return [build_handle_id(handle, repo_root)]
-    handle_ids = [build_handle_id(handle, repo_root, source)]
-    if source is None:
-        handle_ids.append(build_handle_id(handle, repo_root, DEFAULT_SOURCE_NAME))
-    if source == DEFAULT_SOURCE_NAME:
-        handle_ids.append(build_handle_id(handle, repo_root))
-    return handle_ids
-
-
 def _copy_skill_to_destination(
     source: Path,
     dest: Path,
@@ -323,10 +295,7 @@ def _copy_skill_to_destination(
     shutil.copytree(source, dest)
 
     update_skill_md_name(dest, dest.name)
-    hash_value = compute_content_hash(dest)
-    write_skill_metadata(
-        dest, handle, repo_root, tool.name, dest.name, install_source, hash_value
-    )
+    stamp_skill_metadata(dest, handle, repo_root, tool.name, dest.name, install_source)
 
     return dest
 
@@ -481,14 +450,8 @@ def install_local_skill(
         default_dest
     ):
         if read_skill_metadata(default_dest) is None:
-            hash_value = compute_content_hash(default_dest)
-            write_skill_metadata(
-                default_dest,
-                handle,
-                repo_root,
-                tool.name,
-                default_dest.name,
-                content_hash=hash_value,
+            stamp_skill_metadata(
+                default_dest, handle, repo_root, tool.name, default_dest.name
             )
         return default_dest
 
@@ -604,11 +567,7 @@ def install_remote_skill(
             else handle
         )
         if loc.is_legacy:
-            warnings.warn(
-                LEGACY_REPO_DEPRECATION_WARNING,
-                UserWarning,
-                stacklevel=2,
-            )
+            warn_legacy_repo()
         return install_skill_from_repo(
             loc.repo_dir,
             handle.name,
@@ -652,10 +611,7 @@ def fetch_and_install(
         if handle.local_path is None:
             raise ValueError("Local handle missing path")
 
-        source_path = handle.local_path
-        if not source_path.is_absolute():
-            base_path = repo_root or Path.cwd()
-            source_path = (base_path / source_path).resolve()
+        source_path = handle.resolve_local_path(repo_root)
         resolved_handle = ParsedHandle(
             is_local=True,
             name=handle.name,
@@ -712,9 +668,6 @@ def fetch_and_install_to_tools(
         # Local: no download needed, just iterate with rollback
         with _rollback_on_failure() as installed:
             for tool in tools:
-                target_skills_dir = (
-                    skills_dirs.get(tool.name) if skills_dirs is not None else None
-                )
                 installed[tool.name] = fetch_and_install(
                     handle,
                     repo_root,
@@ -722,40 +675,37 @@ def fetch_and_install_to_tools(
                     overwrite,
                     resolver,
                     source,
-                    skills_dir=target_skills_dir,
+                    skills_dir=lookup_skills_dir(skills_dirs, tool),
                 )
         return installed
 
     # Remote: download once via _locate_remote_skill, then install the same
     # checked-out skill to every tool. The context manager keeps the temp
     # repo directory alive until all tools are done.
-    with _rollback_on_failure() as installed:
-        with _locate_remote_skill(handle, resolver, source) as loc:
-            for tool in tools:
-                explicit_dir = (
-                    skills_dirs.get(tool.name) if skills_dirs is not None else None
-                )
-                skills_dir = _resolve_skills_dir(explicit_dir, repo_root, tool)
-                path = install_skill_from_repo(
-                    loc.repo_dir,
-                    handle.name,
-                    handle,
-                    skills_dir,
-                    tool,
-                    repo_root,
-                    overwrite,
-                    install_source=loc.source_config.name,
-                    skill_source=loc.skill_source,
-                )
-                installed[tool.name] = path
-            # Warn after successful install so the user sees it once,
-            # not on partial failure.
-            if loc.is_legacy:
-                warnings.warn(
-                    LEGACY_REPO_DEPRECATION_WARNING,
-                    UserWarning,
-                    stacklevel=2,
-                )
+    with (
+        _rollback_on_failure() as installed,
+        _locate_remote_skill(handle, resolver, source) as loc,
+    ):
+        for tool in tools:
+            skills_dir = _resolve_skills_dir(
+                lookup_skills_dir(skills_dirs, tool), repo_root, tool
+            )
+            path = install_skill_from_repo(
+                loc.repo_dir,
+                handle.name,
+                handle,
+                skills_dir,
+                tool,
+                repo_root,
+                overwrite,
+                install_source=loc.source_config.name,
+                skill_source=loc.skill_source,
+            )
+            installed[tool.name] = path
+        # Warn after successful install so the user sees it once,
+        # not on partial failure.
+        if loc.is_legacy:
+            warn_legacy_repo()
     return installed
 
 
@@ -867,37 +817,6 @@ def _cleanup_empty_parents(path: Path, stop_at: Path) -> None:
             break
 
 
-def get_installed_skills(repo_root: Path, tool: ToolConfig = DEFAULT_TOOL) -> list[str]:
-    """Get list of installed skill names.
-
-    Args:
-        repo_root: Repository root path
-        tool: Tool configuration for path structure
-
-    Returns:
-        List of installed skill directory names (flat) or paths (nested)
-    """
-    skills_dir = tool.get_skills_dir(repo_root)
-
-    if not skills_dir.exists():
-        return []
-
-    if tool.supports_nested:
-        # For nested tools, recursively find all SKILL.md files
-        skills = []
-        for skill_md in skills_dir.rglob(SKILL_MARKER):
-            skill_path = skill_md.parent.relative_to(skills_dir)
-            skills.append(str(skill_path))
-        return skills
-
-    # For flat tools, just list top-level directories
-    return [
-        d.name
-        for d in skills_dir.iterdir()
-        if d.is_dir() and (d / SKILL_MARKER).exists()
-    ]
-
-
 def is_skill_installed(
     handle: ParsedHandle,
     repo_root: Path | None,
@@ -918,8 +837,12 @@ def is_skill_installed(
         True if installed
     """
     resolved_dir = _resolve_skills_dir(skills_dir, repo_root, tool)
-    skill_path = _find_existing_skill_dir(handle, resolved_dir, tool, repo_root, source)
-    return bool(skill_path and is_valid_skill_dir(skill_path))
+    # _find_existing_skill_dir already validates via is_valid_skill_dir
+    # on every code path, so a non-None result is always valid.
+    return (
+        _find_existing_skill_dir(handle, resolved_dir, tool, repo_root, source)
+        is not None
+    )
 
 
 def filter_tools_needing_install(
@@ -949,6 +872,6 @@ def filter_tools_needing_install(
             repo_root,
             tool,
             source_name,
-            skills_dir=skills_dirs.get(tool.name) if skills_dirs else None,
+            skills_dir=lookup_skills_dir(skills_dirs, tool),
         )
     ]

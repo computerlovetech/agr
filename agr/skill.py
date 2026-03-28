@@ -2,10 +2,24 @@
 
 import re
 from pathlib import Path, PurePosixPath
+from typing import TypeVar
 
+
+_P = TypeVar("_P", Path, PurePosixPath)
 
 # Marker file for skills
 SKILL_MARKER = "SKILL.md"
+
+# Regex for detecting a frontmatter ``name:`` line (with or without a value).
+_FRONTMATTER_NAME_LINE_RE = re.compile(r"^\s*name\s*:")
+
+# Regex for extracting the value from a frontmatter ``name: <value>`` line.
+_FRONTMATTER_NAME_VALUE_RE = re.compile(r"^\s*name\s*:\s*(.+)\s*$")
+
+# Regex for validating a skill name per the Agent Skills spec:
+# 1-64 lowercase alphanumeric chars and hyphens,
+# no leading/trailing/consecutive hyphens.
+_VALID_SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 # Directories to exclude from skill discovery
 EXCLUDED_DIRS = {
@@ -24,6 +38,40 @@ EXCLUDED_DIRS = {
 }
 
 
+def _shallowest(paths: list[_P]) -> _P:
+    """Return the path with the fewest components (shallowest in the tree).
+
+    When multiple paths share the same minimum depth, returns the first
+    such path for deterministic behaviour (sorted input → sorted output).
+
+    Precondition: *paths* must be non-empty.
+    """
+    return min(paths, key=lambda p: len(p.parts))
+
+
+def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
+    """Check if a relative SKILL.md path should be excluded from discovery.
+
+    Centralizes the two exclusion rules shared by both filesystem and
+    git-listing discovery:
+
+    1. Root-level SKILL.md (single component, e.g. just ``SKILL.md``)
+       is a repo marker, not a skill directory.
+    2. Any path component matching ``EXCLUDED_DIRS`` (.git, node_modules,
+       __pycache__, etc.) disqualifies the entry.
+
+    Args:
+        parts: Components of the path *relative to the repo root*
+            (e.g. ``("skills", "my-skill", "SKILL.md")``).
+
+    Returns:
+        True if the path should be excluded from skill discovery.
+    """
+    if len(parts) == 1:
+        return True
+    return any(part in EXCLUDED_DIRS for part in parts)
+
+
 def _is_excluded_path(path: Path, repo_dir: Path) -> bool:
     """Check if a path should be excluded from skill discovery.
 
@@ -34,15 +82,11 @@ def _is_excluded_path(path: Path, repo_dir: Path) -> bool:
     Returns:
         True if the path should be excluded
     """
-    # Exclude root-level SKILL.md (parent is the repo itself)
-    if path.parent == repo_dir:
-        return True
-
     # Only check path components relative to repo_dir, so that
     # parent directories outside the repo (e.g. /home/user/build/project)
     # don't trigger false exclusions.
     rel = path.relative_to(repo_dir)
-    return any(part in EXCLUDED_DIRS for part in rel.parts)
+    return _is_excluded_skill_path(rel.parts)
 
 
 def is_valid_skill_dir(path: Path) -> bool:
@@ -100,8 +144,7 @@ def find_skill_in_repo(repo_dir: Path, skill_name: str) -> Path | None:
     if not matches:
         return None
 
-    # Return shallowest match for deterministic behavior
-    return min(matches, key=lambda p: len(p.parts))
+    return _shallowest(matches)
 
 
 def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
@@ -121,10 +164,7 @@ def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
         rel_path = PurePosixPath(rel)
         if rel_path.name != SKILL_MARKER:
             continue
-        if len(rel_path.parts) == 1:
-            # Root-level SKILL.md is not a skill directory
-            continue
-        if any(part in EXCLUDED_DIRS for part in rel_path.parts):
+        if _is_excluded_skill_path(rel_path.parts):
             continue
         results.append(rel_path.parent)
     return results
@@ -145,7 +185,31 @@ def find_skill_in_repo_listing(
     matches = [d for d in _find_skill_dirs_in_listing(paths) if d.name == skill_name]
     if not matches:
         return None
-    return min(matches, key=lambda p: len(p.parts))
+    return _shallowest(matches)
+
+
+def find_skills_in_repo_listing(
+    paths: list[str], skill_names: list[str]
+) -> dict[str, PurePosixPath]:
+    """Find multiple skill directories from a git file listing in a single pass.
+
+    More efficient than calling ``find_skill_in_repo_listing`` in a loop,
+    because the file listing is scanned only once.
+
+    Args:
+        paths: List of file paths from git (posix-style).
+        skill_names: Names of the skills to find.
+
+    Returns:
+        Mapping of skill name to directory path for each found skill.
+        Missing skills are omitted from the result.
+    """
+    name_set = set(skill_names)
+    matches: dict[str, list[PurePosixPath]] = {}
+    for d in _find_skill_dirs_in_listing(paths):
+        if d.name in name_set:
+            matches.setdefault(d.name, []).append(d)
+    return {name: _shallowest(dirs) for name, dirs in matches.items()}
 
 
 def discover_skills_in_repo_listing(paths: list[str]) -> list[str]:
@@ -162,34 +226,6 @@ def discover_skills_in_repo_listing(paths: list[str]) -> list[str]:
     return sorted({d.name for d in _find_skill_dirs_in_listing(paths)})
 
 
-def discover_skills_in_repo(repo_dir: Path) -> list[tuple[str, Path]]:
-    """Discover all skills in a repository.
-
-    Finds all directories containing SKILL.md anywhere in the repo,
-    excluding common non-skill directories (.git, node_modules, etc.).
-
-    When duplicate skill names exist, the shallowest path is returned.
-    Results are sorted alphabetically by skill name.
-
-    Args:
-        repo_dir: Path to extracted repository
-
-    Returns:
-        List of (skill_name, skill_path) tuples, deduplicated by name
-    """
-    skills_by_name: dict[str, Path] = {}
-
-    for skill_dir in _find_skill_dirs(repo_dir):
-        name = skill_dir.name
-        # Keep shallowest path for duplicate names
-        if name not in skills_by_name or len(skill_dir.parts) < len(
-            skills_by_name[name].parts
-        ):
-            skills_by_name[name] = skill_dir
-
-    return sorted(skills_by_name.items(), key=lambda x: x[0])
-
-
 def discover_all_skill_dirs(repo_dir: Path) -> list[Path]:
     """Discover all skill directories in a repository (no dedupe).
 
@@ -202,7 +238,7 @@ def discover_all_skill_dirs(repo_dir: Path) -> list[Path]:
     return sorted(_find_skill_dirs(repo_dir), key=lambda p: p.as_posix())
 
 
-def _parse_frontmatter(content: str) -> tuple[str, str] | None:
+def parse_frontmatter(content: str) -> tuple[str, str] | None:
     """Parse YAML frontmatter from SKILL.md content.
 
     Args:
@@ -226,13 +262,13 @@ def get_skill_frontmatter_name(skill_dir: Path) -> str | None:
     if not skill_md.exists():
         return None
 
-    parsed = _parse_frontmatter(skill_md.read_text())
+    parsed = parse_frontmatter(skill_md.read_text())
     if parsed is None:
         return None
 
     frontmatter, _ = parsed
     for line in frontmatter.splitlines():
-        match = re.match(r"^\s*name\s*:\s*(.+)\s*$", line)
+        match = _FRONTMATTER_NAME_VALUE_RE.match(line)
         if match:
             return match.group(1).strip()
     return None
@@ -250,7 +286,7 @@ def update_skill_md_name(skill_dir: Path, new_name: str) -> None:
         return
 
     content = skill_md.read_text()
-    parsed = _parse_frontmatter(content)
+    parsed = parse_frontmatter(content)
 
     if parsed is None:
         # No valid frontmatter — prepend one
@@ -265,7 +301,7 @@ def update_skill_md_name(skill_dir: Path, new_name: str) -> None:
     name_found = False
 
     for line in lines:
-        if re.match(r"^\s*name\s*:", line):
+        if _FRONTMATTER_NAME_LINE_RE.match(line):
             new_lines.append(f"name: {new_name}")
             name_found = True
         else:
@@ -279,9 +315,10 @@ def update_skill_md_name(skill_dir: Path, new_name: str) -> None:
 
 
 def validate_skill_name(name: str) -> bool:
-    """Validate a skill name.
+    """Validate a skill name per the Agent Skills specification.
 
-    Valid names: alphanumeric, hyphens, underscores.
+    Valid names: 1-64 lowercase alphanumeric characters and hyphens,
+    must not start/end with a hyphen or contain consecutive hyphens.
 
     Args:
         name: Skill name to validate
@@ -289,9 +326,9 @@ def validate_skill_name(name: str) -> bool:
     Returns:
         True if valid
     """
-    if not name:
+    if not name or len(name) > 64:
         return False
-    return bool(re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", name))
+    return bool(_VALID_SKILL_NAME_RE.match(name))
 
 
 def create_skill_scaffold(name: str, base_dir: Path | None = None) -> Path:
@@ -311,8 +348,8 @@ def create_skill_scaffold(name: str, base_dir: Path | None = None) -> Path:
     if not validate_skill_name(name):
         raise ValueError(
             f"Invalid skill name '{name}': "
-            "must be alphanumeric with "
-            "hyphens/underscores"
+            "must be 1-64 lowercase alphanumeric characters "
+            "and hyphens, cannot start/end with a hyphen"
         )
 
     base = base_dir or Path.cwd()
@@ -324,22 +361,23 @@ def create_skill_scaffold(name: str, base_dir: Path | None = None) -> Path:
     skill_dir.mkdir(parents=True)
 
     # Create SKILL.md with scaffold content
+    # The description field is required by Cursor, Codex, and OpenCode
+    # and recommended by Claude Code.
     skill_md = skill_dir / SKILL_MARKER
     skill_md.write_text(f"""---
 name: {name}
+description: TODO — describe what this skill does and when to use it
 ---
 
 # {name}
 
-Description of what this skill does.
-
 ## When to use
 
-Describe when Claude should use this skill.
+Describe when this skill should be used.
 
 ## Instructions
 
-Provide detailed instructions for Claude here.
+Provide detailed instructions here.
 """)
 
     return skill_dir

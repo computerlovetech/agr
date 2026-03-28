@@ -4,10 +4,11 @@ import pytest
 
 from agr.skill import (
     SKILL_MARKER,
+    _is_excluded_skill_path,
     create_skill_scaffold,
-    discover_skills_in_repo,
     discover_skills_in_repo_listing,
     find_skill_in_repo,
+    find_skills_in_repo_listing,
     is_valid_skill_dir,
     update_skill_md_name,
     validate_skill_name,
@@ -52,13 +53,17 @@ class TestValidateSkillName:
         """Name with hyphens is valid."""
         assert validate_skill_name("my-skill")
 
-    def test_valid_with_underscore(self):
-        """Name with underscores is valid."""
-        assert validate_skill_name("my_skill")
+    def test_invalid_with_underscore(self):
+        """Name with underscores is invalid per Agent Skills spec."""
+        assert not validate_skill_name("my_skill")
 
     def test_valid_with_numbers(self):
         """Name with numbers is valid."""
         assert validate_skill_name("skill123")
+
+    def test_valid_starts_with_number(self):
+        """Name starting with number is valid."""
+        assert validate_skill_name("1skill")
 
     def test_invalid_empty(self):
         """Empty name is invalid."""
@@ -68,10 +73,26 @@ class TestValidateSkillName:
         """Name starting with hyphen is invalid."""
         assert not validate_skill_name("-skill")
 
-    def test_invalid_starts_with_number(self):
-        """Name starting with number is valid (alphanumeric)."""
-        # Actually this should be valid per the regex
-        assert validate_skill_name("1skill")
+    def test_invalid_ends_with_hyphen(self):
+        """Name ending with hyphen is invalid."""
+        assert not validate_skill_name("skill-")
+
+    def test_invalid_consecutive_hyphens(self):
+        """Name with consecutive hyphens is invalid."""
+        assert not validate_skill_name("my--skill")
+
+    def test_invalid_uppercase(self):
+        """Name with uppercase letters is invalid per Agent Skills spec."""
+        assert not validate_skill_name("MySkill")
+        assert not validate_skill_name("SKILL")
+
+    def test_invalid_too_long(self):
+        """Name exceeding 64 characters is invalid."""
+        assert not validate_skill_name("a" * 65)
+
+    def test_valid_max_length(self):
+        """Name at exactly 64 characters is valid."""
+        assert validate_skill_name("a" * 64)
 
     def test_invalid_special_chars(self):
         """Name with special characters is invalid."""
@@ -153,6 +174,17 @@ class TestCreateSkillScaffold:
         content = skill_md.read_text()
         assert "name: my-skill" in content
         assert "# my-skill" in content
+
+    def test_scaffold_includes_description_field(self, tmp_path):
+        """Scaffold includes description in frontmatter (required by Cursor, Codex, OpenCode)."""
+        skill_path = create_skill_scaffold("my-skill", tmp_path)
+        content = (skill_path / SKILL_MARKER).read_text()
+        assert "description:" in content
+        # Verify description is inside frontmatter (between --- markers)
+        parts = content.split("---")
+        assert len(parts) >= 3, "SKILL.md should have frontmatter"
+        frontmatter = parts[1]
+        assert "description:" in frontmatter
 
     def test_invalid_name_raises(self, tmp_path):
         """Invalid name raises ValueError."""
@@ -338,123 +370,102 @@ class TestDiscoverSkillsInRepoListing:
         assert discover_skills_in_repo_listing(paths) == ["deep-skill"]
 
 
-class TestDiscoverSkillsInRepo:
-    """Tests for discover_skills_in_repo function."""
+class TestFindSkillsInRepoListing:
+    """Tests for find_skills_in_repo_listing (batch lookup)."""
 
-    def test_discovers_single_skill(self, tmp_path):
-        """Discovers a single skill."""
-        skill_dir = tmp_path / "my-skill"
-        skill_dir.mkdir()
-        (skill_dir / SKILL_MARKER).write_text("# Skill")
-
-        result = discover_skills_in_repo(tmp_path)
+    def test_finds_single_skill(self):
+        """Finds a single requested skill."""
+        paths = ["skills/commit/SKILL.md", "skills/review/SKILL.md"]
+        result = find_skills_in_repo_listing(paths, ["commit"])
         assert len(result) == 1
-        assert result[0] == ("my-skill", skill_dir)
+        assert result["commit"].as_posix() == "skills/commit"
 
-    def test_discovers_multiple_skills(self, tmp_path):
-        """Discovers multiple skills."""
-        for name in ["alpha", "beta", "gamma"]:
-            skill_dir = tmp_path / name
-            skill_dir.mkdir()
-            (skill_dir / SKILL_MARKER).write_text(f"# {name}")
+    def test_finds_multiple_skills(self):
+        """Finds multiple requested skills in one pass."""
+        paths = [
+            "skills/alpha/SKILL.md",
+            "skills/beta/SKILL.md",
+            "skills/gamma/SKILL.md",
+        ]
+        result = find_skills_in_repo_listing(paths, ["alpha", "gamma"])
+        assert set(result.keys()) == {"alpha", "gamma"}
+        assert result["alpha"].as_posix() == "skills/alpha"
+        assert result["gamma"].as_posix() == "skills/gamma"
 
-        result = discover_skills_in_repo(tmp_path)
-        assert len(result) == 3
-        names = [name for name, _ in result]
-        assert names == ["alpha", "beta", "gamma"]  # Sorted alphabetically
+    def test_omits_missing_skills(self):
+        """Missing skills are not in the result dict."""
+        paths = ["skills/commit/SKILL.md"]
+        result = find_skills_in_repo_listing(paths, ["commit", "nonexistent"])
+        assert "commit" in result
+        assert "nonexistent" not in result
 
-    def test_discovers_nested_skills(self, tmp_path):
-        """Discovers skills in nested directories."""
-        nested = tmp_path / "resources" / "skills" / "nested-skill"
-        nested.mkdir(parents=True)
-        (nested / SKILL_MARKER).write_text("# Nested")
+    def test_returns_shallowest_match(self):
+        """When a skill exists at multiple depths, returns the shallowest."""
+        paths = [
+            "nested/deep/commit/SKILL.md",
+            "skills/commit/SKILL.md",
+        ]
+        result = find_skills_in_repo_listing(paths, ["commit"])
+        assert result["commit"].as_posix() == "skills/commit"
 
-        result = discover_skills_in_repo(tmp_path)
-        assert len(result) == 1
-        assert result[0][0] == "nested-skill"
+    def test_empty_skill_names(self):
+        """Returns empty dict when no skill names requested."""
+        paths = ["skills/commit/SKILL.md"]
+        assert find_skills_in_repo_listing(paths, []) == {}
 
-    def test_returns_empty_when_no_skills(self, tmp_path):
-        """Returns empty list when no skills found."""
-        result = discover_skills_in_repo(tmp_path)
-        assert result == []
+    def test_empty_paths(self):
+        """Returns empty dict when file listing is empty."""
+        assert find_skills_in_repo_listing([], ["commit"]) == {}
 
-    def test_excludes_git_directory(self, tmp_path):
-        """Excludes .git directory from discovery."""
-        git_skill = tmp_path / ".git" / "my-skill"
-        git_skill.mkdir(parents=True)
-        (git_skill / SKILL_MARKER).write_text("# Skill")
+    def test_excludes_root_and_excluded_dirs(self):
+        """Respects the same exclusion rules as the single-skill version."""
+        paths = [
+            "SKILL.md",  # root-level, excluded
+            "node_modules/commit/SKILL.md",  # excluded dir
+            "skills/commit/SKILL.md",  # valid
+        ]
+        result = find_skills_in_repo_listing(paths, ["commit"])
+        assert result["commit"].as_posix() == "skills/commit"
 
-        result = discover_skills_in_repo(tmp_path)
-        assert result == []
 
-    def test_excludes_node_modules(self, tmp_path):
-        """Excludes node_modules from discovery."""
-        node_skill = tmp_path / "node_modules" / "pkg" / "my-skill"
-        node_skill.mkdir(parents=True)
-        (node_skill / SKILL_MARKER).write_text("# Skill")
 
-        result = discover_skills_in_repo(tmp_path)
-        assert result == []
+class TestIsExcludedSkillPath:
+    """Tests for _is_excluded_skill_path — the shared exclusion predicate."""
 
-    def test_deduplicates_by_name(self, tmp_path):
-        """Returns only one entry per skill name."""
-        # Create same skill name at two locations
-        shallow = tmp_path / "my-skill"
-        shallow.mkdir()
-        (shallow / SKILL_MARKER).write_text("# Shallow")
+    def test_root_level_skill_md_excluded(self):
+        """A single-component path (root SKILL.md) is excluded."""
+        assert _is_excluded_skill_path(("SKILL.md",)) is True
 
-        deep = tmp_path / "nested" / "my-skill"
-        deep.mkdir(parents=True)
-        (deep / SKILL_MARKER).write_text("# Deep")
+    def test_nested_skill_md_not_excluded(self):
+        """A normal skill path like skills/my-skill/SKILL.md is included."""
+        assert _is_excluded_skill_path(("skills", "my-skill", "SKILL.md")) is False
 
-        result = discover_skills_in_repo(tmp_path)
-        assert len(result) == 1
-        assert result[0][0] == "my-skill"
-        # Should prefer shallowest
-        assert result[0][1] == shallow
+    def test_git_dir_excluded(self):
+        """Paths under .git are excluded."""
+        assert _is_excluded_skill_path((".git", "hooks", "SKILL.md")) is True
 
-    def test_results_sorted_alphabetically(self, tmp_path):
-        """Results are sorted by skill name."""
-        for name in ["zebra", "apple", "mango"]:
-            skill_dir = tmp_path / name
-            skill_dir.mkdir()
-            (skill_dir / SKILL_MARKER).write_text(f"# {name}")
+    def test_node_modules_excluded(self):
+        """Paths under node_modules are excluded."""
+        assert _is_excluded_skill_path(("node_modules", "pkg", "SKILL.md")) is True
 
-        result = discover_skills_in_repo(tmp_path)
-        names = [name for name, _ in result]
-        assert names == ["apple", "mango", "zebra"]
+    def test_pycache_excluded(self):
+        """Paths under __pycache__ are excluded."""
+        assert _is_excluded_skill_path(("src", "__pycache__", "SKILL.md")) is True
 
-    def test_excludes_root_level_skill_md(self, tmp_path):
-        """Excludes SKILL.md directly at repo root."""
-        (tmp_path / SKILL_MARKER).write_text("# Root")
+    def test_venv_excluded(self):
+        """Paths under .venv are excluded."""
+        assert _is_excluded_skill_path((".venv", "lib", "SKILL.md")) is True
 
-        result = discover_skills_in_repo(tmp_path)
-        assert result == []
+    def test_build_dir_excluded(self):
+        """Paths under build/ are excluded."""
+        assert _is_excluded_skill_path(("build", "output", "SKILL.md")) is True
 
-    def test_mixed_valid_and_excluded(self, tmp_path):
-        """Discovers valid skills while excluding invalid locations."""
-        # Valid skill
-        valid = tmp_path / "valid-skill"
-        valid.mkdir()
-        (valid / SKILL_MARKER).write_text("# Valid")
+    def test_excluded_dir_deep_in_path(self):
+        """An excluded dir anywhere in the path triggers exclusion."""
+        assert (
+            _is_excluded_skill_path(("a", "b", "node_modules", "c", "SKILL.md")) is True
+        )
 
-        # Excluded locations
-        for excluded in [".git/hooks/git-skill", "node_modules/pkg/node-skill"]:
-            excluded_dir = tmp_path / excluded
-            excluded_dir.mkdir(parents=True)
-            (excluded_dir / SKILL_MARKER).write_text("# Excluded")
-
-        result = discover_skills_in_repo(tmp_path)
-        assert len(result) == 1
-        assert result[0][0] == "valid-skill"
-
-    def test_excluded_dir_name_in_parent_path_does_not_affect_discovery(self, tmp_path):
-        """Excluded dir names in parent path don't cause false exclusions."""
-        repo_dir = tmp_path / "dist" / "project"
-        skill_dir = repo_dir / "my-skill"
-        skill_dir.mkdir(parents=True)
-        (skill_dir / SKILL_MARKER).write_text("# Skill")
-
-        result = discover_skills_in_repo(repo_dir)
-        assert len(result) == 1
-        assert result[0][0] == "my-skill"
+    def test_empty_tuple_not_excluded(self):
+        """Edge case: empty parts tuple is not excluded (no excluded dir check)."""
+        assert _is_excluded_skill_path(()) is False

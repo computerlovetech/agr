@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import init_git_repo
+
 
 @pytest.fixture
 def mock_skill_dir(tmp_path: Path) -> Path:
@@ -42,25 +44,7 @@ def mock_github_repo(tmp_path: Path) -> Path:
     repo_dir = tmp_path / "mock-repo"
     repo_dir.mkdir()
 
-    # Initialize git repo
-    subprocess.run(
-        ["git", "init"],
-        cwd=repo_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.email", "test@test.com"],
-        cwd=repo_dir,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Test User"],
-        cwd=repo_dir,
-        capture_output=True,
-        check=True,
-    )
+    init_git_repo(repo_dir)
 
     # Create skill
     skill_dir = repo_dir / "skills" / "my-skill"

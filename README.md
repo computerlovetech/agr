@@ -74,6 +74,7 @@ Then invoke it in your AI tool:
 | OpenAI Codex | `$frontend-design` |
 | OpenCode | `frontend-design` |
 | GitHub Copilot | `/frontend-design` |
+| Antigravity | *(via IDE)* |
 
 No setup required — `agr add` auto-creates `agr.toml` and detects which tools
 you use.
@@ -122,14 +123,37 @@ agr add your-username/my-skill
 
 ---
 
+## Python SDK
+
+Use `agr` as a library to load, discover, and cache skills programmatically:
+
+```python
+from agr import Skill, list_skills, skill_info
+
+skill = Skill.from_git("anthropics/skills/code-review")
+print(skill.prompt)   # SKILL.md contents
+print(skill.files)    # Files in the skill directory
+
+for info in list_skills("anthropics/skills"):
+    details = skill_info(info.handle)
+    print(f"{details.handle}: {details.description}")
+```
+
+See the [SDK documentation](https://kasperjunge.github.io/agent-resources/sdk/) for
+cache management, error handling, and the full API.
+
+---
+
 ## Example skills
 
 **Documents & data:**
 
 ```bash
-agr add anthropics/skills/pdf       # Read, extract, create PDFs
-agr add anthropics/skills/docx      # Generate and edit Word documents
-agr add anthropics/skills/xlsx      # Build and manipulate spreadsheets
+agr add anthropics/skills/pdf              # Read, extract, create PDFs
+agr add anthropics/skills/docx             # Generate and edit Word documents
+agr add anthropics/skills/xlsx             # Build and manipulate spreadsheets
+agr add anthropics/skills/pptx             # Create and work with slide decks
+agr add anthropics/skills/doc-coauthoring  # Structured doc co-authoring workflow
 ```
 
 **Design & frontend:**
@@ -137,14 +161,26 @@ agr add anthropics/skills/xlsx      # Build and manipulate spreadsheets
 ```bash
 agr add anthropics/skills/frontend-design   # Production-grade interfaces
 agr add anthropics/skills/canvas-design     # Visual art in PNG and PDF
+agr add anthropics/skills/algorithmic-art   # Algorithmic art with p5.js
+agr add anthropics/skills/theme-factory     # Style artifacts with themes
+agr add anthropics/skills/brand-guidelines  # Anthropic brand colors and typography
 ```
 
 **Development:**
 
 ```bash
-agr add anthropics/skills/claude-api        # Build apps with the Claude API
-agr add anthropics/skills/mcp-builder       # Create MCP servers
-agr add anthropics/skills/webapp-testing    # Test web apps with Playwright
+agr add anthropics/skills/claude-api             # Build apps with the Claude API
+agr add anthropics/skills/mcp-builder            # Create MCP servers
+agr add anthropics/skills/web-artifacts-builder  # Multi-component HTML artifacts
+agr add anthropics/skills/webapp-testing         # Test web apps with Playwright
+```
+
+**Productivity:**
+
+```bash
+agr add anthropics/skills/skill-creator     # Create, modify, and improve skills
+agr add anthropics/skills/internal-comms    # Write internal communications
+agr add anthropics/skills/slack-gif-creator # Create animated GIFs for Slack
 ```
 
 Browse the full list in the [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/).
@@ -156,6 +192,7 @@ Browse the full list in the [Skill Directory](https://kasperjunge.github.io/agen
 | Command | Description |
 |---------|-------------|
 | `agr add <handle>` | Install a skill |
+| `agr add <handle> -o` | Update to the latest version |
 | `agr remove <handle>` | Uninstall a skill |
 | `agr sync` | Install all from `agr.toml` |
 | `agr list` | Show installed skills |
@@ -176,14 +213,20 @@ all projects).
 # Go — @dsjacobsen
 agr add dsjacobsen/agent-resources/golang-pro
 
-# Drupal — @madsnorgaard
+# Drupal & DevOps — @madsnorgaard
 agr add madsnorgaard/drupal-agent-resources/drupal-expert
 agr add madsnorgaard/drupal-agent-resources/drupal-security
 agr add madsnorgaard/drupal-agent-resources/drupal-migration
+agr add madsnorgaard/drupal-agent-resources/ddev-expert
+agr add madsnorgaard/drupal-agent-resources/docker-local
 
-# Workflow — @maragudk
+# Workflow — @maragudk, @kasperjunge
 agr add maragudk/skills/collaboration
+agr add kasperjunge/commit-work
+agr add kasperjunge/agent-resources/migrate-to-skills
 ```
+
+Browse all community skills in the [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/).
 
 **Built something?** [Share it here.](https://github.com/kasperjunge/agent-resources/issues)
 
@@ -191,6 +234,6 @@ agr add maragudk/skills/collaboration
 
 <div align="center">
 
-[Documentation](https://kasperjunge.github.io/agent-resources/) · [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/) · [Tutorial](https://kasperjunge.github.io/agent-resources/tutorial/) · [MIT License](LICENSE)
+[Documentation](https://kasperjunge.github.io/agent-resources/) · [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/) · [Tutorial](https://kasperjunge.github.io/agent-resources/tutorial/) · [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/) · [MIT License](LICENSE)
 
 </div>

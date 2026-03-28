@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+- Cursor skills now use flat naming (`skill-name/` directly under `.cursor/skills/`) instead of nested directories (`user/repo/skill/`)
+- Auto-migration flattens existing nested Cursor skills during `agr sync`, `agr add`, and `agr remove`
+
 ## [0.7.10] - 2026-03-10
 ### Changed
 - Codex skills directory from `.codex/skills/` to `.agents/skills/` (following Codex upstream change)

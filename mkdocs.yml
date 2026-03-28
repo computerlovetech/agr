@@ -1,4 +1,4 @@
-site_name: Agent Resources
+site_name: agr
 site_url: https://kasperjunge.github.io/agent-resources/
 site_description: A package manager for AI agent skills.
 site_author: Kasper Junge
@@ -34,6 +34,8 @@ theme:
 
   features:
     - navigation.instant
+    - navigation.instant.progress
+    - navigation.instant.prefetch
     - navigation.tracking
     - navigation.tabs
     - navigation.tabs.sticky
@@ -41,10 +43,16 @@ theme:
     - navigation.top
     - navigation.indexes
     - navigation.footer
+    - navigation.path
+    - content.action.edit
+    - content.action.view
     - content.code.copy
+    - content.code.annotate
     - content.tabs.link
+    - content.tooltips
     - search.suggest
     - search.highlight
+    - search.share
     - toc.follow
   custom_dir: docs/overrides
 
@@ -54,9 +62,38 @@ extra:
       link: https://github.com/kasperjunge/agent-resources
       name: Agent Resources on GitHub
   generator: false
+  analytics:
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/thumb-up-outline
+          name: This page was helpful
+          data: 1
+          note: Thanks for the feedback!
+        - icon: material/thumb-down-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for the feedback! Help us improve by
+            <a href="https://github.com/kasperjunge/agent-resources/issues/new?title=Docs+feedback:+{title}&labels=docs" target="_blank">opening an issue</a>.
+
+not_in_nav: |
+  404.md
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: info
+    unrecognized_links: info
 
 plugins:
-  - search
+  - search:
+      separator: '[\s\-\._]+'
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -64,9 +101,18 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.snippets:
+      auto_append:
+        - docs/includes/abbreviations.md
   - admonition
   - pymdownx.details
+  - abbr
   - tables
+  - def_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
   - meta
   - toc:

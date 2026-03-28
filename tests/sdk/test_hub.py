@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from agr.exceptions import (
+    AgrError,
     AuthenticationError,
     InvalidHandleError,
     RateLimitError,
@@ -157,6 +158,33 @@ class TestGitHubApiRequest:
         assert request.get_header("Authorization") == "Bearer test-token"
 
 
+class TestNetworkErrorHandling:
+    """Tests for network error handling in _github_api_request()."""
+
+    @patch("agr.sdk.hub.urllib.request.urlopen")
+    def test_url_error_raises_agr_error(self, mock_urlopen: MagicMock):
+        """Test that URLError raises AgrError, not built-in ConnectionError."""
+        from urllib.error import URLError
+
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        with pytest.raises(AgrError, match="Failed to connect to GitHub API"):
+            _github_api_request("https://api.github.com/test")
+
+    @patch("agr.sdk.hub.urllib.request.urlopen")
+    def test_url_error_preserves_cause(self, mock_urlopen: MagicMock):
+        """Test that URLError is chained as the cause of AgrError."""
+        from urllib.error import URLError
+
+        original = URLError("DNS lookup failed")
+        mock_urlopen.side_effect = original
+
+        with pytest.raises(AgrError) as exc_info:
+            _github_api_request("https://api.github.com/test")
+
+        assert exc_info.value.__cause__ is original
+
+
 class TestRateLimitHandling:
     """Tests for rate limit handling in _github_api_request()."""
 
@@ -273,9 +301,39 @@ class TestListSkills:
         assert len(skills) == 1
         assert skills[0].name == "commit"
 
+    @patch("agr.sdk.hub._github_api_request")
+    def test_excludes_skills_in_excluded_dirs(self, mock_api: MagicMock):
+        """Test that skills inside excluded directories are filtered out."""
+        mock_api.return_value = {
+            "tree": [
+                {"type": "blob", "path": "skills/commit/SKILL.md"},
+                {"type": "blob", "path": "node_modules/some-pkg/SKILL.md"},
+                {"type": "blob", "path": ".git/hooks/SKILL.md"},
+                {"type": "blob", "path": "__pycache__/cached/SKILL.md"},
+                {"type": "blob", "path": "vendor/lib/SKILL.md"},
+            ]
+        }
+
+        skills = list_skills("owner/repo")
+
+        assert len(skills) == 1
+        assert skills[0].name == "commit"
+
+    @patch("agr.sdk.hub._github_api_request")
+    def test_find_skill_excludes_excluded_dirs(self, mock_api: MagicMock):
+        """Test that skill_info filters skills in excluded directories."""
+        mock_api.return_value = {
+            "tree": [
+                {"type": "blob", "path": "node_modules/my-skill/SKILL.md"},
+            ]
+        }
+
+        with pytest.raises(SkillNotFoundError):
+            skill_info("owner/repo/my-skill")
+
     def test_invalid_handle_raises(self):
-        """Test invalid repo handle raises ValueError."""
-        with pytest.raises(ValueError, match="Invalid repo handle"):
+        """Test invalid repo handle raises InvalidHandleError."""
+        with pytest.raises(InvalidHandleError, match="Invalid repo handle"):
             list_skills("too/many/parts/here")
 
 

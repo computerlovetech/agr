@@ -1,8 +1,36 @@
 ---
-title: Core Concepts
+title: "How agr Works — Skills, Handles, Sources, Scopes, and the Sync Lifecycle"
+description: How agr manages AI agent skills — SKILL.md format, handle resolution, multi-tool sync across Claude Code, Cursor, Codex, and more. Understand skills, handles, sources, scopes, and agr.toml.
+keywords:
+  - how agr works
+  - agr skills explained
+  - skill handles resolution
+  - SKILL.md format
+  - agr.toml manifest
+  - local vs global skills
+  - agr sync lifecycle
+  - agr instruction syncing
+  - AI agent skill scopes
+  - agr sources configuration
+  - how AI agent skills work
+  - manage AI coding agent prompts across tools
+  - sync prompts between Claude Code and Cursor
+  - package manager for AI agent instructions
+  - share AI coding skills across team
+  - SKILL.md vs CLAUDE.md vs AGENTS.md
+  - install AI skills from GitHub
+  - AI agent skill directory structure
+  - multi-tool AI skill management
+  - keep AI agent instructions in sync
 ---
 
 # Core Concepts
+
+!!! tldr
+    agr has five building blocks: **skills** (folders with a `SKILL.md`),
+    **handles** (like `user/skill`) to reference them, **tools** (Claude Code,
+    Cursor, etc.) that consume them, **sources** (where to fetch from), and
+    **scopes** (local per-project vs global). `agr.toml` ties it all together.
 
 This page explains the building blocks of agr. Read it after the
 [Tutorial](tutorial.md) to understand *why* things work the way they do, or
@@ -16,7 +44,7 @@ A **skill** is a folder containing a `SKILL.md` file. The file has YAML
 frontmatter (`name`, `description`) and a markdown body with instructions for
 an AI coding agent.
 
-```
+```text
 my-skill/
 ├── SKILL.md          # Required — agent instructions
 ├── scripts/          # Optional — helper scripts
@@ -33,7 +61,8 @@ Skills are tool-agnostic. The same `SKILL.md` works in Claude Code, Cursor,
 Codex, OpenCode, Copilot, and Antigravity — agr installs it into the right
 place for each tool.
 
-See [Creating Skills](creating.md) for how to write one.
+See [Creating Skills](creating.md) for how to write one, or browse the
+[Skill Directory](skills.md) for published skills you can install.
 
 ---
 
@@ -43,7 +72,7 @@ A **handle** is how you refer to a skill. It tells agr where to find it.
 
 ### Remote handles
 
-```
+```text
 user/skill            →  github.com/user/skills  repo, "skill" directory
 user/repo/skill       →  github.com/user/repo    repo, "skill" directory
 ```
@@ -53,7 +82,7 @@ The two-part form (`user/skill`) assumes the skill lives in a repo named
 
 ### Local handles
 
-```
+```text
 ./path/to/skill       →  Local directory on disk
 ```
 
@@ -61,18 +90,32 @@ Local handles point to a skill directory on your filesystem. They're useful
 for testing skills before publishing or for project-specific skills that don't
 need a remote repo.
 
-### How resolution works
+### How agr resolves a handle to files on disk
 
-When you run `agr add user/repo/skill`:
+Every remote handle follows the same three-step flow — clone, search, copy:
 
-1. agr clones `github.com/user/repo` (using sparse checkout for speed)
-2. It recursively searches the repo for a directory named `skill` that contains
-   `SKILL.md`
-3. It copies that directory into your tool's skills folder
+1. **Clone** — agr sparse-checkouts the repo from GitHub (fast, even for large repos)
+2. **Search** — it finds a directory named after the skill that contains `SKILL.md`
+3. **Copy** — it installs that directory into each configured tool's skills folder
 
-The search finds the skill regardless of nesting depth (`skills/skill/`,
+The handle format determines *which* repo gets cloned:
+
+| Handle | Repo cloned | When to use |
+|--------|-------------|-------------|
+| `user/skill` | `github.com/user/skills` | Default — repo is always named `skills` |
+| `user/repo/skill` | `github.com/user/repo` | Skills live in a differently named repo |
+
+The two-part form is the most common. It's why the recommended way to share
+skills is a repo named `skills` under your GitHub username.
+
+agr searches recursively regardless of nesting depth (`skills/skill/`,
 `resources/skills/skill/`, `skill/`). When multiple matches exist, the
 shallowest path wins.
+
+!!! tip "Wrong handle format?"
+    If `agr add user/repo` fails because it's actually a repo (not a skill in
+    the `skills` repo), agr probes the repo and suggests the correct three-part
+    handles — so you don't have to guess.
 
 ---
 
@@ -98,7 +141,7 @@ Each tool has its own skills directory where agr installs skills:
 | OpenAI Codex | `.agents/skills/` | `~/.agents/skills/` |
 | OpenCode | `.opencode/skills/` | `~/.config/opencode/skills/` |
 | GitHub Copilot | `.github/skills/` | `~/.copilot/skills/` |
-| Antigravity | `.agent/skills/` | `~/.gemini/antigravity/skills/` |
+| Antigravity | `.gemini/skills/` | `~/.gemini/skills/` |
 
 When you configure multiple tools, `agr add` and `agr sync` install skills
 into all of them simultaneously. Configure your tools with:
@@ -106,6 +149,17 @@ into all of them simultaneously. Configure your tools with:
 ```bash
 agr config set tools claude cursor codex
 ```
+
+### How skills are named on disk
+
+Skills are installed using their plain name — `agr add anthropics/skills/pdf`
+creates a `pdf/` directory inside each tool's skills folder.
+
+If two different handles share the same skill name (e.g., `alice/skills/lint`
+and `bob/tools/lint`), agr falls back to a fully-qualified directory name
+(`alice--skills--lint/`, `bob--tools--lint/`) to avoid collisions. You'll
+still invoke the skill by its plain name in your tool — agr handles the
+mapping.
 
 See [Supported Tools](tools.md) for details on each tool.
 
@@ -131,7 +185,7 @@ You can add custom sources for GitLab, self-hosted Git servers, or any host
 that supports Git over HTTPS:
 
 ```bash
-agr config add sources gitlab --type git --url "https://gitlab.com/{owner}/{repo}.git"
+agr config add sources gitlab --url "https://gitlab.com/{owner}/{repo}.git"
 agr add team/skill --source gitlab
 ```
 
@@ -162,8 +216,9 @@ agr add anthropics/skills/pdf              # Local: this project only
 agr add -g anthropics/skills/skill-creator  # Global: every project
 ```
 
-Use local for project-specific skills that teammates should share. Use global
-for personal utilities you want everywhere.
+Use local for project-specific skills that teammates should share (see
+[Teams](teams.md) for the full team setup). Use global for personal utilities
+you want everywhere.
 
 The two scopes are independent — a skill can be installed both locally and
 globally without conflict.
@@ -209,7 +264,7 @@ See [Configuration](configuration.md) for all options and
 
 ---
 
-## Instruction Syncing
+## Keep Instruction Files Aligned Across Tools
 
 Different tools use different instruction files:
 
@@ -232,7 +287,7 @@ This keeps all your tools aligned without maintaining multiple files manually.
 
 ---
 
-## The Two CLIs
+## `agr` vs `agrx` — Permanent Install vs One-Off Run
 
 agr ships two commands:
 
@@ -250,29 +305,33 @@ agrx anthropics/skills/pdf            # Temporary: run once and clean up
 Use `agr` when you want a skill to stick around. Use `agrx` when you want to
 try something quickly or run a one-off task.
 
-See [agrx](agrx.md) for full details.
+See [agrx](agrx.md) for full details. You can also load skills
+programmatically with the [Python SDK](sdk.md).
 
 ---
 
-## What Happens When You Install
+## The Full `agr add` Install Flow
 
-Here's the full flow when you run `agr add anthropics/skills/pdf`:
+When you run `agr add anthropics/skills/pdf`, agr parses the handle, clones
+the repo (sparse checkout), finds the `pdf/SKILL.md` directory, copies it into
+each configured tool's skills folder, and updates `agr.toml`.
 
-1. **Parse the handle** — `anthropics` is the owner, `skills` is the repo,
-   `pdf` is the skill name
-2. **Load config** — Read `agr.toml` (or create it) to find configured tools
-   and sources
-3. **Clone the repo** — Sparse-checkout `github.com/anthropics/skills`
-4. **Find the skill** — Recursively search for a directory named `pdf`
-   containing `SKILL.md`
-5. **Install to each tool** — Copy the skill directory to each configured
-   tool's skills folder (e.g., `.claude/skills/pdf/`, `.cursor/skills/pdf/`)
-6. **Write metadata** — Save `.agr.json` in each installed copy with the
-   source handle, revision, and content hash
-7. **Update agr.toml** — Add the dependency to the manifest
+???+ note "Full install flow (7 steps)"
+    1. **Parse the handle** — `anthropics` is the owner, `skills` is the repo,
+       `pdf` is the skill name
+    2. **Load config** — Read `agr.toml` (or create it) to find configured tools
+       and sources
+    3. **Clone the repo** — Sparse-checkout `github.com/anthropics/skills`
+    4. **Find the skill** — Recursively search for a directory named `pdf`
+       containing `SKILL.md`
+    5. **Install to each tool** — Copy the skill directory to each configured
+       tool's skills folder (e.g., `.claude/skills/pdf/`, `.cursor/skills/pdf/`)
+    6. **Write metadata** — Save `.agr.json` in each installed copy with the
+       source handle, install details, and content hash
+    7. **Update agr.toml** — Add the dependency to the manifest
 
-If any tool's install fails, already-installed copies are rolled back
-automatically.
+    If any tool's install fails, already-installed copies are rolled back
+    automatically.
 
 ---
 
@@ -283,3 +342,4 @@ automatically.
 - [Supported Tools](tools.md) — Detailed info on each tool's behavior
 - [Creating Skills](creating.md) — Write and share your own skills
 - [Reference](reference.md) — Every command, flag, and config option
+- [Troubleshooting](troubleshooting.md) — Fix common errors and edge cases

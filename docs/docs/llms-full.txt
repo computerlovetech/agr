@@ -75,7 +75,7 @@ agr sync
 agr sync -g
 ```
 
-Performs four stages: instruction file sync, directory migrations, dependency installation, and status report.
+Performs three stages: instruction file sync, directory migrations, and dependency installation.
 
 ### agr list
 
@@ -85,6 +85,15 @@ Show all skills and their installation status.
 agr list
 agr list -g
 ```
+
+Status values:
+- `installed` — installed in all configured tools
+- `partial (tool1, tool2)` — installed in some tools but not all; lists which tools have it
+- `not synced` — listed in agr.toml but not installed in any tool; run `agr sync` to install
+- `invalid` — handle in agr.toml cannot be parsed; check the handle format
+
+Options:
+- `--global`, `-g` — list global skills from ~/.agr/agr.toml
 
 ### agr init
 
@@ -117,7 +126,7 @@ Manage agr.toml configuration.
 ```bash
 agr config show               # view formatted config
 agr config path               # print agr.toml path
-agr config edit               # open in $EDITOR
+agr config edit               # open in $VISUAL or $EDITOR
 agr config get <key>           # read a value
 agr config set <key> <values>  # write scalar or replace list
 agr config add <key> <values>  # append to list
@@ -137,7 +146,7 @@ agr config add tools cursor
 agr config remove tools cursor
 agr config set sync_instructions true
 agr config set canonical_instructions CLAUDE.md
-agr config add sources gitlab --type git --url "https://gitlab.com/{owner}/{repo}.git"
+agr config add sources gitlab --url "https://gitlab.com/{owner}/{repo}.git"
 ```
 
 ### agrx
@@ -148,7 +157,18 @@ Run a skill temporarily without adding to agr.toml.
 agrx <handle> [options]
 ```
 
-Downloads the skill, runs it with the selected tool's CLI, and cleans up.
+Downloads the skill, runs it with the selected tool's CLI, and cleans up. In interactive mode (`-i`), agrx passes a tool-specific permission-bypass flag:
+
+| Tool | Flag (with `-i` only) |
+|------|------|
+| Claude Code | --dangerously-skip-permissions |
+| OpenAI Codex | --full-auto |
+| GitHub Copilot | --allow-all-tools |
+| Cursor | (none) |
+| OpenCode | (none) |
+| Antigravity | (none — no CLI) |
+
+Without `-i`, the tool runs in prompt-and-exit mode with normal permission prompts.
 
 Options:
 - `--tool`, `-t` — tool CLI (claude, cursor, codex, opencode, copilot, antigravity)
@@ -165,7 +185,19 @@ agrx kasperjunge/commit -i
 agrx kasperjunge/commit --tool codex
 ```
 
-### Global Options
+#### When to use `agr add` vs `agrx`
+
+| | `agr add` | `agrx` |
+|---|-----------|--------|
+| Persists skill | Yes (permanent install) | No (cleaned up after run) |
+| Updates agr.toml | Yes (adds dependency) | No |
+| Runs the skill | No | Yes (invokes tool CLI) |
+| Local paths | Supported | Not supported (remote only) |
+| Multi-tool | Installs to all configured tools | Uses one tool |
+
+Use `agr add` when you want a skill to persist. Use `agrx` to try a skill or run a one-off task.
+
+### Global Options (agr only, not agrx)
 
 - `--quiet`, `-q` — suppress non-error output
 - `--version`, `-v` — show version and exit
@@ -174,14 +206,14 @@ agrx kasperjunge/commit --tool codex
 
 agr installs skills into 6 AI coding tools simultaneously.
 
-| Tool | Config name | Project skills dir | Global skills dir | CLI | Instruction file |
-|------|-------------|-------------------|-------------------|-----|-----------------|
-| Claude Code | claude | .claude/skills/ | ~/.claude/skills/ | claude | CLAUDE.md |
-| Cursor | cursor | .cursor/skills/ | ~/.cursor/skills/ | agent | AGENTS.md |
-| OpenAI Codex | codex | .agents/skills/ | ~/.agents/skills/ | codex | AGENTS.md |
-| OpenCode | opencode | .opencode/skills/ | ~/.config/opencode/skills/ | opencode | AGENTS.md |
-| GitHub Copilot | copilot | .github/skills/ | ~/.copilot/skills/ | copilot | AGENTS.md |
-| Antigravity | antigravity | .agent/skills/ | ~/.gemini/antigravity/skills/ | (none) | GEMINI.md |
+| Tool | Config name | Invoke skill | Project skills dir | Global skills dir | CLI | Instruction file |
+|------|-------------|-------------|-------------------|-------------------|-----|-----------------|
+| Claude Code | claude | /skill-name | .claude/skills/ | ~/.claude/skills/ | claude | CLAUDE.md |
+| Cursor | cursor | /skill-name | .cursor/skills/ | ~/.cursor/skills/ | agent | AGENTS.md |
+| OpenAI Codex | codex | $skill-name | .agents/skills/ | ~/.agents/skills/ | codex | AGENTS.md |
+| OpenCode | opencode | skill-name | .opencode/skills/ | ~/.config/opencode/skills/ | opencode | AGENTS.md |
+| GitHub Copilot | copilot | /skill-name | .github/skills/ | ~/.copilot/skills/ | copilot | AGENTS.md |
+| Antigravity | antigravity | (via IDE) | .gemini/skills/ | ~/.gemini/skills/ | (none) | GEMINI.md |
 
 Configure tools:
 ```bash
@@ -199,9 +231,9 @@ Claude Code is the default. When multiple tools are configured, `agr add` and `a
 | Claude Code | .claude/, CLAUDE.md |
 | Cursor | .cursor/, .cursorrules |
 | OpenAI Codex | .agents/, .codex |
-| OpenCode | .opencode/ |
-| GitHub Copilot | .github/copilot, .github/skills |
-| Antigravity | .agent/ |
+| OpenCode | .opencode/, opencode.json, opencode.jsonc |
+| GitHub Copilot | .github/copilot/, .github/skills/, .github/copilot-instructions.md, .github/instructions/ |
+| Antigravity | .gemini/, .agents/ |
 
 ### Instruction File Syncing
 
@@ -215,9 +247,7 @@ agr sync   # copies CLAUDE.md content to AGENTS.md, GEMINI.md as needed
 
 ### Skill Naming
 
-Flat tools (Claude, Codex, OpenCode, Copilot, Antigravity) install as `<skills-dir>/<skill-name>/`. On name collision, falls back to `<skills-dir>/<user>--<repo>--<skill>/`.
-
-Cursor uses nested directories: `<skills-dir>/<user>/<repo>/<skill>/`.
+All tools install as `<skills-dir>/<skill-name>/`. On name collision, falls back to `<skills-dir>/<user>--<repo>--<skill>/`.
 
 ## Configuration (agr.toml)
 
@@ -251,7 +281,7 @@ Note: `dependencies` must appear before any `[[source]]` blocks.
 ### Custom Sources
 
 ```bash
-agr config add sources gitlab --type git --url "https://gitlab.com/{owner}/{repo}.git"
+agr config add sources gitlab --url "https://gitlab.com/{owner}/{repo}.git"
 agr config set default_source gitlab
 agr add user/skill --source gitlab
 ```
@@ -260,7 +290,7 @@ agr add user/skill --source gitlab
 
 Set a GitHub token for private repos:
 ```bash
-export GITHUB_TOKEN="ghp_your_token_here"
+export GITHUB_TOKEN="ghp_aBcDeFgHiJkL01234567890mNoPqRsTuVwXy"
 # or
 export GH_TOKEN="$(gh auth token)"
 ```
@@ -286,11 +316,25 @@ user/repo/skill         → github.com/user/repo repo, "skill" directory
 ./path/to/skill         → local directory on disk
 ```
 
-Two-part handles (`user/skill`) default to a repo named `skills`. During a deprecation period, agr falls back to `agent-resources` if the skill isn't found in `skills`.
+Two-part handles (`user/skill`) assume a repo named `skills`. Use three parts (`user/repo/skill`) when skills live in a differently named repo.
 
 ### Skill Discovery
 
 agr recursively searches the repo for any directory named `<skill>` containing `SKILL.md`. Common locations include `skills/{skill}/SKILL.md`, `{skill}/SKILL.md`, or any nesting depth. The shallowest match wins.
+
+### How `agr add` Works Internally
+
+When you run `agr add anthropics/skills/pdf`:
+
+1. **Parse handle** — extract owner (`anthropics`), repo (`skills`), skill name (`pdf`)
+2. **Load config** — read `agr.toml` (or create it) to find configured tools and sources
+3. **Sparse checkout** — clone only the needed files from `github.com/anthropics/skills` (fast, even for large repos)
+4. **Find skill** — recursively search for a directory named `pdf` containing `SKILL.md`; shallowest match wins
+5. **Copy to each tool** — install the entire skill directory into each configured tool's skills folder (e.g., `.claude/skills/pdf/`, `.cursor/skills/pdf/`)
+6. **Write metadata** — save `.agr.json` in each installed copy with the source handle, install timestamp, and SHA-256 content hash
+7. **Update agr.toml** — add the dependency entry to the manifest
+
+If a tool's install fails partway, already-installed copies are rolled back automatically. Skill naming defaults to the plain name (`pdf/`); on collision between different handles sharing the same name, agr falls back to a fully-qualified name (`owner--repo--skill/`).
 
 ## Creating Skills
 
@@ -305,18 +349,24 @@ Creates `my-skill/SKILL.md`:
 ```markdown
 ---
 name: my-skill
-description: What this skill does.
+description: TODO — describe what this skill does and when to use it
 ---
 
-# My Skill
+# my-skill
 
-Instructions for the agent.
+## When to use
+
+Describe when this skill should be used.
+
+## Instructions
+
+Provide detailed instructions here.
 ```
 
 ### SKILL.md Format
 
 Required fields:
-- `name` — max 64 chars, lowercase letters, numbers, hyphens, must match directory name
+- `name` — 1–64 chars, lowercase alphanumeric and hyphens only, cannot start/end with a hyphen or contain consecutive hyphens (`--`), must match directory name
 - `description` — max 1024 chars, describes what the skill does and when to use it
 
 Optional fields:
@@ -371,10 +421,33 @@ agr add anthropics/skills/frontend-design
 git add agr.toml && git commit -m "Add agr skill dependencies"
 ```
 
+### What to commit vs gitignore
+
+Commit `agr.toml` (your skill lockfile) and any local skills in `./skills/`. Gitignore the tool skills directories — `agr sync` recreates them:
+
+```gitignore
+# agr-managed skill directories (recreated by agr sync)
+.claude/skills/
+.cursor/skills/
+.agents/skills/
+.opencode/skills/
+.github/skills/
+.gemini/skills/
+```
+
 ### Teammates
 
 ```bash
 uv tool install agr
+agr sync
+```
+
+### Private repos
+
+Set `GITHUB_TOKEN` or `GH_TOKEN` for private skill repositories. The token needs Contents: Read-only access.
+
+```bash
+export GITHUB_TOKEN="ghp_..."
 agr sync
 ```
 
@@ -385,7 +458,7 @@ agr sync
   run: uv tool install agr
 
 - name: Sync skills
-  run: agr sync
+  run: agr sync -q
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -398,7 +471,7 @@ Use agr as a library:
 pip install agr
 ```
 
-### Loading Skills
+### Load skills from GitHub or local paths
 
 ```python
 from agr import Skill
@@ -412,25 +485,55 @@ print(skill.path)     # local path
 # Force re-download
 skill = Skill.from_git("kasperjunge/commit", force_download=True)
 
+# Private repos — uses GITHUB_TOKEN / GH_TOKEN from environment
+skill = Skill.from_git("my-org/private-repo/internal-skill")
+
 # From local directory
 skill = Skill.from_local("./my-skill")
 ```
 
-### Discovering Skills
+### Discover skills in a repository
 
 ```python
 from agr import list_skills, skill_info
 
-# List all skills in a repo
+# List all skills in a repo (description is None — use skill_info() for descriptions)
 for info in list_skills("anthropics/skills"):
-    print(f"{info.handle}: {info.description}")
+    print(f"{info.handle}: {info.name}")
 
-# Get details about one skill
+# Get details about one skill (fetches SKILL.md to extract description)
 info = skill_info("anthropics/skills/code-review")
 print(info.name, info.owner, info.repo, info.description)
 ```
 
-### Cache Management
+Both functions use the GitHub API and respect `GITHUB_TOKEN` / `GH_TOKEN` for authentication. `list_skills()` discovers skills from the repo tree without downloading each SKILL.md, so `description` is always `None`. Use `skill_info()` to get the description for a specific skill.
+
+### ParsedHandle Type
+
+Returned by `skill.handle`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| username | str or None | GitHub username (None for local skills) |
+| repo | str or None | Repository name (None = default "skills" repo) |
+| name | str | Skill name (final segment of the handle) |
+| is_local | bool | True for local path references |
+| local_path | Path or None | Original local path (if is_local) |
+| is_remote | bool (property) | True for GitHub references |
+
+### SkillInfo Type
+
+Returned by `list_skills()` and `skill_info()`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| name | str | Skill name |
+| handle | str | Full handle (e.g., "owner/repo/skill") |
+| description | str or None | First body paragraph from SKILL.md (None from list_skills, populated from skill_info) |
+| repo | str | Repository name |
+| owner | str | GitHub owner/username |
+
+### Manage the download cache
 
 ```python
 from agr import cache
@@ -441,11 +544,13 @@ cache.clear()                       # clear all
 cache.clear("anthropics/skills/*")  # clear by pattern
 ```
 
-### Error Handling
+### Handle errors with AgrError subclasses
+
+All SDK errors inherit from `AgrError`, including network failures. Catch specific subclasses for targeted handling, or catch `AgrError` as a fallback for any SDK error:
 
 ```python
 from agr.exceptions import (
-    AgrError,              # base class
+    AgrError,              # base class — also raised for network failures
     InvalidHandleError,    # unparseable handle
     InvalidLocalPathError, # missing path or SKILL.md
     SkillNotFoundError,    # skill not in repo
@@ -456,16 +561,32 @@ from agr.exceptions import (
 )
 ```
 
-### Skill Properties
+Network failures (DNS resolution, timeouts, connection refused) in `list_skills()`, `skill_info()`, and `Skill.from_git()` raise `AgrError` — not Python's built-in `ConnectionError`.
+
+### Skill properties and metadata
 
 | Property | Type | Description |
 |----------|------|-------------|
 | name | str | Skill name |
 | path | Path | Local path to skill directory |
+| handle | ParsedHandle or None | Parsed handle with owner, repo, and name components |
+| source | str or None | Source name the skill was fetched from (e.g., "github") |
+| revision | str or None | Git commit hash (first 12 chars) of the fetched revision |
 | prompt | str | Contents of SKILL.md (lazy-loaded) |
 | files | list[str] | Relative file paths (lazy-loaded) |
-| metadata | dict | Skill metadata (name, path, source, revision, handle) |
+| metadata | dict | Combined metadata dict (name, path, source, revision, handle, is_local) |
 | content_hash | str or None | SHA-256 hash from .agr.json |
+
+The `handle`, `source`, and `revision` attributes are set by `from_git()`. For locally loaded skills, `source` and `revision` are `None`.
+
+```python
+skill = Skill.from_git("anthropics/skills/code-review")
+print(skill.source)    # "github"
+print(skill.revision)  # "a1b2c3d4e5f6"
+print(skill.handle.username)  # "anthropics"
+print(skill.handle.repo)      # "skills"
+print(skill.handle.name)      # "code-review"
+```
 
 ### Reading Files
 
@@ -474,12 +595,22 @@ content = skill.read_file("scripts/lint.sh")
 # Path traversal is blocked — paths with .. raise ValueError
 ```
 
+### Content Hash Verification
+
+Installed skills include a SHA-256 content hash in their `.agr.json` metadata. Use it to detect whether skill files have been modified on disk since installation:
+
+```python
+skill = Skill.from_git("anthropics/skills/code-review")
+if skill.content_hash != skill.recompute_content_hash():
+    print("Skill files have changed since install")
+```
+
 ## Updating Skills
 
-agr has no dedicated update command. Reinstall to get the latest version:
+Use the `--overwrite` (`-o`) flag to update a skill to the latest version:
 
 ```bash
-agr add user/skill --overwrite
+agr add user/skill -o
 ```
 
 ## Skill Directory
@@ -536,29 +667,259 @@ Search GitHub for more: https://github.com/search?q=filename%3ASKILL.md&type=cod
 
 ## Troubleshooting
 
-### "Repository not found"
-The repo doesn't exist or is private. Check the handle for typos, set GITHUB_TOKEN for private repos, or use the three-part handle format for non-default repo names.
+### Installation Errors
 
-### "Skill not found in repository"
-The repo exists but has no matching skill directory with SKILL.md. Check the repo on GitHub. agr suggests correct handles when it can.
+#### "git CLI not found"
+`Error: git CLI not found. Install git to fetch remote skills.`
+agr uses git for all remote operations. Install git: `xcode-select --install` (macOS), `sudo apt install git` (Ubuntu/Debian), or download from git-scm.com (Windows).
 
-### "Skill already exists"
+#### "Repository not found"
+`Error: Repository 'user/skills' not found in source 'github'.`
+The repo doesn't exist or is private. Check the handle for typos, set `GITHUB_TOKEN` for private repos, or use the three-part handle format (`user/repo/skill`) for non-default repo names.
+
+#### "Authentication failed"
+`Error: Authentication failed for source 'github'.`
+Token missing, expired, or wrong permissions. Export `GITHUB_TOKEN` or `GH_TOKEN` with Contents: Read-only access. Generate a new token at github.com/settings/tokens.
+
+#### "Skill not found in repository"
+`Error: Skill 'myskill' not found in repository. No directory named 'myskill' containing SKILL.md was found.`
+The repo exists but has no matching skill directory with SKILL.md. Check the repo on GitHub. agr suggests correct handles when it can — e.g., if you used a two-part handle for a repo with a different name.
+
+#### "Skill not found in sources"
+`Error: Skill 'myskill' not found in sources: github`
+All configured sources were searched and no matching skill was found. Check the handle, try the three-part format (`user/repo/skill`), or verify your sources with `agr config get sources`.
+
+#### "Skill already exists"
+`Error: Skill already exists at /path/to/skill. Use --overwrite to replace.`
 Use `--overwrite`: `agr add user/skill --overwrite`
 
-### "Authentication failed"
-Token missing, expired, or wrong permissions. Export GITHUB_TOKEN or GH_TOKEN with Contents: Read-only access.
+#### "Network error: could not resolve host"
+`Error: Network error: could not resolve host for source 'github'.`
+DNS resolution failed. Check your internet connection, VPN, or proxy settings.
 
-### "Invalid handle"
-Single words are treated as local paths. For remote skills, include the username: `agr add kasperjunge/commit` not `agr add commit`. Max three parts: `user/repo/skill`.
+#### "Failed to clone repository"
+`Error: Failed to clone repository from source 'github'.`
+Catch-all when git clone fails for an unclassified reason. Check: disk space, file permissions on the temp directory, or corporate proxy/firewall settings. Try cloning manually with `git clone https://github.com/user/repo.git`. If manual clone works but agr doesn't, open an issue.
 
-### "No agr.toml found"
-Run `agr init` first.
+#### "agr onboard requires an interactive terminal"
+`Error: agr onboard requires an interactive terminal. Hint: Use 'agr init' for non-interactive setup.`
+`agr onboard` needs a real terminal (TTY). In CI/CD or scripts, use `agr init --tools claude,cursor` instead.
 
-### "Not in a git repository"
-Run inside a git repo, or use `--global` for agrx.
+### Handle Format Errors
 
-### Sync shows "Up to date" but skill seems outdated
-Remove and re-add: `agr remove user/skill && agr add user/skill`
+#### "Invalid handle: remote handles require username/name format"
+`Error: Invalid handle 'commit': remote handles require username/name format`
+Single words are treated as local paths. For remote skills, include the username: `agr add kasperjunge/commit` not `agr add commit`.
+
+#### "Too many path segments"
+`Error: Invalid handle 'a/b/c/d': too many path segments (expected user/name or user/repo/name)`
+Handles support at most three parts: `user/repo/skill`. Check for extra slashes.
+
+#### "Contains reserved sequence '--'"
+`Error: Invalid handle 'user/my--skill': skill name 'my--skill' contains reserved sequence '--'`
+Skill names cannot contain consecutive hyphens. Use single hyphens (e.g., `my-skill`).
+
+### Configuration Errors
+
+#### "No agr.toml found"
+`Error: No agr.toml found. Run 'agr init' first to create one.`
+Run `agr init` or `agr onboard` to create one.
+
+#### "Not in a git repository"
+`Error: Not in a git repository`
+Project-level commands need a git repo. Run `git init` or use `--global` for agrx: `agrx anthropics/skills/pdf --global`.
+
+#### "Unknown tool"
+`Error: Unknown tool 'photoshop' in agr.toml. Available: claude, cursor, codex, opencode, copilot, antigravity`
+Check your `agr.toml` for typos in the `tools` list.
+
+#### Why does `agr init` detect a tool I don't use?
+Some detection signals are shared between tools (e.g., `.agents/` triggers both Codex and Antigravity). Override with: `agr init --tools claude,codex` or remove unwanted tools: `agr config remove tools antigravity`.
+
+#### "Cannot remove all tools. At least one must remain."
+agr requires at least one tool in the `tools` list. Add the new tool before removing the old one: `agr config add tools codex` then `agr config remove tools claude`.
+
+#### "Invalid TOML in agr.toml"
+`Error: Invalid TOML in agr.toml: ...`
+Syntax error in agr.toml. Common causes: missing quotes, unclosed brackets, trailing commas (TOML doesn't allow them).
+
+#### "default_tool must be listed in tools"
+`Error: default_tool must be listed in tools in agr.toml`
+Your `default_tool` value isn't in your `tools` list. Either add it to tools or change default_tool.
+
+#### "default_source not found in [[source]] list"
+`Error: default_source 'my-server' not found in [[source]] list`
+Your `default_source` refers to a source that doesn't exist. Add the source or fix the name.
+
+#### "dependencies must be declared before [[source]] blocks"
+`Error: dependencies must be declared before [[source]] blocks`
+In `agr.toml`, the `dependencies` array must come before any `[[source]]` entries.
+
+#### "Unknown source in dependency"
+`Error: Unknown source 'gitlab' in dependency 'user/skill'`
+A dependency specifies a `source` not in your `[[source]]` list. Add the source or remove the field from the dependency.
+
+#### "Dependency cannot have both handle and path"
+Each dependency must use either `handle` (remote) or `path` (local), not both.
+
+#### "Dependency must have either handle or path"
+A dependency is missing both `handle` and `path`. Every dependency needs one.
+
+#### "canonical_instructions must be 'AGENTS.md', 'CLAUDE.md', or 'GEMINI.md'"
+Only these three instruction file names are supported for syncing.
+
+#### "Cannot unset sources"
+`Error: Cannot unset sources. Use 'agr config remove sources <name>'.`
+Sources can't be cleared with `unset`. Remove individual sources with `agr config remove sources my-server`.
+
+#### "expects exactly one value"
+`Error: 'default_tool' expects exactly one value.`
+Scalar keys (`default_tool`, `default_source`, `sync_instructions`, `canonical_instructions`) accept a single value. Use `agr config set default_tool claude`, not `agr config set default_tool claude cursor`.
+
+#### "At least one tool name is required"
+`Error: At least one tool name is required.`
+You ran `agr config set tools` or `agr config add tools` without tool names. Provide at least one: `agr config set tools claude`.
+
+#### "sync_instructions must be 'true' or 'false'"
+`Error: sync_instructions must be 'true' or 'false'.`
+The setting only accepts boolean values. Use `agr config set sync_instructions true` or `false`.
+
+#### "Neither $VISUAL nor $EDITOR is set"
+`Error: Neither $VISUAL nor $EDITOR is set.`
+`agr config edit` needs an editor configured. Set one: `export EDITOR="vim"` (or nano, code, etc.).
+
+#### "No global config found"
+`Error: No global config found at ~/.agr/agr.toml`
+Run a global config command but no global config exists. Create one with `agr add -g user/skill`.
+
+#### "Unknown config key"
+`Error: Unknown config key 'tool'. Valid keys: canonical_instructions, default_source, default_tool, sources, sync_instructions, tools`
+Check the error hint for valid key names. Common mistakes: `tool` instead of `tools`, `source` instead of `sources`, `instructions` instead of `sync_instructions`.
+
+#### "'default_tool' is a scalar. Use 'agr config set'"
+`Error: 'default_tool' is a scalar. Use 'agr config set default_tool <value>'.`
+You used `agr config add` or `agr config remove` on a scalar key. Scalar keys (`default_tool`, `default_source`, `sync_instructions`, `canonical_instructions`) use `set`/`unset`. List keys (`tools`, `sources`) use `add`/`remove`.
+
+#### "Cannot set sources directly"
+`Error: Cannot set sources directly. Use 'agr config add sources' and 'agr config remove sources'.`
+Sources can't be replaced in one shot with `set`. Add and remove them individually.
+
+#### "--url is required when adding a source"
+`Error: --url is required when adding a source.`
+When adding a source, provide a URL template with `{owner}` and `{repo}` placeholders: `agr config add sources my-server --url "https://git.example.com/{owner}/{repo}.git"`.
+
+#### "Source already exists"
+`Error: Source 'github' already exists.`
+Remove the old source first, then re-add it: `agr config remove sources github` then `agr config add sources github --url "..."`.
+
+#### "Tool is not in configured tools"
+`Error: Tool 'codex' is not in configured tools. Add it first with 'agr config add tools codex'.`
+You tried to set `default_tool` to a tool not in your `tools` list. Add it first: `agr config add tools codex`.
+
+#### "Unknown tool(s)"
+`Error: Unknown tool(s): photoshop`
+You passed an unrecognized tool name to `agr config set tools`, `agr config add tools`, or `agr config remove tools`. Valid names: claude, cursor, codex, opencode, copilot, antigravity.
+
+#### "Unknown default_tool in agr.toml"
+`Error: Unknown default_tool 'vscode' in agr.toml. Available: claude, cursor, codex, opencode, copilot, antigravity`
+Your `default_tool` is set to a tool name agr doesn't recognize (not just absent from `tools`). Fix with `agr config set default_tool claude`.
+
+#### "Source name is required" / "Only one source name allowed"
+When adding or removing sources, provide exactly one source name: `agr config add sources gitlab --url "..."` or `agr config remove sources gitlab`.
+
+#### "--type and --url are only valid for 'sources'"
+The `--type` and `--url` flags only work with `agr config add sources`. Don't pass them to other keys like `tools`.
+
+### Syncing Errors
+
+#### "No dependencies in agr.toml. Nothing to sync."
+Your `agr.toml` has no `dependencies` entry. Add skills first: `agr add user/skill`.
+
+#### "Instruction sync skipped: CLAUDE.md not found."
+The canonical instruction file doesn't exist. Create it with `touch CLAUDE.md`, then run `agr sync` again.
+
+#### Why does instruction sync not do anything?
+Two common causes: (1) Only one tool configured — syncing requires 2+ tools. (2) All configured tools use the same instruction file (e.g., Cursor, Codex, OpenCode all use AGENTS.md).
+
+#### Sync shows "Up to date" but skill seems outdated
+Use `--overwrite` to force a fresh install: `agr add user/skill --overwrite`
+
+### Source Errors
+
+#### "Cannot remove default source"
+`Error: Cannot remove default source 'my-server'. Change default_source first.`
+Change the default first: `agr config set default_source github`, then `agr config remove sources my-server`.
+
+#### "Source not found" (when removing)
+`Error: Source 'my-server' not found.`
+The source you're trying to remove doesn't exist. Check current sources with `agr config get sources`.
+
+#### "Source entry missing name"
+Every `[[source]]` block needs a `name` field.
+
+#### "Source missing url"
+Every `[[source]]` block needs a `url` template field.
+
+#### "Unsupported source type"
+`Error: Unsupported source type 'svn' for 'my-server'`
+Only `git` sources are supported. Change the `type` to `git`.
+
+#### "GitHub API rate limit exceeded"
+`Error: GitHub API rate limit exceeded`
+Mainly affects the Python SDK (list_skills(), skill_info()), not agr add/sync which use Git clones. Set `GITHUB_TOKEN` to raise your limit from 60/hour (unauthenticated) to 5,000/hour. Rate limits reset hourly.
+
+#### "GitHub API authentication failed"
+`Error: GitHub API authentication failed (HTTP 403)`
+SDK-specific error — your `GITHUB_TOKEN` was rejected by the GitHub API. Unlike the git-level "Authentication failed" error (which fires during `agr add`), this fires from SDK functions like `list_skills()` and `skill_info()`. Check: token revoked/expired (regenerate at github.com/settings/tokens), wrong token type (fine-grained tokens need Contents: Read-only permission). HTTP 401 means invalid token; 403 means insufficient permissions.
+
+#### "Failed to connect to GitHub API"
+`Error: Failed to connect to GitHub API: <urlopen error ...>`
+The SDK couldn't reach api.github.com. Affects `list_skills()`, `skill_info()`, and other SDK functions that call the GitHub REST API. Check your internet connection, corporate proxy/firewall (`curl -s https://api.github.com`), or DNS/VPN settings.
+
+#### "Local skills cannot specify a source"
+The `--source` flag only applies to remote handles. Local paths are installed directly from disk.
+
+### Creating Skills Errors
+
+#### "Invalid skill name"
+`Error: Invalid skill name 'My_Skill': must be 1-64 lowercase alphanumeric characters and hyphens, cannot start/end with a hyphen`
+Use lowercase alphanumeric with hyphens only. No uppercase, underscores, or spaces.
+
+#### "Directory already exists"
+`agr init` won't overwrite an existing directory. Remove it or choose a different name.
+
+#### "Local skill name is already installed"
+`Error: Local skill name 'my-skill' is already installed at /path/to/my-skill. agr allows only one local skill with a given name.`
+agr enforces unique local skill names. Rename one or remove the existing one.
+
+#### "not a valid skill (missing SKILL.md)"
+`Error: './my-skill' is not a valid skill (missing SKILL.md)`
+The path doesn't contain a `SKILL.md` file. Create one with the required frontmatter (name and description).
+
+#### Why is my skill not showing up in my tool?
+Verify: (1) skill directory exists in tool's skills folder, (2) SKILL.md has valid frontmatter with name and description, (3) restart the tool, (4) check `agr list`.
+
+### Global Install Errors
+
+#### "No global agr.toml found"
+`Error: No global agr.toml found. Run 'agr add -g <handle>' first.`
+Install a skill globally to create the global config: `agr add -g user/skill`. Global config lives at `~/.agr/agr.toml`.
+
+### agrx Errors
+
+#### "Tool CLI not found"
+`Error: Tool CLI 'codex' not found. Install it to use agrx.`
+agrx needs the tool's CLI installed. CLIs: claude (Claude Code), agent (Cursor), codex (OpenAI Codex), opencode (OpenCode), copilot (GitHub Copilot). Check `which claude` to verify it's on your PATH.
+
+#### "agrx only works with remote handles"
+`Error: agrx only works with remote handles. Hint: Use 'agr add' for local skills`
+agrx downloads from GitHub — it doesn't work with local paths. Use `agr add ./my-skill` for local skills.
+
+#### Why can't I use agrx with Antigravity?
+Antigravity has no standalone CLI. Use `agr add` to install skills, then use them through the Antigravity IDE interface.
+
+#### How do I use agrx outside a git repository?
+Use `--global`: `agrx anthropics/skills/pdf --global`. This installs to the global skills directory, runs, and cleans up.
 
 ## Migrating
 
@@ -577,8 +938,21 @@ agr handles point to a specific skill, not a repo:
 ### Old Rules or Commands to Skills
 
 ```bash
-agrx kasperjunge/migrate-to-skills
+agrx kasperjunge/agent-resources/migrate-to-skills
 ```
+
+### Automatic Directory Migrations
+
+`agr sync`, `agr add`, and `agr remove` automatically migrate skills from old directory layouts. No manual steps needed.
+
+| Tool | Old directory | New directory |
+|------|-------------|---------------|
+| Antigravity | `.agent/skills/` | `.gemini/skills/` |
+| OpenAI Codex | `.codex/skills/` | `.agents/skills/` |
+| OpenCode | `.opencode/skill/` | `.opencode/skills/` |
+| Cursor | `.cursor/skills/owner/repo/skill/` (nested) | `.cursor/skills/skill/` (flat) |
+
+If you see skills in the old locations, run `agr sync` to move them automatically.
 
 ## License
 

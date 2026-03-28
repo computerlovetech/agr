@@ -5,8 +5,11 @@ import signal
 import subprocess
 import sys
 import uuid
+import contextlib
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Optional
+from collections.abc import Generator
+from typing import Annotated
 
 import typer
 
@@ -17,9 +20,7 @@ from agr.fetcher import install_remote_skill
 from agr.handle import parse_handle
 from agr.tool import (
     DEFAULT_TOOL_NAMES,
-    TOOLS,
     ToolConfig,
-    available_tools_string,
     get_tool,
 )
 
@@ -70,10 +71,38 @@ def _check_tool_cli(tool_config: ToolConfig) -> None:
 def _cleanup_skill(skill_path: Path) -> None:
     """Clean up a temporary skill."""
     if skill_path.exists():
-        try:
+        with contextlib.suppress(OSError):
             shutil.rmtree(skill_path)
-        except OSError:
-            pass  # Best effort cleanup
+
+
+@contextmanager
+def _temporary_skill(skill_path: Path) -> Generator[None, None, None]:
+    """Ensure a temporary skill is cleaned up on normal exit or signal.
+
+    Installs SIGINT/SIGTERM handlers that remove the skill directory,
+    restores the original handlers on exit, and performs cleanup in the
+    ``finally`` block for the non-signal path.
+    """
+    cleanup_done = False
+
+    def _on_signal(signum: int, frame: object) -> None:
+        nonlocal cleanup_done
+        if not cleanup_done:
+            cleanup_done = True
+            _cleanup_skill(skill_path)
+        sys.exit(1)
+
+    original_sigint = signal.signal(signal.SIGINT, _on_signal)
+    original_sigterm = signal.signal(signal.SIGTERM, _on_signal)
+
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, original_sigint)
+        signal.signal(signal.SIGTERM, original_sigterm)
+        if not cleanup_done:
+            cleanup_done = True
+            _cleanup_skill(skill_path)
 
 
 def _build_skill_command(
@@ -83,7 +112,17 @@ def _build_skill_command(
     non_interactive: bool,
 ) -> list[str]:
     """Build the command to run a skill with the selected tool."""
-    if non_interactive and tool_config.cli_exec_command:
+    # Use cli_exec_command for non-interactive mode, or when interactive mode
+    # has no prompt injection (i.e. no --prompt flag and no positional prompt).
+    has_interactive_prompt = (
+        tool_config.cli_interactive_prompt_flag
+        or tool_config.cli_interactive_prompt_positional
+    )
+    use_exec = tool_config.cli_exec_command and (
+        non_interactive or not has_interactive_prompt
+    )
+    if use_exec:
+        assert tool_config.cli_exec_command is not None
         cmd = list(tool_config.cli_exec_command)
     else:
         assert tool_config.cli_command is not None
@@ -99,6 +138,38 @@ def _build_skill_command(
     return cmd
 
 
+def _run_skill_command(
+    tool_config: ToolConfig,
+    skill_prompt: str,
+    *,
+    interactive: bool,
+) -> None:
+    """Build and execute the skill command with the selected tool.
+
+    Handles interactive vs non-interactive modes, force flags, and
+    stderr suppression based on tool configuration.
+    """
+    cmd = _build_skill_command(
+        tool_config,
+        skill_prompt,
+        non_interactive=not interactive,
+    )
+    if interactive and tool_config.cli_force_flag:
+        cmd.append(tool_config.cli_force_flag)
+
+    if not interactive and tool_config.suppress_stderr_non_interactive:
+        result = subprocess.run(
+            cmd,
+            check=False,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if result.returncode != 0 and result.stderr:
+            sys.stderr.write(result.stderr)
+    else:
+        subprocess.run(cmd, check=False)
+
+
 @app.command()
 def main(
     handle: Annotated[
@@ -108,7 +179,7 @@ def main(
         ),
     ],
     tool: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--tool",
             "-t",
@@ -127,7 +198,7 @@ def main(
         ),
     ] = False,
     prompt: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--prompt",
             "-p",
@@ -135,7 +206,7 @@ def main(
         ),
     ] = None,
     source: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--source",
             "-s",
@@ -169,30 +240,24 @@ def main(
     # Determine which tool to use
     tool_name = tool or _get_default_tool()
 
-    # Validate tool name
-    if tool_name not in TOOLS:
-        print_error(f"Unknown tool '{tool_name}'")
-        console.print(f"[dim]Available tools: {available_tools_string()}[/dim]")
-        raise typer.Exit(1)
-
-    tool_config = get_tool(tool_name)
-
-    # Find repo root (or use global dir)
-    repo_root: Path | None = None
-    if global_install:
-        skills_dir = tool_config.get_global_skills_dir()
-    else:
-        repo_root = find_repo_root()
-        if repo_root is None:
-            print_error("Not in a git repository")
-            console.print(
-                f"[dim]Use --global to install to "
-                f"{tool_config.get_global_skills_dir()}[/dim]"
-            )
-            raise typer.Exit(1)
-        skills_dir = tool_config.get_skills_dir(repo_root)
-
     try:
+        tool_config = get_tool(tool_name)
+
+        # Find repo root (or use global dir)
+        repo_root: Path | None = None
+        if global_install:
+            skills_dir = tool_config.get_global_skills_dir()
+        else:
+            repo_root = find_repo_root()
+            if repo_root is None:
+                print_error("Not in a git repository")
+                console.print(
+                    f"[dim]Use --global to install to "
+                    f"{tool_config.get_global_skills_dir()}[/dim]"
+                )
+                raise typer.Exit(1)
+            skills_dir = tool_config.get_skills_dir(repo_root)
+
         # Parse handle
         parsed = parse_handle(handle)
 
@@ -227,20 +292,7 @@ def main(
             install_name=prefixed_name,
         )
 
-        # Set up cleanup handlers
-        cleanup_done = False
-
-        def cleanup_handler(signum, frame):
-            nonlocal cleanup_done
-            if not cleanup_done:
-                cleanup_done = True
-                _cleanup_skill(temp_skill_path)
-            sys.exit(1)
-
-        original_sigint = signal.signal(signal.SIGINT, cleanup_handler)
-        original_sigterm = signal.signal(signal.SIGTERM, cleanup_handler)
-
-        try:
+        with _temporary_skill(temp_skill_path):
             console.print(
                 f"[dim]Running skill '{parsed.name}' with {tool_name}...[/dim]"
             )
@@ -258,45 +310,7 @@ def main(
             if prompt:
                 skill_prompt += f" {prompt}"
 
-            # Run the appropriate CLI
-            if interactive:
-                # Run the skill in interactive mode
-                cmd = _build_skill_command(
-                    tool_config,
-                    skill_prompt,
-                    non_interactive=False,
-                )
-                if tool_config.cli_force_flag:
-                    cmd.append(tool_config.cli_force_flag)
-                subprocess.run(cmd, check=False)
-            else:
-                # Just run the skill
-                cmd = _build_skill_command(
-                    tool_config,
-                    skill_prompt,
-                    non_interactive=True,
-                )
-                if tool_config.suppress_stderr_non_interactive:
-                    result = subprocess.run(
-                        cmd,
-                        check=False,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                    )
-                    if result.returncode != 0 and result.stderr:
-                        sys.stderr.write(result.stderr)
-                else:
-                    subprocess.run(cmd, check=False)
-
-        finally:
-            # Restore signal handlers
-            signal.signal(signal.SIGINT, original_sigint)
-            signal.signal(signal.SIGTERM, original_sigterm)
-
-            # Clean up
-            if not cleanup_done:
-                cleanup_done = True
-                _cleanup_skill(temp_skill_path)
+            _run_skill_command(tool_config, skill_prompt, interactive=interactive)
 
     except AgrError as e:
         print_error(str(e))

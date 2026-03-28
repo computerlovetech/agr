@@ -12,7 +12,8 @@ from agr.exceptions import (
     RepoNotFoundError,
     SkillNotFoundError,
 )
-from agr.sdk.skill import Skill, _get_head_commit
+from agr.git import get_head_commit
+from agr.sdk.skill import Skill
 
 
 class TestSkillFromLocal:
@@ -199,7 +200,7 @@ class TestSkillFromGit:
 
     @patch("agr.sdk.skill.downloaded_repo")
     @patch("agr.sdk.skill.prepare_repo_for_skill")
-    @patch("agr.sdk.skill._get_head_commit")
+    @patch("agr.sdk.skill.get_head_commit")
     @patch("agr.sdk.skill.is_cached")
     @patch("agr.sdk.skill.cache_skill")
     def test_from_git_downloads_and_caches(
@@ -227,7 +228,7 @@ class TestSkillFromGit:
         mock_cache_skill.assert_called_once()
 
     @patch("agr.sdk.skill.downloaded_repo")
-    @patch("agr.sdk.skill._get_head_commit")
+    @patch("agr.sdk.skill.get_head_commit")
     @patch("agr.sdk.skill.is_cached")
     @patch("agr.sdk.skill.get_skill_cache_path")
     def test_from_git_uses_cache_when_available(
@@ -254,7 +255,7 @@ class TestSkillFromGit:
 
     @patch("agr.sdk.skill.downloaded_repo")
     @patch("agr.sdk.skill.prepare_repo_for_skill")
-    @patch("agr.sdk.skill._get_head_commit")
+    @patch("agr.sdk.skill.get_head_commit")
     @patch("agr.sdk.skill.is_cached")
     def test_from_git_skill_not_found(
         self,
@@ -310,11 +311,11 @@ class TestSkillContentHash:
 
 
 class TestGetHeadCommit:
-    """Tests for _get_head_commit function."""
+    """Tests for get_head_commit function."""
 
     def test_returns_commit_hash(self, mock_github_repo: Path):
         """Test returns commit hash for valid git repo."""
-        commit = _get_head_commit(mock_github_repo)
+        commit = get_head_commit(mock_github_repo)
 
         # Should be a 12-char hex string (truncated SHA)
         assert len(commit) == 12
@@ -326,8 +327,8 @@ class TestGetHeadCommit:
         non_git_dir = tmp_path / "not-a-repo"
         non_git_dir.mkdir()
 
-        hash1 = _get_head_commit(non_git_dir)
-        hash2 = _get_head_commit(non_git_dir)
+        hash1 = get_head_commit(non_git_dir)
+        hash2 = get_head_commit(non_git_dir)
 
         # Both should be 12-char hex strings
         assert len(hash1) == 12
@@ -348,8 +349,8 @@ class TestGetHeadCommit:
         # Get hashes at roughly the same time
         # Even if time is same, different paths should produce different hashes
         # (though in practice time.time_ns() will differ)
-        hash1 = _get_head_commit(dir1)
-        hash2 = _get_head_commit(dir2)
+        hash1 = get_head_commit(dir1)
+        hash2 = get_head_commit(dir2)
 
         # Both are valid hashes
         assert len(hash1) == 12

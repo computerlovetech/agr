@@ -1,12 +1,8 @@
 # Agent Resources (agr)
 
-> A package and project manager for AI agent skills.
+> A package manager for AI agent skills. Install, share, and run skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
 
 For the complete documentation in a single file, see [llms-full.txt](https://kasperjunge.github.io/agent-resources/llms-full.txt).
-
-## What This Is
-
-agr is a CLI tool that lets developers install, share, and manage AI agent skills from GitHub.
 
 ## Quick Start
 
@@ -21,45 +17,146 @@ Run once without installing:
 agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
 ```
 
-## Key Pages
+## Documentation Map
 
-- [Home](https://kasperjunge.github.io/agent-resources/) - Install and use skills
-- [Creating Skills](https://kasperjunge.github.io/agent-resources/creating/) - Author your own
-- [Reference](https://kasperjunge.github.io/agent-resources/reference/) - CLI commands and troubleshooting
+### Getting Started
+- [Home](https://kasperjunge.github.io/agent-resources/) — Install agr, add your first skill, and see what's available
+- [Tutorial](https://kasperjunge.github.io/agent-resources/tutorial/) — Step-by-step guide from install to sharing your own skill
+- [Core Concepts](https://kasperjunge.github.io/agent-resources/concepts/) — How skills, handles, sources, and scopes work
 
-## Common Commands
+### Guides
+- [Supported Tools](https://kasperjunge.github.io/agent-resources/tools/) — Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity
+- [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/) — Browse official and community skills
+- [Teams](https://kasperjunge.github.io/agent-resources/teams/) — Set up agr for a team with shared skills and CI/CD
+- [Configuration](https://kasperjunge.github.io/agent-resources/configuration/) — Multi-tool setup, custom sources, instruction syncing
+- [agrx](https://kasperjunge.github.io/agent-resources/agrx/) — Run skills ephemerally without installing
+
+### Building Skills
+- [Creating Skills](https://kasperjunge.github.io/agent-resources/creating/) — Write, test, and publish AI agent skills
+- [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/) — Use agr as a library to load and inspect skills
+
+### Reference
+- [CLI Reference](https://kasperjunge.github.io/agent-resources/reference/) — Every command, flag, and config option
+- [Troubleshooting](https://kasperjunge.github.io/agent-resources/troubleshooting/) — Common errors and how to fix them
+- [What's New](https://kasperjunge.github.io/agent-resources/changelog/) — Release notes and breaking changes
+
+## All Commands
 
 ```bash
 agr add user/skill         # Install from GitHub
 agr add user/repo/skill    # From a specific repo
 agr add ./path/to/skill    # Local path
+agr add user/skill -o      # Update to latest version
 agr remove user/skill      # Uninstall
-agr sync                   # Install all dependencies
+agr sync                   # Install all dependencies from agr.toml
 agr list                   # Show installed skills
-agr init                   # Create agr.toml (auto-discovery)
-agr init my-skill          # Create a skill scaffold
-agrx user/skill            # Run temporarily
+agr init                   # Create agr.toml (auto-detects tools)
+agr init my-skill          # Scaffold a new skill
+agr onboard               # Interactive guided setup
+agr config show            # View current config
+agr config set tools claude cursor  # Configure tools
+agr config get <key>       # Read a config value
+agrx user/skill            # Run a skill temporarily
 agrx user/skill -i         # Run, then continue chatting
 ```
 
-## agr.toml Dependencies
+Add `-g` to `add`, `remove`, `sync`, or `list` for global skills (available in all projects).
 
-Each dependency includes a `type`:
+## Handle Format
+
+```
+user/skill              → github.com/user/skills repo, "skill" directory
+user/repo/skill         → github.com/user/repo repo, "skill" directory
+./path/to/skill         → local directory on disk
+```
+
+## agr.toml
+
+Track dependencies and configuration in `agr.toml` — commit it so your team shares the same skills:
 
 ```toml
+tools = ["claude", "cursor", "codex"]
+default_tool = "claude"
+
 dependencies = [
-    {handle = "user/skill", type = "skill"},
-    {path = "./skills/my-skill", type = "skill"},
+    {handle = "anthropics/skills/frontend-design", type = "skill"},
+    {handle = "kasperjunge/commit", type = "skill"},
+    {path = "./skills/local-skill", type = "skill"},
 ]
+
+[[source]]
+name = "github"
+type = "git"
+url = "https://github.com/{owner}/{repo}.git"
 ```
+
+Teammates install everything with: `agr sync`
+
+## Supported Tools
+
+agr installs skills into 6 AI coding tools. Configure with `agr config set tools claude cursor codex`.
+
+| Tool | Config name | Invoke skill | Project skills dir | Instruction file |
+|------|-------------|-------------|-------------------|-----------------|
+| Claude Code | claude | /skill-name | .claude/skills/ | CLAUDE.md |
+| Cursor | cursor | /skill-name | .cursor/skills/ | AGENTS.md |
+| OpenAI Codex | codex | $skill-name | .agents/skills/ | AGENTS.md |
+| OpenCode | opencode | skill-name | .opencode/skills/ | AGENTS.md |
+| GitHub Copilot | copilot | /skill-name | .github/skills/ | AGENTS.md |
+| Antigravity | antigravity | (via IDE) | .gemini/skills/ | GEMINI.md |
+
+## SKILL.md Format
+
+Every skill is a directory with a `SKILL.md` file containing YAML frontmatter:
+
+```markdown
+---
+name: my-skill
+description: What this skill does and when to use it.
+---
+
+Instructions for the AI agent go here.
+```
+
+Required fields: `name` (1–64 chars, lowercase alphanumeric and hyphens) and `description` (max 1024 chars).
+
+## Python SDK
+
+Use agr as a Python library to load skills programmatically:
+
+```python
+from agr import Skill, list_skills, skill_info, cache
+
+# Load a skill from GitHub (cached locally)
+skill = Skill.from_git("anthropics/skills/code-review")
+print(skill.prompt)   # SKILL.md contents
+print(skill.files)    # Files in the skill directory
+
+# Load from local path
+skill = Skill.from_local("./my-skill")
+
+# Discover skills in a repo
+for info in list_skills("anthropics/skills"):
+    print(f"{info.handle}: {info.name}")
+
+# Get description for a specific skill
+info = skill_info("anthropics/skills/code-review")
+print(info.description)
+
+# Manage the download cache
+cache.info()                        # {"skills_count": N, "size_bytes": N}
+cache.clear()                       # Clear all cached skills
+cache.clear("anthropics/skills/*")  # Clear by pattern
+```
+
+All errors inherit from `agr.exceptions.AgrError`. Key subclasses: `SkillNotFoundError`, `RepoNotFoundError`, `AuthenticationError`, `RateLimitError`, `InvalidHandleError`, `InvalidLocalPathError`, `CacheError`.
+
+Full SDK docs: [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/)
 
 ## Source Code
 
 - GitHub: https://github.com/kasperjunge/agent-resources
 - PyPI: https://pypi.org/project/agr/
-
-## Related
-
 - Skills Specification: https://agentskills.io/specification
 - Example Skills: https://github.com/anthropics/skills
 

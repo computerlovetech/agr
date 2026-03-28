@@ -2,3 +2,8 @@ User-agent: *
 Allow: /
 
 Sitemap: https://kasperjunge.github.io/agent-resources/sitemap.xml
+
+# LLM-optimized documentation (llms.txt convention)
+# See https://llmstxt.org for the specification
+Llms-txt: https://kasperjunge.github.io/agent-resources/llms.txt
+Llms-full-txt: https://kasperjunge.github.io/agent-resources/llms-full.txt

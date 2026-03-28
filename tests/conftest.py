@@ -1,6 +1,7 @@
 """Test configuration and fixtures for agr v2."""
 
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,9 +16,27 @@ def pytest_configure(config):
 @pytest.fixture(autouse=True)
 def skip_e2e_in_ci(request):
     """Auto-skip E2E tests in CI based on SKIP_E2E env var."""
-    if request.node.get_closest_marker("e2e"):
-        if os.environ.get("SKIP_E2E", "").lower() in ("1", "true", "yes"):
-            pytest.skip("E2E tests skipped in CI (SKIP_E2E=1)")
+    if request.node.get_closest_marker("e2e") and os.environ.get(
+        "SKIP_E2E", ""
+    ).lower() in ("1", "true", "yes"):
+        pytest.skip("E2E tests skipped in CI (SKIP_E2E=1)")
+
+
+def init_git_repo(path: Path) -> None:
+    """Initialize a directory as a git repo with dummy user config."""
+    subprocess.run(["git", "init"], cwd=path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=path,
+        capture_output=True,
+        check=True,
+    )
 
 
 @pytest.fixture

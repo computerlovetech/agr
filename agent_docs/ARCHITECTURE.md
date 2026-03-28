@@ -71,7 +71,7 @@ Frozen dataclass defining how a tool stores skills. Key fields:
 - `name` — tool identifier (e.g., `"claude"`, `"cursor"`)
 - `config_dir` — project-level config directory (e.g., `".claude"`)
 - `skills_subdir` — subdirectory for skills (always `"skills"`)
-- `supports_nested` — `True` for Cursor (nested `user/repo/skill/` dirs), `False` for others (flat naming)
+- `supports_nested` — `False` for all current tools (flat naming: `skill-name/` directly under skills dir)
 - `global_config_dir` — personal/global path when it differs from project path (e.g., Copilot uses `.github/skills/` locally but `~/.copilot/skills/` globally)
 - `get_skills_dir(repo_root)` → `repo_root / config_dir / skills_subdir`
 - `get_global_skills_dir()` → `Path.home() / (global_config_dir or config_dir) / skills_subdir`

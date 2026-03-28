@@ -1,6 +1,6 @@
 """CLI entry point for agr."""
 
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -112,11 +112,11 @@ def config_add(
     values: Annotated[list[str], typer.Argument(help="Value(s) to add.")],
     global_scope: GlobalScope = False,
     source_type: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--type", help="Source type (for sources key)."),
     ] = None,
     source_url: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--url", help="Source URL (for sources key)."),
     ] = None,
 ) -> None:
@@ -171,7 +171,7 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version",
             "-v",
@@ -319,34 +319,34 @@ def default_tool_unset() -> None:
 @app.command()
 def init(
     skill_name: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(
             help="Name for a new skill scaffold. If omitted, creates agr.toml.",
         ),
     ] = None,
     tools: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--tools",
             help="Comma-separated tool list (e.g., claude,codex,opencode).",
         ),
     ] = None,
     default_tool: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--default-tool",
             help="Default tool for agrx and instruction sync.",
         ),
     ] = None,
     sync_instructions: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--sync-instructions/--no-sync-instructions",
             help="Sync instruction files on agr sync.",
         ),
     ] = None,
     canonical_instructions: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--canonical-instructions",
             help="Canonical instruction file (AGENTS.md, CLAUDE.md, or GEMINI.md).",
@@ -410,7 +410,7 @@ def add(
         ),
     ] = False,
     source: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--source",
             "-s",

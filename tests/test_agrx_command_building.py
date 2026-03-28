@@ -47,7 +47,31 @@ def test_build_skill_command_non_interactive_opencode_run():
     assert cmd == ["opencode", "run", "skill prompt"]
 
 
-def test_build_skill_command_interactive_opencode_prompt_flag():
-    """OpenCode interactive uses --prompt flag."""
+def test_build_skill_command_interactive_opencode_uses_prompt_flag():
+    """OpenCode interactive uses TUI with --prompt flag."""
     cmd = _build_skill_command(OPENCODE, "skill prompt", non_interactive=False)
     assert cmd == ["opencode", "--prompt", "skill prompt"]
+
+
+def test_build_skill_command_non_interactive_claude_print_flag():
+    """Claude non-interactive uses -p flag per CLI docs."""
+    cmd = _build_skill_command(CLAUDE, "/skill prompt", non_interactive=True)
+    assert cmd == ["claude", "-p", "/skill prompt"]
+
+
+def test_build_skill_command_interactive_codex_positional():
+    """Codex interactive falls back to positional prompt (no interactive flag)."""
+    cmd = _build_skill_command(CODEX, "$skill prompt", non_interactive=False)
+    assert cmd == ["codex", "$skill prompt"]
+
+
+def test_build_skill_command_interactive_cursor_positional():
+    """Cursor interactive uses positional prompt per CLI docs."""
+    cmd = _build_skill_command(CURSOR, "/skill prompt", non_interactive=False)
+    assert cmd == ["agent", "/skill prompt"]
+
+
+def test_build_skill_command_non_interactive_copilot_print_flag():
+    """Copilot non-interactive uses -p flag."""
+    cmd = _build_skill_command(COPILOT, "/skill prompt", non_interactive=True)
+    assert cmd == ["copilot", "-p", "/skill prompt"]

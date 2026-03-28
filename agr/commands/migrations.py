@@ -16,14 +16,33 @@ from agr.handle import (
     ParsedHandle,
 )
 from agr.metadata import (
+    METADATA_KEY_ID,
     build_handle_id,
-    compute_content_hash,
+    build_handle_ids,
     read_skill_metadata,
-    write_skill_metadata,
+    stamp_skill_metadata,
 )
 from agr.skill import SKILL_MARKER, is_valid_skill_dir, update_skill_md_name
-from agr.source import DEFAULT_SOURCE_NAME
-from agr.tool import ToolConfig
+from agr.tool import ANTIGRAVITY, CODEX, CURSOR, OPENCODE, ToolConfig
+
+
+def _print_migrated(label: str, old_name: str, new_name: str) -> None:
+    """Print a successful migration message."""
+    get_console().print(f"[blue]{label}:[/blue] {old_name} -> {new_name}")
+
+
+def _print_migrate_failed(label: str, name: str, error: Exception) -> None:
+    """Print a failed migration message with the error detail."""
+    console = get_console()
+    console.print(f"[red]Failed to {label.lower()}:[/red] {name}")
+    console.print(f"  [dim]{error}[/dim]")
+
+
+def _print_migrate_skipped(label: str, name: str, reason: str) -> None:
+    """Print a skipped migration message with the reason."""
+    console = get_console()
+    console.print(f"[yellow]Cannot {label.lower()}:[/yellow] {name}")
+    console.print(f"  [dim]{reason}[/dim]")
 
 
 def _migrate_skills_directory(
@@ -64,24 +83,22 @@ def _migrate_skills_directory(
 
         target = new_skills_dir / skill_dir.name
         if target.exists():
-            console.print(
-                f"[yellow]Cannot migrate:[/yellow] {old_rel}/{skill_dir.name}"
-            )
-            console.print(
-                f"  [dim]Target {new_rel}/{skill_dir.name} already exists[/dim]"
+            _print_migrate_skipped(
+                "Migrate",
+                f"{old_rel}/{skill_dir.name}",
+                f"Target {new_rel}/{skill_dir.name} already exists",
             )
             continue
 
         try:
             shutil.move(str(skill_dir), target)
-            console.print(
-                f"[blue]Migrated:[/blue] "
-                f"{old_rel}/{skill_dir.name} -> "
-                f"{new_rel}/{skill_dir.name}"
+            _print_migrated(
+                "Migrated",
+                f"{old_rel}/{skill_dir.name}",
+                f"{new_rel}/{skill_dir.name}",
             )
         except OSError as e:
-            console.print(f"[red]Failed to migrate:[/red] {old_rel}/{skill_dir.name}")
-            console.print(f"  [dim]{e}[/dim]")
+            _print_migrate_failed("Migrate", f"{old_rel}/{skill_dir.name}", e)
 
     # Warn about non-directory files left behind
     if old_skills_dir.exists():
@@ -126,7 +143,7 @@ def run_tool_migrations(
     tool_by_name = {tool.name: tool for tool in tools}
 
     # Codex migration: .codex/skills/ -> .agents/skills/
-    if "codex" in tool_by_name:
+    if CODEX.name in tool_by_name:
         _migrate_skills_directory(
             base / ".codex" / "skills",
             base / ".agents" / "skills",
@@ -134,8 +151,8 @@ def run_tool_migrations(
         )
 
     # OpenCode migration: .opencode/skill/ -> .opencode/skills/
-    if "opencode" in tool_by_name:
-        tool = tool_by_name["opencode"]
+    if OPENCODE.name in tool_by_name:
+        tool = tool_by_name[OPENCODE.name]
         # Use global_config_dir for global installs (e.g., .config/opencode)
         opencode_dir = (
             tool.global_config_dir
@@ -147,6 +164,87 @@ def run_tool_migrations(
             base / opencode_dir / "skills",
             cleanup_parent=False,
         )
+
+    # Antigravity migration: .agent/skills/ -> .gemini/skills/
+    # Gemini CLI moved from .agent/ to .gemini/ as the primary skills path.
+    if ANTIGRAVITY.name in tool_by_name:
+        _migrate_skills_directory(
+            base / ".agent" / "skills",
+            base / ".gemini" / "skills",
+            cleanup_parent=True,
+        )
+
+    # Antigravity global migration: .gemini/antigravity/skills/ -> .gemini/skills/
+    # Older versions used a nested .gemini/antigravity/ subdir for global skills.
+    if ANTIGRAVITY.name in tool_by_name and global_install:
+        _migrate_skills_directory(
+            base / ".gemini" / "antigravity" / "skills",
+            base / ".gemini" / "skills",
+            cleanup_parent=True,
+        )
+
+    # Cursor migration: flatten nested skill dirs to flat naming.
+    # Old layout stored skills as user/repo/skill/ or local/skill/ inside
+    # .cursor/skills/. Cursor expects flat naming where each skill is a
+    # direct child of the skills directory.
+    if CURSOR.name in tool_by_name:
+        cursor_skills = base / ".cursor" / "skills"
+        _flatten_nested_skills(cursor_skills)
+
+
+def _flatten_nested_skills(skills_dir: Path) -> None:
+    """Flatten nested skill directories to the top level.
+
+    Migrates skills stored in nested layouts (``user/repo/skill/`` or
+    ``local/skill/``) to flat naming (``skill/`` or ``user--repo--skill/``).
+
+    Only moves directories that contain a SKILL.md file.  When the plain
+    skill name is already taken, the fully-qualified ``user--repo--skill``
+    form is used instead.  Empty parent directories are cleaned up.
+
+    Args:
+        skills_dir: Root skills directory to scan (e.g. ``.cursor/skills/``).
+    """
+    if not skills_dir.exists():
+        return
+
+    # Find all SKILL.md files nested more than one level deep.
+    nested: list[Path] = []
+    for skill_md in skills_dir.rglob(SKILL_MARKER):
+        rel = skill_md.relative_to(skills_dir)
+        # Direct children (depth == 2, e.g. "skill/SKILL.md") are fine.
+        if len(rel.parts) <= 2:
+            continue
+        nested.append(skill_md.parent)
+
+    for skill_dir in nested:
+        rel = skill_dir.relative_to(skills_dir)
+        skill_name = skill_dir.name
+
+        # Try the plain name first.
+        target = skills_dir / skill_name
+        if target.exists():
+            # Fall back to flat qualified name (user--repo--skill).
+            flat_name = INSTALLED_NAME_SEPARATOR.join(rel.parts)
+            target = skills_dir / flat_name
+            if target.exists():
+                _print_migrate_skipped(
+                    "Flatten", rel.as_posix(), "Target already exists"
+                )
+                continue
+
+        try:
+            shutil.move(str(skill_dir), target)
+            _print_migrated("Flattened", rel.as_posix(), target.name)
+        except OSError as e:
+            _print_migrate_failed("Flatten", rel.as_posix(), e)
+
+    # Clean up empty intermediate directories left behind.
+    if not skills_dir.exists():
+        return
+    for dirpath in sorted(skills_dir.rglob("*"), reverse=True):
+        if dirpath.is_dir() and not any(dirpath.iterdir()):
+            dirpath.rmdir()
 
 
 def migrate_legacy_directories(skills_dir: Path, tool: ToolConfig) -> None:
@@ -161,7 +259,6 @@ def migrate_legacy_directories(skills_dir: Path, tool: ToolConfig) -> None:
         skills_dir: The skills directory to scan for legacy directories.
         tool: Tool configuration (migration only for non-nested tools).
     """
-    console = get_console()
     # Only migrate for flat tools
     if tool.supports_nested:
         return
@@ -183,16 +280,16 @@ def migrate_legacy_directories(skills_dir: Path, tool: ToolConfig) -> None:
         new_path = skills_dir / new_name
 
         if new_path.exists():
-            console.print(f"[yellow]Cannot migrate:[/yellow] {skill_dir.name}")
-            console.print(f"  [dim]Target {new_name} already exists[/dim]")
+            _print_migrate_skipped(
+                "Migrate", skill_dir.name, f"Target {new_name} already exists"
+            )
             continue
 
         try:
             skill_dir.rename(new_path)
-            console.print(f"[blue]Migrated:[/blue] {skill_dir.name} -> {new_name}")
+            _print_migrated("Migrated", skill_dir.name, new_name)
         except OSError as e:
-            console.print(f"[red]Failed to migrate:[/red] {skill_dir.name}")
-            console.print(f"  [dim]{e}[/dim]")
+            _print_migrate_failed("Migrate", skill_dir.name, e)
 
 
 def _update_dir_metadata(
@@ -204,14 +301,8 @@ def _update_dir_metadata(
 ) -> None:
     """Update SKILL.md name and write metadata for a skill directory."""
     update_skill_md_name(skill_dir, skill_dir.name)
-    write_skill_metadata(
-        skill_dir,
-        handle,
-        repo_root,
-        tool_name,
-        skill_dir.name,
-        source_name,
-        compute_content_hash(skill_dir),
+    stamp_skill_metadata(
+        skill_dir, handle, repo_root, tool_name, skill_dir.name, source_name
     )
 
 
@@ -241,7 +332,6 @@ def migrate_flat_installed_names(
     Only applies to flat tools (e.g. Claude). Nested tools (e.g. Cursor)
     already use ``user/repo/skill/`` paths and don't need this.
     """
-    console = get_console()
     if tool.supports_nested:
         return
 
@@ -255,8 +345,7 @@ def migrate_flat_installed_names(
         if not (dep.path or dep.handle):
             continue
         try:
-            handle = dep.to_parsed_handle()
-            source_name = dep.resolve_source_name(config.default_source)
+            handle, source_name = dep.resolve(config.default_source)
         except (AgrError, ValueError):
             continue
         handles_by_name.setdefault(handle.name, []).append((handle, source_name))
@@ -265,25 +354,20 @@ def migrate_flat_installed_names(
         name_dir = skills_dir / skill_name
         name_dir_is_skill = is_valid_skill_dir(name_dir)
 
+        # Read metadata once — reused by both the matched-handle check and
+        # the Case 1 / Case 2 branches below.
+        name_dir_meta = read_skill_metadata(name_dir) if name_dir_is_skill else None
+
         # Check if the plain-name dir already belongs to one of the known
         # handles (by comparing .agr.json metadata IDs). This tells us
         # whether the directory is "claimed" and by whom.
         matched_handle: tuple[ParsedHandle, str | None] | None = None
-        if name_dir_is_skill:
-            meta = read_skill_metadata(name_dir)
-            if meta:
-                for handle, source_name in handles:
-                    handle_id = build_handle_id(handle, repo_root, source_name)
-                    # Also check the legacy ID format (without explicit source)
-                    # for backward compatibility with pre-source metadata.
-                    legacy_id = (
-                        build_handle_id(handle, repo_root)
-                        if source_name == DEFAULT_SOURCE_NAME
-                        else None
-                    )
-                    if meta.get("id") in {handle_id, legacy_id}:
-                        matched_handle = (handle, source_name)
-                        break
+        if name_dir_meta:
+            for handle, source_name in handles:
+                handle_ids = build_handle_ids(handle, repo_root, source_name)
+                if name_dir_meta.get(METADATA_KEY_ID) in handle_ids:
+                    matched_handle = (handle, source_name)
+                    break
 
         # --- Case 1: Unique name (single handle) ---
         # Safe to use the short plain directory name.
@@ -292,8 +376,7 @@ def migrate_flat_installed_names(
             handle_id = build_handle_id(handle, repo_root, source_name)
             if name_dir_is_skill:
                 # Plain-name dir exists — just ensure metadata is current.
-                meta = read_skill_metadata(name_dir)
-                if not meta or meta.get("id") != handle_id:
+                if not name_dir_meta or name_dir_meta.get(METADATA_KEY_ID) != handle_id:
                     _update_dir_metadata(
                         name_dir, handle, repo_root, tool.name, source_name
                     )
@@ -302,20 +385,16 @@ def migrate_flat_installed_names(
             # Plain-name dir doesn't exist — try renaming from the full
             # flat name (e.g. ``user--repo--skill`` → ``skill``).
             full_dir = skills_dir / handle.to_installed_name()
-            if is_valid_skill_dir(full_dir):
-                if not name_dir.exists():
-                    try:
-                        full_dir.rename(name_dir)
-                        _update_dir_metadata(
-                            name_dir, handle, repo_root, tool.name, source_name
-                        )
-                        console.print(
-                            f"[blue]Migrated:[/blue] {full_dir.name} -> {name_dir.name}"
-                        )
-                    except OSError as e:
-                        console.print(f"[red]Failed to migrate:[/red] {full_dir.name}")
-                        console.print(f"  [dim]{e}[/dim]")
-                # else: something non-skill occupies the name; skip.
+            if is_valid_skill_dir(full_dir) and not name_dir.exists():
+                try:
+                    full_dir.rename(name_dir)
+                    _update_dir_metadata(
+                        name_dir, handle, repo_root, tool.name, source_name
+                    )
+                    _print_migrated("Migrated", full_dir.name, name_dir.name)
+                except OSError as e:
+                    _print_migrate_failed("Migrate", full_dir.name, e)
+            # else: something non-skill occupies the name; skip.
             continue
 
         # --- Case 2: Ambiguous name (multiple handles) ---

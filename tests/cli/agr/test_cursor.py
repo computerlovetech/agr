@@ -1,4 +1,9 @@
-"""CLI tests for Cursor tool support."""
+"""CLI tests for Cursor tool support.
+
+Cursor uses flat naming like Claude: skills are direct children of the
+skills directory.  Per the Cursor docs, skill identifiers are "lowercase
+letters, numbers, and hyphens only" and must match the parent folder name.
+"""
 
 import pytest
 
@@ -8,39 +13,32 @@ from tests.cli.assertions import assert_cli
 class TestCursorAdd:
     """Tests for agr add with Cursor tool."""
 
-    def test_add_local_skill_to_cursor_nested_structure(
+    def test_add_local_skill_to_cursor_flat_structure(
         self, agr, cli_project, cli_skill, cli_config
     ):
-        """agr add local skill installs to .cursor/skills/local/<name>/."""
+        """agr add local skill installs to .cursor/skills/<name>/."""
         cli_config('tools = ["cursor"]\ndependencies = []')
 
         result = agr("add", "./skills/test-skill")
 
         assert_cli(result).succeeded()
-        # Cursor uses nested structure: local/<name>
-        installed = cli_project / ".cursor" / "skills" / "local" / "test-skill"
+        # Cursor uses flat structure: <name>
+        installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert installed.exists()
         assert (installed / "SKILL.md").exists()
 
     @pytest.mark.network
-    def test_add_remote_skill_to_cursor_nested_structure(
+    def test_add_remote_skill_to_cursor_flat_structure(
         self, agr, cli_project, cli_config
     ):
-        """agr add remote skill installs to .cursor/skills/<user>/<repo>/<name>/."""
+        """agr add remote skill installs to .cursor/skills/<name>/."""
         cli_config('tools = ["cursor"]\ndependencies = []')
 
         result = agr("add", "kasperjunge/agent-resources-public-test-repo/test-skill")
 
         assert_cli(result).succeeded()
-        # Cursor uses nested structure: user/repo/skill
-        installed = (
-            cli_project
-            / ".cursor"
-            / "skills"
-            / "kasperjunge"
-            / "agent-resources-public-test-repo"
-            / "test-skill"
-        )
+        # Cursor uses flat structure: <name>
+        installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert installed.exists()
         assert (installed / "SKILL.md").exists()
 
@@ -64,7 +62,7 @@ dependencies = [
         result = agr("sync")
 
         assert_cli(result).succeeded()
-        installed = cli_project / ".cursor" / "skills" / "local" / "test-skill"
+        installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert installed.exists()
 
     def test_sync_creates_cursor_skills_directory(
@@ -87,20 +85,20 @@ dependencies = [
 
         assert_cli(result).succeeded()
         assert cursor_dir.exists()
-        assert (cursor_dir / "skills" / "local" / "test-skill").exists()
+        assert (cursor_dir / "skills" / "test-skill").exists()
 
 
 class TestCursorRemove:
     """Tests for agr remove with Cursor tool."""
 
-    def test_remove_cleans_up_cursor_nested_structure(
+    def test_remove_cleans_up_cursor_flat_structure(
         self, agr, cli_project, cli_skill, cli_config
     ):
-        """agr remove removes skill from Cursor nested structure."""
+        """agr remove removes skill from Cursor flat structure."""
         cli_config('tools = ["cursor"]\ndependencies = []')
         agr("add", "./skills/test-skill")
 
-        installed = cli_project / ".cursor" / "skills" / "local" / "test-skill"
+        installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert installed.exists()
 
         result = agr("remove", "./skills/test-skill")
@@ -127,8 +125,8 @@ class TestMultiToolCursorClaude:
         assert claude_installed.exists()
         assert (claude_installed / "SKILL.md").exists()
 
-        # Cursor uses nested structure
-        cursor_installed = cli_project / ".cursor" / "skills" / "local" / "test-skill"
+        # Cursor also uses flat structure
+        cursor_installed = cli_project / ".cursor" / "skills" / "test-skill"
         assert cursor_installed.exists()
         assert (cursor_installed / "SKILL.md").exists()
 
@@ -147,7 +145,7 @@ dependencies = [
 
         assert_cli(result).succeeded()
         assert (cli_project / ".claude" / "skills" / "test-skill").exists()
-        assert (cli_project / ".cursor" / "skills" / "local" / "test-skill").exists()
+        assert (cli_project / ".cursor" / "skills" / "test-skill").exists()
 
     def test_remove_removes_from_both_tools(
         self, agr, cli_project, cli_skill, cli_config
@@ -160,9 +158,7 @@ dependencies = [
 
         assert_cli(result).succeeded()
         assert not (cli_project / ".claude" / "skills" / "test-skill").exists()
-        assert not (
-            cli_project / ".cursor" / "skills" / "local" / "test-skill"
-        ).exists()
+        assert not (cli_project / ".cursor" / "skills" / "test-skill").exists()
 
 
 class TestCursorErrors:

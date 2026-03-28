@@ -11,15 +11,21 @@ Cache structure:
                         └── ...
 """
 
+import contextlib
 import fnmatch
 import os
 import re
 import shutil
 import tempfile
-from typing import Any, Generator, TextIO, cast
+from collections.abc import Generator
+from typing import Any, TextIO, cast
 from pathlib import Path
 
 from agr.exceptions import CacheError
+from agr.skill import SKILL_MARKER
+from agr.source import DEFAULT_SOURCE_NAME
+
+CACHE_SKILLS_SUBDIR = "skills"
 
 _LOCKS_USE_MSVCRT = os.name == "nt"
 _msvcrt = None
@@ -83,7 +89,7 @@ def _sanitize_path_component(component: str, name: str) -> str:
     if "\x00" in component:
         raise ValueError(f"{name} cannot contain null bytes")
 
-    if ".." in component:
+    if component == ".." or component.startswith("../") or component.endswith("/.."):
         raise ValueError(f"{name} cannot contain '..'")
 
     if "/" in component or "\\" in component:
@@ -129,7 +135,8 @@ def get_skill_cache_path(owner: str, repo: str, skill: str, revision: str) -> Pa
     skill = _sanitize_path_component(skill, "skill")
     revision = _sanitize_path_component(revision, "revision")
 
-    return get_cache_dir() / "skills" / "github" / owner / repo / skill / revision
+    base = get_cache_dir() / CACHE_SKILLS_SUBDIR / DEFAULT_SOURCE_NAME
+    return base / owner / repo / skill / revision
 
 
 def is_cached(owner: str, repo: str, skill: str, revision: str) -> bool:
@@ -145,7 +152,7 @@ def is_cached(owner: str, repo: str, skill: str, revision: str) -> bool:
         True if the skill is cached
     """
     cache_path = get_skill_cache_path(owner, repo, skill, revision)
-    return cache_path.exists() and (cache_path / "SKILL.md").exists()
+    return cache_path.exists() and (cache_path / SKILL_MARKER).exists()
 
 
 def cache_skill(
@@ -212,15 +219,20 @@ def cache_skill(
                 _release_file_lock(lock_fd)
                 lock_fd.close()
                 # Clean up lock file (best effort)
-                try:
+                with contextlib.suppress(OSError):
                     lock_file.unlink()
-                except OSError:
-                    pass  # Another process may have deleted or be using it
 
     except OSError as e:
         raise CacheError(f"Failed to cache skill: {e}") from e
 
     return cache_path
+
+
+def _subdirs(path: Path) -> Generator[Path, None, None]:
+    """Yield immediate subdirectories of *path*."""
+    for entry in path.iterdir():
+        if entry.is_dir():
+            yield entry
 
 
 def _iter_skill_cache_dirs(
@@ -231,18 +243,10 @@ def _iter_skill_cache_dirs(
     Walks the cache tree: ``<skills_cache>/<source>/<owner>/<repo>/<skill>``.
     ``skill_id`` is formatted as ``owner/repo/skill``.
     """
-    for source_dir in skills_cache.iterdir():
-        if not source_dir.is_dir():
-            continue
-        for owner_dir in source_dir.iterdir():
-            if not owner_dir.is_dir():
-                continue
-            for repo_dir in owner_dir.iterdir():
-                if not repo_dir.is_dir():
-                    continue
-                for skill_dir in repo_dir.iterdir():
-                    if not skill_dir.is_dir():
-                        continue
+    for source_dir in _subdirs(skills_cache):
+        for owner_dir in _subdirs(source_dir):
+            for repo_dir in _subdirs(owner_dir):
+                for skill_dir in _subdirs(repo_dir):
                     skill_id = f"{owner_dir.name}/{repo_dir.name}/{skill_dir.name}"
                     yield skill_dir, skill_id
 
@@ -257,7 +261,7 @@ def clear_cache(pattern: str | None = None) -> int:
     Returns:
         Number of skill directories deleted
     """
-    skills_cache = get_cache_dir() / "skills"
+    skills_cache = get_cache_dir() / CACHE_SKILLS_SUBDIR
     if not skills_cache.exists():
         return 0
 
@@ -287,7 +291,8 @@ class _CacheManager:
             - skills_count: Number of cached skills
             - size_bytes: Total cache size in bytes
         """
-        skills_cache = get_cache_dir() / "skills"
+        cache_dir = self.path
+        skills_cache = cache_dir / CACHE_SKILLS_SUBDIR
         skills_count = 0
         size_bytes = 0
 
@@ -295,13 +300,13 @@ class _CacheManager:
             for path in skills_cache.rglob("*"):
                 if path.is_file():
                     size_bytes += path.stat().st_size
-                elif path.is_dir() and (path / "SKILL.md").exists():
-                    # Each revision directory containing SKILL.md is one cached skill.
-                    # Intermediate directories (source/owner/repo) are not counted.
-                    skills_count += 1
+
+            # Count at the skill level (source/owner/repo/skill),
+            # consistent with clear_cache() and _iter_skill_cache_dirs().
+            skills_count = sum(1 for _ in _iter_skill_cache_dirs(skills_cache))
 
         return {
-            "path": str(get_cache_dir()),
+            "path": str(cache_dir),
             "skills_count": skills_count,
             "size_bytes": size_bytes,
         }

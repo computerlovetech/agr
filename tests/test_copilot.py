@@ -93,36 +93,12 @@ class TestCopilotPaths:
         for h in handles:
             assert h.to_skill_path(COPILOT) == h.to_skill_path(CLAUDE)
 
-    def test_copilot_paths_differ_from_cursor(self):
-        """Copilot uses flat paths, Cursor uses nested."""
+    def test_copilot_paths_match_cursor(self):
+        """Both Copilot and Cursor use flat paths."""
         h = ParsedHandle(username="maragudk", repo="skills", name="bluesky")
         assert h.to_skill_path(COPILOT) == Path("bluesky")
-        assert h.to_skill_path(CURSOR) == Path("maragudk/skills/bluesky")
+        assert h.to_skill_path(CURSOR) == Path("bluesky")
 
-
-class TestCopilotSkillName:
-    """Tests for SKILL.md name field for Copilot."""
-
-    def test_skill_name_flat(self):
-        """Copilot defaults to the skill name like Claude."""
-        h = ParsedHandle(username="maragudk", repo="skills", name="bluesky")
-        assert h.get_skill_name_for_tool(COPILOT) == "bluesky"
-
-    def test_local_skill_name_flat(self):
-        """Local skills default to the skill name for Copilot."""
-        h = ParsedHandle(is_local=True, name="my-skill")
-        assert h.get_skill_name_for_tool(COPILOT) == "my-skill"
-
-    def test_skill_name_matches_claude(self):
-        """Copilot uses same skill name format as Claude."""
-        handles = [
-            ParsedHandle(username="maragudk", repo="skills", name="bluesky"),
-            ParsedHandle(is_local=True, name="my-skill"),
-        ]
-        for h in handles:
-            assert h.get_skill_name_for_tool(COPILOT) == h.get_skill_name_for_tool(
-                CLAUDE
-            )
 
 
 class TestCopilotInstallation:

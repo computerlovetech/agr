@@ -9,13 +9,13 @@ class TestAntigravityAdd:
     def test_add_local_skill_to_antigravity_flat_structure(
         self, agr, cli_project, cli_skill, cli_config
     ):
-        """agr add local skill installs to .agent/skills/<name>/."""
+        """agr add local skill installs to .gemini/skills/<name>/."""
         cli_config('tools = ["antigravity"]\ndependencies = []')
 
         result = agr("add", "./skills/test-skill")
 
         assert_cli(result).succeeded()
-        installed = cli_project / ".agent" / "skills" / "test-skill"
+        installed = cli_project / ".gemini" / "skills" / "test-skill"
         assert installed.exists()
         assert (installed / "SKILL.md").exists()
 
@@ -39,7 +39,7 @@ dependencies = [
         result = agr("sync")
 
         assert_cli(result).succeeded()
-        installed = cli_project / ".agent" / "skills" / "test-skill"
+        installed = cli_project / ".gemini" / "skills" / "test-skill"
         assert installed.exists()
 
 
@@ -49,11 +49,11 @@ class TestAntigravityRemove:
     def test_remove_cleans_up_antigravity_flat_structure(
         self, agr, cli_project, cli_skill, cli_config
     ):
-        """agr remove removes skill from .agent/skills/."""
+        """agr remove removes skill from .gemini/skills/."""
         cli_config('tools = ["antigravity"]\ndependencies = []')
         agr("add", "./skills/test-skill")
 
-        installed = cli_project / ".agent" / "skills" / "test-skill"
+        installed = cli_project / ".gemini" / "skills" / "test-skill"
         assert installed.exists()
 
         result = agr("remove", "./skills/test-skill")
@@ -75,4 +75,4 @@ class TestMultiToolAntigravityClaude:
 
         assert_cli(result).succeeded()
         assert (cli_project / ".claude" / "skills" / "test-skill").exists()
-        assert (cli_project / ".agent" / "skills" / "test-skill").exists()
+        assert (cli_project / ".gemini" / "skills" / "test-skill").exists()

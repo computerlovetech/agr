@@ -4,7 +4,7 @@ from pathlib import Path
 
 from agr.tool import TOOLS
 
-INSTRUCTION_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
+INSTRUCTION_FILES = tuple(sorted({tool.instruction_file for tool in TOOLS.values()}))
 
 
 def canonical_instruction_file(tool_name: str) -> str:

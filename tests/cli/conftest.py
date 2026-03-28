@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tests.cli.runner import run_cli
+from tests.conftest import init_git_repo
 
 
 def pytest_configure(config):
@@ -35,20 +36,7 @@ def cli_project(tmp_path: Path) -> Path:
     project = tmp_path / "project"
     project.mkdir()
 
-    # Initialize as git repo
-    subprocess.run(["git", "init"], cwd=project, capture_output=True, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@test.com"],
-        cwd=project,
-        capture_output=True,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Test"],
-        cwd=project,
-        capture_output=True,
-        check=True,
-    )
+    init_git_repo(project)
 
     return project
 
@@ -97,21 +85,9 @@ def git_source_repo(tmp_path: Path):
         root = base or base_dir
         repo_dir = root / owner / repo
         repo_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True, check=True)
+        init_git_repo(repo_dir)
         subprocess.run(
             ["git", "checkout", "-b", "main"],
-            cwd=repo_dir,
-            capture_output=True,
-            check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=repo_dir,
-            capture_output=True,
-            check=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"],
             cwd=repo_dir,
             capture_output=True,
             check=True,
