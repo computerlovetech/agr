@@ -37,7 +37,7 @@ see [Core Concepts](concepts.md).
 **Key terms used on this page:**
 
 - A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and markdown instructions for an AI coding agent.
-- A **handle** identifies a skill: `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/skill` (local).
+- A **handle** identifies a skill: `skill` (from default owner's `skills` repo), `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/skill` (local).
 - A **source** is a Git server URL template (e.g., GitHub, GitLab, self-hosted) where agr fetches remote skills from.
 - A **tool** is one of the supported AI coding agents: Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, or Antigravity.
 
@@ -47,6 +47,7 @@ see [Core Concepts](concepts.md).
 |-----|------|---------|-------------|
 | `tools` | list | `["claude"]` | [AI tools](#multi-tool-setup) to install skills into |
 | `default_tool` | string | first in `tools` | Tool used by [`agrx`](agrx.md) and for [instruction sync](#instruction-syncing) |
+| `default_owner` | string | `"computerlovetech"` | Default GitHub owner for [1-part handles](concepts.md#remote-handles) (e.g. `agr add setup` → `computerlovetech/skills/setup`) |
 | `default_source` | string | `"github"` | [Source](#sources) used when `--source` is not specified |
 | `sync_instructions` | bool | `false` | Copy the canonical instruction file to other tools on [`agr sync`](reference.md#agr-sync) |
 | `canonical_instructions` | string | auto from `default_tool` | Which [instruction file](#instruction-syncing) is the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`) |

@@ -73,9 +73,25 @@ A **handle** is how you refer to a skill. It tells agr where to find it.
 ### Remote handles
 
 ```text
+skill                 →  default owner's skills repo, "skill" directory
 user/skill            →  github.com/user/skills  repo, "skill" directory
 user/repo/skill       →  github.com/user/repo    repo, "skill" directory
 ```
+
+The simplest form is just a skill name (e.g. `agr add setup`). This resolves
+using your `default_owner` setting (defaults to `computerlovetech`), so
+`setup` becomes `computerlovetech/skills/setup`. You can change the default
+owner in `agr.toml`:
+
+```toml
+default_owner = "myorg"
+```
+
+!!! note "1-part handles are expanded on save"
+    When you run `agr add setup`, agr stores the fully-qualified handle
+    `computerlovetech/setup` (or `myorg/setup` if you changed `default_owner`)
+    in `agr.toml`. The 1-part form is a CLI convenience — it is not
+    preserved in the manifest.
 
 The two-part form (`user/skill`) assumes the skill lives in a repo named
 `skills`. If it doesn't, use the three-part form (`user/repo/skill`).
@@ -102,11 +118,12 @@ The handle format determines *which* repo gets cloned:
 
 | Handle | Repo cloned | When to use |
 |--------|-------------|-------------|
-| `user/skill` | `github.com/user/skills` | Default — repo is always named `skills` |
+| `skill` | `github.com/<default_owner>/skills` | Quickest — uses `default_owner` from config |
+| `user/skill` | `github.com/user/skills` | Explicit owner — repo is always named `skills` |
 | `user/repo/skill` | `github.com/user/repo` | Skills live in a differently named repo |
 
-The two-part form is the most common. It's why the recommended way to share
-skills is a repo named `skills` under your GitHub username.
+The one-part form is the quickest way to install from the default registry.
+The two-part form is the most common for third-party skills.
 
 agr searches recursively regardless of nesting depth (`skills/skill/`,
 `resources/skills/skill/`, `skill/`). When multiple matches exist, the

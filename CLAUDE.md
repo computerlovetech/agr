@@ -45,13 +45,19 @@ dependencies = [
 
 Each dependency has:
 - `type`: Always "skill" for now
-- `handle`: Remote GitHub reference (username/repo/skill or username/skill)
+- `handle`: Remote GitHub reference (username/repo/skill, username/skill, or just skill-name which uses `default_owner`)
 - `path`: Local path (alternative to handle)
 
-Future: A `tools` section will configure which tools to sync to:
+The config also supports `default_owner` (defaults to `"computerlovetech"`) which enables 1-part handles like `agr add setup`.
+
+The `tools` setting configures which tools to sync to:
 ```toml
 tools = ["claude", "cursor"]
 ```
+
+## Agent Workspace
+
+Persistent agent artifacts live in `workspace/` — see `workspace/README.md` for the convention.
 
 ## Code Style
 ...
