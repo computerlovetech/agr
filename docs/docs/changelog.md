@@ -20,6 +20,23 @@ details, see [CHANGELOG.md on GitHub](https://github.com/computerlovetech/agr/bl
 
 ## Unreleased
 
+### 1-part handles with `default_owner`
+
+You can now install skills with just their name — no owner prefix needed:
+
+```bash
+agr add setup          # resolves to computerlovetech/skills/setup
+agrx commit -i         # resolves to computerlovetech/skills/commit
+```
+
+The `default_owner` defaults to `computerlovetech` and can be changed in [`agr.toml`](configuration.md):
+
+```toml
+default_owner = "myorg"
+```
+
+This makes `computerlovetech/skills` a central registry with the simplest possible install syntax. See [Remote handles](concepts.md#remote-handles) for details.
+
 ### Antigravity now uses `.gemini/` directory
 
 [Antigravity](tools.md#antigravity) skills now install to `.gemini/skills/` instead of the previous `.agent/skills/`. This matches the Gemini CLI's move from `.agent/` to `.gemini/` as its primary configuration directory.
