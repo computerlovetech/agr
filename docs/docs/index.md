@@ -25,9 +25,6 @@ keywords:
   - how to install AI agent skills
   - share custom prompts Claude Code Cursor
   - AI agent prompt management tool
-hide:
-  - navigation
-  - toc
 ---
 
 # agr — Skills for AI Agents
