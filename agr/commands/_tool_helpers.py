@@ -333,7 +333,9 @@ def sync_dependencies_to_tools(config: AgrConfig, tool_names: list[str]) -> int:
 
     for dep in config.dependencies:
         try:
-            handle, source_name = dep.resolve(config.default_source, config.default_owner)
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
 
             tools_needing_install = filter_tools_needing_install(
                 handle, repo_root, new_tools, source_name

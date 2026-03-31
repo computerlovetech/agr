@@ -378,7 +378,9 @@ def _run_global_sync() -> None:
 
     for dep in config.dependencies:
         try:
-            handle, source_name = dep.resolve(config.default_source, config.default_owner)
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
             result = _sync_one_dependency(
                 handle, source_name, None, tools, resolver, skills_dirs
             )
@@ -485,7 +487,9 @@ def run_sync(
 
     for index, dep in enumerate(config.dependencies):
         try:
-            handle, source_name = dep.resolve(config.default_source, config.default_owner)
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
 
             # Skip dependencies already installed on every configured tool.
             tools_needing_install = filter_tools_needing_install(
@@ -565,7 +569,9 @@ def _sync_from_lockfile(
 
     for dep in config.dependencies:
         try:
-            handle, source_name = dep.resolve(config.default_source, config.default_owner)
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
 
             tools_needing_install = filter_tools_needing_install(
                 handle, repo_root, tools, source_name

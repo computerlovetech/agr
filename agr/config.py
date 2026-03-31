@@ -11,7 +11,12 @@ from tomlkit.exceptions import TOMLKitError
 
 from agr.console import error_exit
 from agr.exceptions import ConfigError
-from agr.handle import DEFAULT_OWNER, INSTALLED_NAME_SEPARATOR, ParsedHandle, parse_handle
+from agr.handle import (
+    DEFAULT_OWNER,
+    INSTALLED_NAME_SEPARATOR,
+    ParsedHandle,
+    parse_handle,
+)
 from agr.instructions import INSTRUCTION_FILES
 from agr.source import (
     DEFAULT_SOURCE_NAME,
@@ -177,9 +182,7 @@ class Dependency:
         """Unique identifier (path or handle)."""
         return self.path or self.handle or ""
 
-    def to_parsed_handle(
-        self, default_owner: str | None = None
-    ) -> ParsedHandle:
+    def to_parsed_handle(self, default_owner: str | None = None) -> ParsedHandle:
         """Parse this dependency's reference into a ParsedHandle."""
         ref = self.path or self.handle or ""
         if self.is_local:

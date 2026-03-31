@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-31
+
+### Added
+- `default_owner` config option for 1-part handle resolution — set once, use short handles everywhere
+
+### Changed
+- Rebranded repository URLs from `jungekasper/agr` to `computerlovetech/agr`
+- Removed bundled skills from repository (install via `agr add` instead)
+
+### Fixed
+- Code formatting issues in 5 core modules
+
+### Docs
+- Document `default_owner` and 1-part handle format in README and reference
+- Add terminal demo, workspace guide, and audit docs
+- Move tool integration docs to contributing section
+- Standardize installation instructions on `uv`
+- Consolidate `agent_docs/` into `docs/docs/contributing/`
+
 ## [0.8.0] - 2026-03-30
 
 ### Added
