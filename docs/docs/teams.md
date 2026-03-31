@@ -124,7 +124,7 @@ them is harmless and avoids surprises if someone adds a tool later.
 After cloning the repo, a new teammate runs two commands:
 
 ```bash
-uv tool install agr   # One-time install (or: pipx install agr)
+uv tool install agr   # One-time install
 agr sync              # Install all skills from agr.toml
 ```
 
@@ -256,11 +256,10 @@ jobs:
 
 ### Other CI systems
 
-agr is a standard Python CLI. Install it with `pip install agr` or
-`pipx install agr` in any CI environment that has Python 3.10+ and Git:
+agr is a standard Python CLI. Install it in any CI environment that has Python 3.10+ and Git:
 
 ```bash
-pip install agr
+uv tool install agr
 agr sync -q
 ```
 

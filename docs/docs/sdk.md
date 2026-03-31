@@ -16,7 +16,7 @@ keywords:
 # Python SDK
 
 !!! tldr
-    `pip install agr` and use `Skill.from_git("owner/repo/skill")` to load
+    `uv add agr` and use `Skill.from_git("owner/repo/skill")` to load
     skills programmatically. Discover skills with `list_skills()`, manage the
     cache with `cache.clear()`, and handle errors via `AgrError` subclasses.
 
@@ -33,11 +33,11 @@ skill directory inside a GitHub repo.
 ## Install the agr package
 
 ```bash
-pip install agr   # As a library dependency in your project
+uv add agr   # As a library dependency in your project
 ```
 
 !!! tip
-    If you want the `agr` and [`agrx`](agrx.md) CLI tools (not just the SDK), install with `uv tool install agr` or `pipx install agr` instead. See the [Tutorial](tutorial.md) for a full walkthrough.
+    If you want the `agr` and [`agrx`](agrx.md) CLI tools (not just the SDK), install with `uv tool install agr` instead. See the [Tutorial](tutorial.md) for a full walkthrough.
 
 ## Load a skill in 3 lines
 

@@ -36,79 +36,11 @@ A package manager for AI agent skills. Install, share, and run skills across
 [Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity](tools.md) — with a single
 command.
 
-## What are skills?
-
-Skills are reusable instructions that teach AI coding agents how to perform
-specific tasks — reviewing code, generating components, preparing releases, or
-anything else you'd normally explain in a prompt. Each skill is a [`SKILL.md`](creating.md)
-file in a directory, published on GitHub.
-
-Here's what one looks like:
-
-```markdown
----
-name: code-reviewer
-description: Reviews code for bugs, security issues, and best practices.
----
-
-# Code Reviewer
-
-When reviewing code changes, follow these steps:
-
-1. Read every changed file completely before commenting
-2. Check for bugs: null references, off-by-one errors, race conditions
-3. Check for security issues: injection, auth bypass, data exposure
-4. Verify error handling: are errors caught, logged, and surfaced?
-
-Format each finding as:
-- **File and line:** `src/auth.py:42`
-- **Severity:** bug / security / style
-- **Fix:** concrete code or approach to resolve it
-```
-
-Install it, and your AI agent gains a new capability — no prompt engineering
-each time.
-
-### Why a package manager?
-
-Without agr, managing skills means:
-
-- **Manual copying** — download files from GitHub, figure out which folder each
-  tool expects, copy them in
-- **No updates** — when a skill improves, you repeat the process by hand
-- **Team drift** — teammates have different skills, different versions, no
-  single source of truth
-- **Multi-tool pain** — using Claude Code *and* Cursor? Copy everything twice,
-  into different directories
-
-With agr:
-
-```bash
-agr add anthropics/skills/pdf          # Install from GitHub — one command
-agr add anthropics/skills/pdf -o       # Update to the latest version
-agr sync                               # Teammates get everything from agr.toml
-agr config set tools claude cursor     # Multi-tool — skills install everywhere
-```
-
 ## Install
 
-=== "uv (recommended)"
-
-    ```bash
-    uv tool install agr
-    ```
-
-=== "pipx"
-
-    ```bash
-    pipx install agr
-    ```
-
-=== "pip"
-
-    ```bash
-    pip install agr
-    ```
+```bash
+uv tool install agr
+```
 
 ## Add your first skill
 

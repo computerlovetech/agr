@@ -19,48 +19,12 @@ Copilot, and Antigravity — with a single command.
 
 ---
 
-## What are skills?
-
-Skills are reusable instructions that teach AI coding agents how to perform
-specific tasks. Each skill is a `SKILL.md` file in a directory, published on
-GitHub:
-
-```markdown
----
-name: code-reviewer
-description: Reviews code for bugs, security issues, and best practices.
----
-
-# Code Reviewer
-
-When reviewing code changes, follow these steps:
-
-1. Read every changed file completely before commenting
-2. Check for bugs: null references, off-by-one errors, race conditions
-3. Check for security issues: injection, auth bypass, data exposure
-4. Verify error handling: are errors caught, logged, and surfaced?
-
-Format each finding as:
-- **File and line:** `src/auth.py:42`
-- **Severity:** bug / security / style
-- **Fix:** concrete code or approach to resolve it
-```
-
-Install it, and your AI agent gains a new capability — no prompt engineering
-each time. Without a package manager, you'd copy these files manually into each
-tool's config folder, keep them updated by hand, and hope your teammates have
-the same versions. **agr automates all of that.**
-
----
-
 ## Getting Started
 
 Install the CLI:
 
 ```bash
-uv tool install agr       # recommended
-# or: pipx install agr
-# or: pip install agr
+uv tool install agr
 ```
 
 Install your first skill:

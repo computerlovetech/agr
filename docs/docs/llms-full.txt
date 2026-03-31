@@ -11,9 +11,7 @@
 ## Install
 
 ```bash
-uv tool install agr       # recommended
-pipx install agr           # alternative
-pip install agr            # if you prefer pip
+uv tool install agr
 ```
 
 This installs two CLI commands:
@@ -459,7 +457,7 @@ agr sync
 Use agr as a library:
 
 ```bash
-pip install agr
+uv add agr
 ```
 
 ### Load skills from GitHub or local paths
