@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 420">
+  <style>
+    .t { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, monospace; font-size: 13px; }
+    .p { fill: #7ec699; }
+    .c { fill: #e6e6e6; }
+    .o { fill: #888; }
+    .s { fill: #7ec699; }
+    .h { fill: #e6e6e6; font-weight: bold; }
+    .v { fill: #bbb; }
+
+    @keyframes show { to { opacity: 1 } }
+
+    .d1  { opacity: 0; animation: show .01s  0.4s forwards }
+    .d2  { opacity: 0; animation: show .01s  1.4s forwards }
+    .d3  { opacity: 0; animation: show .01s  2.6s forwards }
+    .d4  { opacity: 0; animation: show .01s  3.8s forwards }
+    .d5  { opacity: 0; animation: show .01s  4.1s forwards }
+    .d6  { opacity: 0; animation: show .01s  5.2s forwards }
+    .d7  { opacity: 0; animation: show .01s  6.4s forwards }
+    .d8  { opacity: 0; animation: show .01s  6.7s forwards }
+    .d9  { opacity: 0; animation: show .01s  7.8s forwards }
+    .d10 { opacity: 0; animation: show .01s  8.8s forwards }
+    .d11 { opacity: 0; animation: show .01s  9.4s forwards }
+  </style>
+
+  <!-- Window -->
+  <rect width="680" height="420" rx="8" fill="#1a1b26"/>
+
+  <!-- Title bar -->
+  <rect width="680" height="30" rx="8" fill="#24283b"/>
+  <rect y="22" width="680" height="8" fill="#24283b"/>
+  <circle cx="18" cy="15" r="5.5" fill="#ff5f57"/>
+  <circle cx="36" cy="15" r="5.5" fill="#febc2e"/>
+  <circle cx="54" cy="15" r="5.5" fill="#28c840"/>
+
+  <g class="t" transform="translate(18, 54)">
+    <!-- Install agr -->
+    <g class="d1">
+      <text y="0"><tspan class="p">$ </tspan><tspan class="c">uv tool install agr</tspan></text>
+    </g>
+    <g class="d2">
+      <text y="18" class="o">Installed 1 executable: agr</text>
+    </g>
+
+    <!-- Add skill 1 -->
+    <g class="d3">
+      <text y="44"><tspan class="p">$ </tspan><tspan class="c">agr add anthropics/skills/frontend-design</tspan></text>
+    </g>
+    <g class="d4">
+      <text y="64" class="s">Added: anthropics/skills/frontend-design</text>
+    </g>
+    <g class="d5">
+      <text y="82" class="o">  Installed to claude: .claude/skills/frontend-design</text>
+    </g>
+
+    <!-- Add skill 2 -->
+    <g class="d6">
+      <text y="108"><tspan class="p">$ </tspan><tspan class="c">agr add anthropics/skills/pdf</tspan></text>
+    </g>
+    <g class="d7">
+      <text y="128" class="s">Added: anthropics/skills/pdf</text>
+    </g>
+    <g class="d8">
+      <text y="146" class="o">  Installed to claude: .claude/skills/pdf</text>
+    </g>
+
+    <!-- List -->
+    <g class="d9">
+      <text y="172"><tspan class="p">$ </tspan><tspan class="c">agr list</tspan></text>
+    </g>
+
+    <!-- Table drawn with SVG lines -->
+    <g class="d10">
+      <!-- Table dimensions: x=0, y=186, cols at 0, 290, 348, 430 -->
+      <!-- Top border (double-style) -->
+      <line x1="0" y1="186" x2="430" y2="186" stroke="#555" stroke-width="2"/>
+
+      <!-- Header row -->
+      <text x="8"   y="203" class="h">Skill</text>
+      <text x="298" y="203" class="h">Type</text>
+      <text x="356" y="203" class="h">Status</text>
+
+      <!-- Header separator (double-style) -->
+      <line x1="0" y1="210" x2="430" y2="210" stroke="#555" stroke-width="2"/>
+
+      <!-- Row 1 -->
+      <text x="8"   y="228" class="v">anthropics/skills/frontend-design</text>
+      <text x="298" y="228" class="v">remote</text>
+      <text x="356" y="228" class="s">installed</text>
+
+      <!-- Row separator -->
+      <line x1="0" y1="236" x2="430" y2="236" stroke="#333" stroke-width="0.5"/>
+
+      <!-- Row 2 -->
+      <text x="8"   y="254" class="v">anthropics/skills/pdf</text>
+      <text x="298" y="254" class="v">remote</text>
+      <text x="356" y="254" class="s">installed</text>
+
+      <!-- Bottom border -->
+      <line x1="0" y1="262" x2="430" y2="262" stroke="#555" stroke-width="1"/>
+
+      <!-- Vertical lines -->
+      <line x1="0"   y1="186" x2="0"   y2="262" stroke="#555" stroke-width="1"/>
+      <line x1="290" y1="186" x2="290" y2="262" stroke="#555" stroke-width="1"/>
+      <line x1="348" y1="186" x2="348" y2="262" stroke="#555" stroke-width="1"/>
+      <line x1="430" y1="186" x2="430" y2="262" stroke="#555" stroke-width="1"/>
+    </g>
+
+    <!-- Final prompt with blinking cursor -->
+    <g class="d11">
+      <text y="290" class="p">$</text>
+      <rect x="14" y="279" width="8" height="15" fill="#e6e6e6">
+        <animate attributeName="opacity" values="1;1;0;0;1" dur="1s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+  </g>
+</svg>

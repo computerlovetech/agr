@@ -108,6 +108,46 @@ The path where a skill is installed depends on the tool:
 3. **Add tests** in `tests/test_commands.py` or a dedicated test file
 4. **Document it** in `docs/docs/reference.md` with arguments, options, and examples
 
+## Supported tool documentation
+
+agr installs skills into multiple AI coding tools. When working on tool compatibility — adding a new tool, updating install paths, or fixing integration issues — consult the official docs for each supported tool:
+
+**General:**
+
+- [agentskills.io](https://agentskills.io/) — Cross-tool skill specification
+- [agents.md](https://agents.md/) — Agent instruction file convention
+
+**Claude Code:**
+
+- [Skills](https://code.claude.com/docs/en/skills)
+- [Slash commands](https://code.claude.com/docs/en/slash-commands)
+- [Sub-agents](https://code.claude.com/docs/en/sub-agents)
+- [Memory](https://code.claude.com/docs/en/memory)
+
+**Cursor:**
+
+- [Skills](https://cursor.com/docs/context/skills)
+- [Commands](https://cursor.com/docs/context/commands)
+- [Sub-agents](https://cursor.com/docs/context/subagents)
+- [Rules](https://cursor.com/docs/context/rules)
+
+**GitHub Copilot:**
+
+- [Agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)
+
+**OpenAI Codex:**
+
+- [Skills](https://developers.openai.com/codex/skills)
+- [Custom prompts](https://developers.openai.com/codex/custom-prompts/)
+
+**OpenCode:**
+
+- [Skills](https://opencode.ai/docs/skills)
+- [Commands](https://opencode.ai/docs/commands/)
+- [Agents](https://opencode.ai/docs/agents/)
+
+## Recipes
+
 ### Adding a new config key
 
 1. **Add the field** to `AgrConfig` in `agr/config.py`

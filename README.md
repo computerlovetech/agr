@@ -13,6 +13,10 @@ Copilot, and Antigravity — with a single command.
 
 </div>
 
+<p align="center">
+  <img src="docs/images/demo.svg" alt="agr demo — install skills and list them" width="680">
+</p>
+
 ---
 
 ## What are skills?

@@ -45,22 +45,13 @@ dependencies = [
 
 Each dependency has:
 - `type`: Always "skill" for now
-- `handle`: Remote GitHub reference (username/repo/skill, username/skill, or just skill-name which uses `default_owner`)
+- `handle`: Remote GitHub reference (username/repo/skill or username/skill)
 - `path`: Local path (alternative to handle)
 
-The config also supports `default_owner` (defaults to `"computerlovetech"`) which enables 1-part handles like `agr add setup`.
-
-The `tools` setting configures which tools to sync to:
+Future: A `tools` section will configure which tools to sync to:
 ```toml
 tools = ["claude", "cursor"]
 ```
-
-## Agent Workspace
-
-Persistent agent artifacts live in `workspace/` — see `workspace/README.md` for the convention.
-
-## Code Style
-...
 
 ## Boundaries
 
@@ -68,42 +59,3 @@ Persistent agent artifacts live in `workspace/` — see `workspace/README.md` fo
 - agr and agrx should always be unified and synced.
 - include in the plan to write tests for what is implemented
 - Save all skills in `skills/` directory (not `.claude/skills/` which is gitignored)
-
-### Ask First
-...
-
-### Never Do
-...
-
-## Security
-...
-
-# Docs
-
-General
-https://agentskills.io/
-https://agents.md/
-
-Claude Code:
-https://code.claude.com/docs/en/skills
-https://code.claude.com/docs/en/slash-commands
-https://code.claude.com/docs/en/sub-agents
-https://code.claude.com/docs/en/memory
-
-Cursor:
-https://cursor.com/docs/context/skills
-https://cursor.com/docs/context/commands
-https://cursor.com/docs/context/subagents
-https://cursor.com/docs/context/rules
-
-GitHub Copilot:
-https://docs.github.com/en/copilot/concepts/agents/about-agent-skills
-
-Codex:
-https://developers.openai.com/codex/skills
-https://developers.openai.com/codex/custom-prompts/
-
-Open Code:
-https://opencode.ai/docs/skills
-https://opencode.ai/docs/commands/
-https://opencode.ai/docs/agents/
