@@ -19,11 +19,3 @@ source = "github"
 commit = "4e37405ffe6b40db68bb6a787cd1dadbe999e4a0"
 content-hash = "sha256:50aa57a0172e6ed2544ac7c161a1c61f424dbdd57511ef0e0a6a3f35c509ed65"
 installed-name = "playwright-cli"
-
-[[skill]]
-path = "skills/docs-audit"
-installed-name = "docs-audit"
-
-[[skill]]
-path = "skills/setup-agent-workspace"
-installed-name = "setup-agent-workspace"

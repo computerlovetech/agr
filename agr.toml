@@ -4,8 +4,6 @@ dependencies = [
     {path = "skills/agr-release", type = "skill"},
     {handle = "maragudk/code-review", type = "skill"},
     {handle = "microsoft/playwright-cli/playwright-cli", type = "skill"},
-    {path = "skills/docs-audit", type = "skill"},
-    {path = "skills/setup-agent-workspace", type = "skill"},
 ]
 
 [[source]]
