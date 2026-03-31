@@ -32,6 +32,7 @@ LEGACY_SEPARATOR = ":"
 # Prefixes that indicate a raw string is a local filesystem path
 LOCAL_PATH_PREFIXES = ("./", "../", "/")
 DEFAULT_REPO_NAME = "skills"
+DEFAULT_OWNER = "computerlovetech"
 LEGACY_DEFAULT_REPO_NAME = "agent-resources"
 LEGACY_REPO_DEPRECATION_WARNING = (
     "Deprecated: owner-only handles now default to the 'skills' "
@@ -183,17 +184,25 @@ class ParsedHandle:
         return (root / self.local_path).resolve()
 
 
-def parse_handle(ref: str, *, prefer_local: bool = True) -> ParsedHandle:
+def parse_handle(
+    ref: str,
+    *,
+    prefer_local: bool = True,
+    default_owner: str | None = None,
+) -> ParsedHandle:
     """Parse a handle string into components.
 
     Args:
         ref: Handle string. Examples:
+            - "setup" -> remote with default_owner, user=<default_owner>, name=setup
             - "vercel-labs/agent-browser" -> remote, user=vercel-labs, name=agent-browser
             - "maragudk/skills/collaboration" -> remote,
               user=maragudk, repo=skills, name=collaboration
             - "./my-skill" -> local, name=my-skill
             - "../other/skill" -> local, name=skill
         prefer_local: Prefer local paths when the ref exists on disk.
+        default_owner: Default owner for 1-part handles (e.g. "setup" ->
+            "<default_owner>/setup"). If None, 1-part handles raise an error.
 
     Returns:
         ParsedHandle with parsed components.
@@ -221,7 +230,12 @@ def parse_handle(ref: str, *, prefer_local: bool = True) -> ParsedHandle:
     parts = ref.split("/")
 
     if len(parts) == 1:
-        # Simple name like "commit" - treat as local since no username
+        # Simple name like "commit" — resolve with default_owner if available
+        if default_owner is not None:
+            skill_name = parts[0]
+            _validate_no_separator(ref, "skill name", skill_name)
+            _validate_no_separator(ref, "default owner", default_owner)
+            return ParsedHandle(username=default_owner, name=skill_name)
         raise InvalidHandleError(
             f"Invalid handle '{ref}': remote handles require username/name format"
         )

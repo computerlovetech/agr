@@ -11,7 +11,7 @@ from tomlkit.exceptions import TOMLKitError
 
 from agr.console import error_exit
 from agr.exceptions import ConfigError
-from agr.handle import ParsedHandle, parse_handle
+from agr.handle import DEFAULT_OWNER, INSTALLED_NAME_SEPARATOR, ParsedHandle, parse_handle
 from agr.instructions import INSTRUCTION_FILES
 from agr.source import (
     DEFAULT_SOURCE_NAME,
@@ -177,13 +177,15 @@ class Dependency:
         """Unique identifier (path or handle)."""
         return self.path or self.handle or ""
 
-    def to_parsed_handle(self) -> ParsedHandle:
+    def to_parsed_handle(
+        self, default_owner: str | None = None
+    ) -> ParsedHandle:
         """Parse this dependency's reference into a ParsedHandle."""
         ref = self.path or self.handle or ""
         if self.is_local:
             path = Path(ref)
             return ParsedHandle(is_local=True, name=path.name, local_path=path)
-        return parse_handle(ref, prefer_local=False)
+        return parse_handle(ref, prefer_local=False, default_owner=default_owner)
 
     def resolve_source_name(self, default_source: str | None = None) -> str | None:
         """Get the effective source name for this dependency.
@@ -196,14 +198,18 @@ class Dependency:
         return self.source or default_source
 
     def resolve(
-        self, default_source: str | None = None
+        self,
+        default_source: str | None = None,
+        default_owner: str | None = None,
     ) -> tuple[ParsedHandle, str | None]:
         """Parse the handle and resolve the source name in one step.
 
         Combines ``to_parsed_handle()`` and ``resolve_source_name()`` —
         the two calls are always used together when processing dependencies.
         """
-        return self.to_parsed_handle(), self.resolve_source_name(default_source)
+        return self.to_parsed_handle(default_owner), self.resolve_source_name(
+            default_source
+        )
 
 
 def _parse_dependencies_from_doc(
@@ -264,6 +270,7 @@ class AgrConfig:
 
         tools = ["claude", "cursor"]  # Optional, defaults to ["claude"]
         default_tool = "claude"  # Optional, overrides first tool
+        default_owner = "computerlovetech"  # Optional, for 1-part handles
         sync_instructions = true  # Optional
         canonical_instructions = "CLAUDE.md"  # Optional
         dependencies = [
@@ -277,6 +284,7 @@ class AgrConfig:
     sources: list[SourceConfig] = field(default_factory=default_sources)
     default_source: str = DEFAULT_SOURCE_NAME
     default_tool: str | None = None
+    default_owner: str | None = DEFAULT_OWNER
     sync_instructions: bool | None = None
     canonical_instructions: str | None = None
     _path: Path | None = field(default=None, repr=False)
@@ -325,6 +333,27 @@ class AgrConfig:
 
         config.tools = _parse_tools_from_doc(doc)
         config.default_tool = _parse_default_tool_from_doc(doc, config.tools)
+
+        default_owner = doc.get("default_owner")
+        if default_owner is not None:
+            default_owner = str(default_owner).strip()
+            if not default_owner:
+                raise ConfigError(
+                    "default_owner cannot be empty in agr.toml. "
+                    "Remove the key to use the default, or set a valid owner."
+                )
+            if "/" in default_owner:
+                raise ConfigError(
+                    f"default_owner cannot contain '/': got '{default_owner}'. "
+                    "Use a plain GitHub username or organization name."
+                )
+            if INSTALLED_NAME_SEPARATOR in default_owner:
+                raise ConfigError(
+                    f"default_owner cannot contain '{INSTALLED_NAME_SEPARATOR}': "
+                    f"got '{default_owner}'. "
+                    "Use a plain GitHub username or organization name."
+                )
+            config.default_owner = default_owner
 
         sync_instructions = doc.get("sync_instructions")
         if sync_instructions is not None:
@@ -375,6 +404,9 @@ class AgrConfig:
                 raise ValueError("default_tool must be listed in tools")
             doc["default_tool"] = self.default_tool
 
+        if self.default_owner is not None and self.default_owner != DEFAULT_OWNER:
+            doc["default_owner"] = self.default_owner
+
         if self.sync_instructions is not None:
             doc["sync_instructions"] = bool(self.sync_instructions)
 
@@ -408,13 +440,20 @@ class AgrConfig:
         save_path.write_text(tomlkit.dumps(doc))
         self._path = save_path
 
-    def add_dependency(self, dep: Dependency) -> None:
+    def add_dependency(
+        self, dep: Dependency, also_matches: list[str] | None = None
+    ) -> None:
         """Add or update a dependency.
 
         If a dependency with the same identifier exists, it's replaced.
+        Additional identifiers in *also_matches* are checked too (e.g. the
+        raw CLI ref that may differ from the normalised toml handle).
         """
+        match_ids = {dep.identifier}
+        if also_matches:
+            match_ids.update(also_matches)
         self.dependencies = [
-            d for d in self.dependencies if d.identifier != dep.identifier
+            d for d in self.dependencies if d.identifier not in match_ids
         ]
         self.dependencies.append(dep)
 
