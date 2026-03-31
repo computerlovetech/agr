@@ -4,7 +4,7 @@ This module provides a HuggingFace-style API for loading skills from Git reposit
 
 Example:
     >>> from agr import Skill
-    >>> skill = Skill.from_git("kasperjunge/commit")
+    >>> skill = Skill.from_git("vercel-labs/agent-browser/agent-browser")
     >>> print(skill.prompt)  # Contents of SKILL.md
     >>> print(skill.files)   # List of files
 

@@ -49,14 +49,14 @@
     "description": "A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Cross-platform",
-    "url": "https://kasperjunge.github.io/agent-resources/",
+    "url": "https://computerlovetech.github.io/agr/",
     "downloadUrl": "https://pypi.org/project/agr/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
       "url": "https://github.com/kasperjunge"
     },
-    "codeRepository": "https://github.com/kasperjunge/agent-resources",
+    "codeRepository": "https://github.com/computerlovetech/agr",
     "programmingLanguage": "Python",
     "offers": {
       "@type": "Offer",
@@ -91,11 +91,11 @@
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "agr Documentation",
-    "url": "https://kasperjunge.github.io/agent-resources/",
+    "url": "https://computerlovetech.github.io/agr/",
     "description": "Documentation for agr - a package manager for AI agent skills",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://kasperjunge.github.io/agent-resources/?q={search_term_string}",
+      "target": "https://computerlovetech.github.io/agr/?q={search_term_string}",
       "query-input": "required name=search_term_string"
     }
   }
@@ -107,10 +107,10 @@
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "agr",
-    "url": "https://github.com/kasperjunge/agent-resources",
-    "logo": "https://github.com/kasperjunge.png",
+    "url": "https://github.com/computerlovetech/agr",
+    "logo": "https://github.com/computerlovetech.png",
     "sameAs": [
-      "https://github.com/kasperjunge/agent-resources",
+      "https://github.com/computerlovetech/agr",
       "https://pypi.org/project/agr/"
     ]
   }
@@ -119,7 +119,7 @@
   <!-- BreadcrumbList Schema for rich breadcrumb trails in search results -->
   {% if page and page.file %}
   {% set src = page.file.src_path %}
-  {% set base = "https://kasperjunge.github.io/agent-resources/" %}
+  {% set base = "https://computerlovetech.github.io/agr/" %}
   {% if src == "index.md" %}
   <script type="application/ld+json">
   {
@@ -225,7 +225,7 @@
         "name": "How do I fix \"Invalid handle\" in agr?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "A single word is treated as a local path. For remote skills, include the username: agr add kasperjunge/commit (not agr add commit). Handles support at most three parts: user/repo/skill."
+          "text": "A single word is treated as a local path. For remote skills, include the username: agr add vercel-labs/agent-browser/agent-browser (not agr add commit). Handles support at most three parts: user/repo/skill."
         }
       },
       {
@@ -679,7 +679,7 @@
     "@type": "TechArticle",
     "headline": "Fix agr Errors — Troubleshooting Installs, Auth, Sync, Handles, and Skills",
     "description": "Fix common agr problems — installation errors, GitHub auth, sync failures, handle formats, skill conflicts, and configuration issues.",
-    "url": "https://kasperjunge.github.io/agent-resources/troubleshooting/",
+    "url": "https://computerlovetech.github.io/agr/troubleshooting/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -687,8 +687,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -755,31 +755,31 @@
         "@type": "HowToStep",
         "name": "Scaffold the skill",
         "text": "Run agr init my-skill to create a skill directory with a SKILL.md template containing name and description frontmatter.",
-        "url": "https://kasperjunge.github.io/agent-resources/creating/#scaffold-a-new-skill-with-agr-init"
+        "url": "https://computerlovetech.github.io/agr/creating/#scaffold-a-new-skill-with-agr-init"
       },
       {
         "@type": "HowToStep",
         "name": "Write the SKILL.md",
         "text": "Edit the SKILL.md file with a description field and detailed agent instructions. Include specific steps, examples, boundaries, and output formats for consistent results.",
-        "url": "https://kasperjunge.github.io/agent-resources/creating/#skillmd-format"
+        "url": "https://computerlovetech.github.io/agr/creating/#skillmd-format"
       },
       {
         "@type": "HowToStep",
         "name": "Add supporting files",
         "text": "For complex skills, add reference docs in references/, helper scripts in scripts/, and templates in assets/ alongside SKILL.md.",
-        "url": "https://kasperjunge.github.io/agent-resources/creating/#add-scripts-references-and-templates-alongside-skillmd"
+        "url": "https://computerlovetech.github.io/agr/creating/#add-scripts-references-and-templates-alongside-skillmd"
       },
       {
         "@type": "HowToStep",
         "name": "Test the skill locally",
         "text": "Install locally with agr add ./my-skill, invoke it in your AI tool, then iterate with agr add ./my-skill --overwrite after each edit.",
-        "url": "https://kasperjunge.github.io/agent-resources/creating/#test-your-skill"
+        "url": "https://computerlovetech.github.io/agr/creating/#test-your-skill"
       },
       {
         "@type": "HowToStep",
         "name": "Publish to GitHub",
         "text": "Push the skill directory to a GitHub repository. Others can then install it with agr add your-username/my-skill.",
-        "url": "https://kasperjunge.github.io/agent-resources/creating/#publish-your-skill-to-github"
+        "url": "https://computerlovetech.github.io/agr/creating/#publish-your-skill-to-github"
       }
     ]
   }
@@ -814,31 +814,31 @@
         "@type": "HowToStep",
         "name": "Install agr",
         "text": "Install the agr CLI with uv tool install agr (recommended), pipx install agr, or pip install agr. This installs two commands: agr (the main CLI) and agrx (an ephemeral skill runner).",
-        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-1-install-agr"
+        "url": "https://computerlovetech.github.io/agr/tutorial/#step-1-install-agr"
       },
       {
         "@type": "HowToStep",
         "name": "Set up a project",
         "text": "Navigate to your project and optionally run agr init to create agr.toml. agr auto-detects which AI tools you use from repo signals like .claude/ or CLAUDE.md.",
-        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-2-set-up-a-project"
+        "url": "https://computerlovetech.github.io/agr/tutorial/#step-2-set-up-a-project"
       },
       {
         "@type": "HowToStep",
         "name": "Add your first skill",
         "text": "Run agr add anthropics/skills/frontend-design to install a skill from GitHub. agr clones the repo, finds the skill, copies it into your tool's skills folder, and updates agr.toml.",
-        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-3-add-your-first-skill"
+        "url": "https://computerlovetech.github.io/agr/tutorial/#step-3-add-your-first-skill"
       },
       {
         "@type": "HowToStep",
         "name": "Sync skills across a team",
         "text": "Commit agr.toml to version control. Teammates run agr sync to install all skills listed in agr.toml — like npm install for agent skills.",
-        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-5-team-sync"
+        "url": "https://computerlovetech.github.io/agr/tutorial/#step-5-team-sync"
       },
       {
         "@type": "HowToStep",
         "name": "Create your own skill",
         "text": "Run agr init my-skill to scaffold a new skill with a SKILL.md template. Edit the file, test locally with agr add ./my-skill, then push to GitHub so others can install it.",
-        "url": "https://kasperjunge.github.io/agent-resources/tutorial/#step-7-create-your-own-skill"
+        "url": "https://computerlovetech.github.io/agr/tutorial/#step-7-create-your-own-skill"
       }
     ]
   }
@@ -869,31 +869,31 @@
         "@type": "HowToStep",
         "name": "Initialize agr in your project",
         "text": "Run agr init in your repo root to create agr.toml. agr auto-detects which tools your team uses. Use --tools to target specific tools like claude, cursor, and codex.",
-        "url": "https://kasperjunge.github.io/agent-resources/teams/#1-initialize-agr"
+        "url": "https://computerlovetech.github.io/agr/teams/#1-initialize-agr"
       },
       {
         "@type": "HowToStep",
         "name": "Add skills for the team",
         "text": "Install the skills your team needs with agr add. Each command updates agr.toml with the dependency. Local skills with ./path work too.",
-        "url": "https://kasperjunge.github.io/agent-resources/teams/#2-add-skills"
+        "url": "https://computerlovetech.github.io/agr/teams/#2-add-skills"
       },
       {
         "@type": "HowToStep",
         "name": "Commit agr.toml to version control",
         "text": "Commit agr.toml so every clone starts with the same skills. It acts as a skill lockfile, similar to package.json or pyproject.toml.",
-        "url": "https://kasperjunge.github.io/agent-resources/teams/#3-commit-agrtoml"
+        "url": "https://computerlovetech.github.io/agr/teams/#3-commit-agrtoml"
       },
       {
         "@type": "HowToStep",
         "name": "Teammates install with agr sync",
         "text": "After cloning the repo, teammates run uv tool install agr (one-time) then agr sync to install all skills from agr.toml. Everyone gets the same skills.",
-        "url": "https://kasperjunge.github.io/agent-resources/teams/#4-teammates-install"
+        "url": "https://computerlovetech.github.io/agr/teams/#4-teammates-install"
       },
       {
         "@type": "HowToStep",
         "name": "Configure multi-tool and private repos",
         "text": "Set tools list with agr config set tools for multi-tool teams. Export GITHUB_TOKEN for private skill repositories. Add agr sync to CI/CD pipelines.",
-        "url": "https://kasperjunge.github.io/agent-resources/teams/#multi-tool-teams"
+        "url": "https://computerlovetech.github.io/agr/teams/#multi-tool-teams"
       }
     ]
   }
@@ -924,25 +924,25 @@
         "@type": "HowToStep",
         "name": "Run a skill once",
         "text": "Run agrx with a skill handle to download, execute, and clean up in one command. Example: agrx anthropics/skills/pdf -p \"Extract tables from report.pdf\"",
-        "url": "https://kasperjunge.github.io/agent-resources/agrx/#quick-start"
+        "url": "https://computerlovetech.github.io/agr/agrx/#quick-start"
       },
       {
         "@type": "HowToStep",
         "name": "Choose a tool",
         "text": "Use --tool to pick which AI coding tool runs the skill. Example: agrx anthropics/skills/pdf --tool codex",
-        "url": "https://kasperjunge.github.io/agent-resources/agrx/#run-with-a-specific-tool"
+        "url": "https://computerlovetech.github.io/agr/agrx/#run-with-a-specific-tool"
       },
       {
         "@type": "HowToStep",
         "name": "Use interactive mode",
-        "text": "Add -i to continue chatting after the skill runs. Example: agrx kasperjunge/commit -i",
-        "url": "https://kasperjunge.github.io/agent-resources/agrx/#interactive-mode"
+        "text": "Add -i to continue chatting after the skill runs. Example: agrx vercel-labs/agent-browser/agent-browser -i",
+        "url": "https://computerlovetech.github.io/agr/agrx/#interactive-mode"
       },
       {
         "@type": "HowToStep",
         "name": "Run outside a git repo",
         "text": "Use --global to run agrx anywhere without needing a git repository. Example: agrx anthropics/skills/pdf --global",
-        "url": "https://kasperjunge.github.io/agent-resources/agrx/#run-outside-a-git-repo"
+        "url": "https://computerlovetech.github.io/agr/agrx/#run-outside-a-git-repo"
       }
     ]
   }
@@ -969,31 +969,31 @@
         "@type": "HowToStep",
         "name": "Configure multiple AI tools",
         "text": "Run agr config set tools claude cursor codex to install skills into multiple tools at once. Use agr init --tools to set tools during initial setup.",
-        "url": "https://kasperjunge.github.io/agent-resources/configuration/#multi-tool-setup"
+        "url": "https://computerlovetech.github.io/agr/configuration/#multi-tool-setup"
       },
       {
         "@type": "HowToStep",
         "name": "Add a custom Git source",
         "text": "Run agr config add sources my-server --type git --url 'https://git.example.com/{owner}/{repo}.git' to fetch skills from a self-hosted Git server or GitLab.",
-        "url": "https://kasperjunge.github.io/agent-resources/configuration/#adding-a-custom-source"
+        "url": "https://computerlovetech.github.io/agr/configuration/#adding-a-custom-source"
       },
       {
         "@type": "HowToStep",
         "name": "Enable instruction syncing",
         "text": "Run agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md to keep CLAUDE.md, AGENTS.md, and GEMINI.md in sync across tools.",
-        "url": "https://kasperjunge.github.io/agent-resources/configuration/#instruction-syncing"
+        "url": "https://computerlovetech.github.io/agr/configuration/#instruction-syncing"
       },
       {
         "@type": "HowToStep",
         "name": "Set up private repositories",
         "text": "Export GITHUB_TOKEN or GH_TOKEN with Contents: Read-only access. agr injects the token into HTTPS clone URLs automatically — no config changes needed.",
-        "url": "https://kasperjunge.github.io/agent-resources/configuration/#private-repositories"
+        "url": "https://computerlovetech.github.io/agr/configuration/#private-repositories"
       },
       {
         "@type": "HowToStep",
         "name": "Install skills globally",
         "text": "Use the -g flag to install skills available in all projects: agr add -g anthropics/skills/pdf. Global config lives at ~/.agr/agr.toml.",
-        "url": "https://kasperjunge.github.io/agent-resources/configuration/#global-installs"
+        "url": "https://computerlovetech.github.io/agr/configuration/#global-installs"
       }
     ]
   }
@@ -1007,7 +1007,7 @@
     "@type": "TechArticle",
     "headline": "Configure agr.toml — Multi-Tool Setup, Sources, and Instruction Syncing",
     "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.",
-    "url": "https://kasperjunge.github.io/agent-resources/configuration/",
+    "url": "https://computerlovetech.github.io/agr/configuration/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1015,8 +1015,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1075,19 +1075,19 @@
         "@type": "HowToStep",
         "name": "Target multiple tools",
         "text": "Run agr config set tools claude cursor codex to install skills into multiple AI coding tools at once. Or use agr init --tools claude,cursor,codex during initial setup.",
-        "url": "https://kasperjunge.github.io/agent-resources/tools/#target-multiple-tools-at-once"
+        "url": "https://computerlovetech.github.io/agr/tools/#target-multiple-tools-at-once"
       },
       {
         "@type": "HowToStep",
         "name": "Add or remove a tool",
         "text": "Run agr config add tools cursor to start syncing to a new tool — existing dependencies are installed automatically. Run agr config remove tools cursor to stop (this deletes skills from that tool).",
-        "url": "https://kasperjunge.github.io/agent-resources/tools/#add-or-remove-a-tool-after-setup"
+        "url": "https://computerlovetech.github.io/agr/tools/#add-or-remove-a-tool-after-setup"
       },
       {
         "@type": "HowToStep",
         "name": "Sync instruction files",
         "text": "Enable instruction syncing with agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md. On agr sync, the canonical file is copied to AGENTS.md and GEMINI.md as needed.",
-        "url": "https://kasperjunge.github.io/agent-resources/tools/#keep-instruction-files-in-sync-across-tools"
+        "url": "https://computerlovetech.github.io/agr/tools/#keep-instruction-files-in-sync-across-tools"
       }
     ]
   }
@@ -1100,7 +1100,7 @@
     "@type": "TechArticle",
     "headline": "Install AI Skills in Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity",
     "description": "How agr installs skills into Claude Code, Cursor, Codex, GitHub Copilot, OpenCode, and Antigravity — directories, detection signals, and multi-tool setup.",
-    "url": "https://kasperjunge.github.io/agent-resources/tools/",
+    "url": "https://computerlovetech.github.io/agr/tools/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1108,8 +1108,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1172,31 +1172,31 @@
         "@type": "HowToStep",
         "name": "Install agr as a library",
         "text": "Install agr with pip install agr. For the CLI tools as well, use uv tool install agr or pipx install agr instead.",
-        "url": "https://kasperjunge.github.io/agent-resources/sdk/#install"
+        "url": "https://computerlovetech.github.io/agr/sdk/#install"
       },
       {
         "@type": "HowToStep",
         "name": "Load a skill from GitHub",
         "text": "Use Skill.from_git('owner/repo/skill') to download and cache a skill. Access skill.prompt for the SKILL.md contents and skill.files for the list of files.",
-        "url": "https://kasperjunge.github.io/agent-resources/sdk/#from-github"
+        "url": "https://computerlovetech.github.io/agr/sdk/#from-github"
       },
       {
         "@type": "HowToStep",
         "name": "Load a local skill",
         "text": "Use Skill.from_local('./my-skill') to load a skill from a local directory. The directory must contain a SKILL.md file.",
-        "url": "https://kasperjunge.github.io/agent-resources/sdk/#from-a-local-directory"
+        "url": "https://computerlovetech.github.io/agr/sdk/#from-a-local-directory"
       },
       {
         "@type": "HowToStep",
         "name": "Discover skills in a repository",
         "text": "Use list_skills('owner/repo') to list all skills in a GitHub repository, or skill_info('owner/repo/skill') to get details about a specific skill.",
-        "url": "https://kasperjunge.github.io/agent-resources/sdk/#discovering-skills"
+        "url": "https://computerlovetech.github.io/agr/sdk/#discovering-skills"
       },
       {
         "@type": "HowToStep",
         "name": "Manage the download cache",
         "text": "Use cache.info() to see cache statistics, cache.clear() to clear all cached skills, or cache.clear('pattern') to clear specific skills by glob pattern.",
-        "url": "https://kasperjunge.github.io/agent-resources/sdk/#cache-management"
+        "url": "https://computerlovetech.github.io/agr/sdk/#cache-management"
       }
     ]
   }
@@ -1209,7 +1209,7 @@
     "@type": "TechArticle",
     "headline": "agr Python SDK — Load, Discover, and Cache AI Agent Skills Programmatically",
     "description": "Use agr as a Python library to load skills from GitHub or local paths, discover skills in repositories, manage the download cache, and handle errors.",
-    "url": "https://kasperjunge.github.io/agent-resources/sdk/",
+    "url": "https://computerlovetech.github.io/agr/sdk/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1217,8 +1217,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1270,7 +1270,7 @@
     "@type": "TechArticle",
     "headline": "CLI Reference — All agr and agrx Commands, Flags, and Options",
     "description": "Complete CLI reference for agr and agrx — all commands, flags, and handle formats for managing AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
-    "url": "https://kasperjunge.github.io/agent-resources/reference/",
+    "url": "https://computerlovetech.github.io/agr/reference/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1278,8 +1278,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1326,7 +1326,7 @@
     "@type": "TechArticle",
     "headline": "How agr Works — Skills, Handles, Sources, Scopes, and the Sync Lifecycle",
     "description": "Understand how agr works — skills, handles, sources, and the sync lifecycle that keeps your AI tools in sync.",
-    "url": "https://kasperjunge.github.io/agent-resources/concepts/",
+    "url": "https://computerlovetech.github.io/agr/concepts/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1334,8 +1334,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1377,7 +1377,7 @@
     "@type": "TechArticle",
     "headline": "agr Changelog — New Features, Fixes, and Breaking Changes by Release",
     "description": "User-facing changes in each agr release — new features, bug fixes, and breaking changes for the AI agent skill manager.",
-    "url": "https://kasperjunge.github.io/agent-resources/changelog/",
+    "url": "https://computerlovetech.github.io/agr/changelog/",
     "author": {
       "@type": "Person",
       "name": "Kasper Junge",
@@ -1385,8 +1385,8 @@
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Agent Resources",
-      "url": "https://github.com/kasperjunge/agent-resources"
+      "name": "agr",
+      "url": "https://github.com/computerlovetech/agr"
     },
     "about": [
       {
@@ -1428,11 +1428,11 @@
     "@type": "CollectionPage",
     "name": "AI Agent Skill Directory — Browse and Install Skills for Claude Code, Cursor, Codex, and More",
     "description": "Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.",
-    "url": "https://kasperjunge.github.io/agent-resources/skills/",
+    "url": "https://computerlovetech.github.io/agr/skills/",
     "mainEntity": {
       "@type": "ItemList",
       "name": "Available AI Agent Skills",
-      "numberOfItems": 26,
+      "numberOfItems": 25,
       "itemListElement": [
         {
           "@type": "ListItem",
@@ -1605,16 +1605,9 @@
         {
           "@type": "ListItem",
           "position": 25,
-          "name": "Commit Work",
-          "description": "Run quality checks, update changelog, and create commits",
-          "url": "https://github.com/kasperjunge/skills/tree/main/commit-work"
-        },
-        {
-          "@type": "ListItem",
-          "position": 26,
-          "name": "Migrate to Skills",
-          "description": "Convert legacy agent resources to the Agent Skills format",
-          "url": "https://github.com/kasperjunge/agent-resources/tree/main/migrate-to-skills"
+          "name": "Code Review",
+          "description": "Guide for making code reviews",
+          "url": "https://github.com/maragudk/skills/tree/main/code-review"
         }
       ]
     },

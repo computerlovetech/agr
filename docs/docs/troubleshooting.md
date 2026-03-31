@@ -185,7 +185,7 @@ This is a catch-all error when git clone fails for a reason agr can't classify
 - **Corrupt local git state** — clear the agr cache: `python -c "from agr import cache; cache.clear()"`
 - **Corporate proxy or firewall** — git may be blocked. Try cloning the repo manually: `git clone https://github.com/user/repo.git`
 
-If the manual clone works but `agr add` doesn't, [open an issue](https://github.com/kasperjunge/agent-resources/issues/new) with the full error output.
+If the manual clone works but `agr add` doesn't, [open an issue](https://github.com/computerlovetech/agr/issues/new) with the full error output.
 
 ---
 
@@ -204,7 +204,7 @@ A single word is treated as a local path. For remote skills, use the [handle for
 agr add commit
 
 # Right
-agr add kasperjunge/commit
+agr add vercel-labs/agent-browser/agent-browser
 ```
 
 ### How do I fix "Too many path segments"?
@@ -1032,8 +1032,8 @@ This installs the skill into the tool's global skills directory, runs it, and cl
 ## Still stuck?
 
 - Run the failing command with details and check the output carefully — agr prints hints below most errors.
-- Check [GitHub Issues](https://github.com/kasperjunge/agent-resources/issues) for known problems.
-- [Open a new issue](https://github.com/kasperjunge/agent-resources/issues/new) with the full error output and your `agr.toml` contents.
+- Check [GitHub Issues](https://github.com/computerlovetech/agr/issues) for known problems.
+- [Open a new issue](https://github.com/computerlovetech/agr/issues/new) with the full error output and your `agr.toml` contents.
 
 ## Related Pages
 

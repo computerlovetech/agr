@@ -17,10 +17,10 @@ class TestDependency:
 
     def test_remote_dependency(self):
         """Create a remote dependency."""
-        dep = Dependency(type="skill", handle="kasperjunge/commit")
+        dep = Dependency(type="skill", handle="vercel-labs/agent-browser/agent-browser")
         assert dep.is_remote
         assert not dep.is_local
-        assert dep.identifier == "kasperjunge/commit"
+        assert dep.identifier == "vercel-labs/agent-browser/agent-browser"
 
     def test_local_dependency(self):
         """Create a local dependency."""
@@ -145,13 +145,13 @@ class TestAgrConfig:
         config_path = tmp_path / "agr.toml"
         config_path.write_text("""
 dependencies = [
-    { handle = "kasperjunge/commit", type = "skill" },
+    { handle = "vercel-labs/agent-browser/agent-browser", type = "skill" },
     { path = "./my-skill", type = "skill" },
 ]
 """)
         config = AgrConfig.load(config_path)
         assert len(config.dependencies) == 2
-        assert config.dependencies[0].handle == "kasperjunge/commit"
+        assert config.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
         assert config.dependencies[1].path == "./my-skill"
 
     def test_load_default_tool(self, tmp_path):
@@ -240,14 +240,16 @@ url = "https://github.com/{owner}/{repo}.git"
     def test_save(self, tmp_path):
         """Save config to file."""
         config = AgrConfig()
-        config.add_dependency(Dependency(type="skill", handle="kasperjunge/commit"))
+        config.add_dependency(
+            Dependency(type="skill", handle="vercel-labs/agent-browser/agent-browser")
+        )
         config_path = tmp_path / "agr.toml"
         config.save(config_path)
 
         # Reload and verify
         loaded = AgrConfig.load(config_path)
         assert len(loaded.dependencies) == 1
-        assert loaded.dependencies[0].handle == "kasperjunge/commit"
+        assert loaded.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
         assert loaded.default_source == "github"
         assert loaded.sources[0].name == "github"
 

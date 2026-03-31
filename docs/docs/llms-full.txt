@@ -2,9 +2,9 @@
 
 > A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
 
-- Source: https://github.com/kasperjunge/agent-resources
+- Source: https://github.com/computerlovetech/agr
 - PyPI: https://pypi.org/project/agr/
-- Docs: https://kasperjunge.github.io/agent-resources/
+- Docs: https://computerlovetech.github.io/agr/
 - Skills Specification: https://agentskills.io/specification
 - Example Skills: https://github.com/anthropics/skills
 
@@ -50,7 +50,7 @@ Examples:
 ```bash
 agr add anthropics/skills/frontend-design
 agr add -g anthropics/skills/frontend-design
-agr add kasperjunge/commit kasperjunge/pr
+agr add vercel-labs/agent-browser/agent-browser anthropics/skills/pdf
 agr add ./my-skill
 agr add anthropics/skills/pdf --overwrite
 ```
@@ -172,8 +172,8 @@ Examples:
 ```bash
 agrx anthropics/skills/pdf
 agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
-agrx kasperjunge/commit -i
-agrx kasperjunge/commit --tool codex
+agrx vercel-labs/agent-browser/agent-browser -i
+agrx vercel-labs/agent-browser/agent-browser --tool codex
 ```
 
 #### When to use `agr add` vs `agrx`
@@ -251,7 +251,7 @@ canonical_instructions = "CLAUDE.md"
 
 dependencies = [
     {handle = "anthropics/skills/frontend-design", type = "skill"},
-    {handle = "kasperjunge/commit", type = "skill"},
+    {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
     {handle = "team/internal-tool", type = "skill", source = "my-server"},
     {path = "./skills/local-skill", type = "skill"},
 ]
@@ -474,7 +474,7 @@ print(skill.files)    # files in skill directory
 print(skill.path)     # local path
 
 # Force re-download
-skill = Skill.from_git("kasperjunge/commit", force_download=True)
+skill = Skill.from_git("vercel-labs/agent-browser/agent-browser", force_download=True)
 
 # Private repos — uses GITHUB_TOKEN / GH_TOKEN from environment
 skill = Skill.from_git("my-org/private-repo/internal-skill")
@@ -648,10 +648,8 @@ agr add madsnorgaard/drupal-agent-resources/drupal-migration
 agr add madsnorgaard/drupal-agent-resources/ddev-expert
 agr add madsnorgaard/drupal-agent-resources/docker-local
 
-# Workflow — @kasperjunge, @maragudk
+# Workflow — @maragudk
 agr add maragudk/skills/collaboration
-agr add kasperjunge/commit-work
-agr add kasperjunge/agent-resources/migrate-to-skills
 ```
 
 Search GitHub for more: https://github.com/search?q=filename%3ASKILL.md&type=code
@@ -696,7 +694,7 @@ Catch-all when git clone fails for an unclassified reason. Check: disk space, fi
 
 #### "Invalid handle: remote handles require username/name format"
 `Error: Invalid handle 'commit': remote handles require username/name format`
-Single words are treated as local paths. For remote skills, include the username: `agr add kasperjunge/commit` not `agr add commit`.
+Single words are treated as local paths. For remote skills, include the username: `agr add vercel-labs/agent-browser/agent-browser` not `agr add commit`.
 
 #### "Too many path segments"
 `Error: Invalid handle 'a/b/c/d': too many path segments (expected user/name or user/repo/name)`
@@ -925,7 +923,7 @@ agr handles point to a specific skill, not a repo:
 ### Old Rules or Commands to Skills
 
 ```bash
-agrx kasperjunge/agent-resources/migrate-to-skills
+agrx anthropics/skills/pdf
 ```
 
 ### Automatic Directory Migrations

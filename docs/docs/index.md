@@ -228,12 +228,12 @@ agr add anthropics/skills/slack-gif-creator # Create animated GIFs for Slack
 agr add dsjacobsen/agent-resources/golang-pro             # Go — @dsjacobsen
 agr add madsnorgaard/drupal-agent-resources/drupal-expert  # Drupal — @madsnorgaard
 agr add maragudk/skills/collaboration                      # Workflow — @maragudk
-agr add kasperjunge/commit-work                            # Commits — @kasperjunge
+agr add vercel-labs/agent-browser/agent-browser                          # Browser agent — @vercel-labs
 ```
 
 Browse the full list at the [Skill Directory](skills.md) or on
 [GitHub](https://github.com/anthropics/skills).
-**Built something?** [Share it here.](https://github.com/kasperjunge/agent-resources/issues)
+**Built something?** [Share it here.](https://github.com/computerlovetech/agr/issues)
 
 ## Next steps
 

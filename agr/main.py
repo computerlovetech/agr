@@ -249,10 +249,10 @@ def add(
     """Add skills from GitHub or local paths.
 
     Examples:
-        agr add kasperjunge/commit
+        agr add vercel-labs/agent-browser/agent-browser
         agr add maragudk/skills/collaboration
         agr add ./my-skill
-        agr add kasperjunge/commit kasperjunge/pr  # Multiple
+        agr add vercel-labs/agent-browser/agent-browser anthropics/skills/pdf  # Multiple
     """
     run_add(refs, overwrite, source, global_install=global_install)
 
@@ -277,7 +277,7 @@ def remove(
     """Remove skills from the current scope.
 
     Examples:
-        agr remove kasperjunge/commit
+        agr remove vercel-labs/agent-browser/agent-browser
         agr remove ./my-skill
     """
     run_remove(refs, global_install=global_install)

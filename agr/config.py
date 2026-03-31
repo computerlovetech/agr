@@ -144,7 +144,7 @@ class Dependency:
     """A dependency in agr.toml.
 
     Examples:
-        Remote: { handle = "kasperjunge/commit", type = "skill" }
+        Remote: { handle = "vercel-labs/agent-browser/agent-browser", type = "skill" }
         Local:  { path = "./my-skill", type = "skill" }
     """
 
@@ -267,7 +267,7 @@ class AgrConfig:
         sync_instructions = true  # Optional
         canonical_instructions = "CLAUDE.md"  # Optional
         dependencies = [
-            { handle = "kasperjunge/commit", type = "skill" },
+            { handle = "vercel-labs/agent-browser/agent-browser", type = "skill" },
             { path = "./my-skill", type = "skill" },
         ]
     """

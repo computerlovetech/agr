@@ -171,7 +171,7 @@ agr add <handle>...
 ```bash
 agr add anthropics/skills/frontend-design
 agr add -g anthropics/skills/frontend-design
-agr add kasperjunge/commit kasperjunge/pr
+agr add vercel-labs/agent-browser/agent-browser anthropics/skills/pdf
 agr add ./my-skill
 agr add anthropics/skills/pdf --overwrite
 agr add anthropics/skills/pdf --source github
@@ -200,7 +200,7 @@ agr remove <handle>...
 ```bash
 agr remove anthropics/skills/frontend-design
 agr remove -g anthropics/skills/frontend-design
-agr remove kasperjunge/commit
+agr remove vercel-labs/agent-browser/agent-browser
 agr remove ./my-skill
 ```
 
@@ -217,7 +217,7 @@ agr sync
 Synced instructions: CLAUDE.md -> AGENTS.md
 Up to date: anthropics/skills/frontend-design
 Up to date: anthropics/skills/pdf
-Installed: kasperjunge/commit
+Installed: vercel-labs/agent-browser/agent-browser
 
 Summary: 2 up to date, 1 installed
 ```
@@ -246,7 +246,7 @@ agr list
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
 │ anthropics/skills/frontend-design │ remote │ installed            │
 │ anthropics/skills/pdf             │ remote │ partial (claude)     │
-│ kasperjunge/commit                │ remote │ not synced           │
+│ vercel-labs/agent-browser/agent-browser         │ remote │ not synced           │
 │ ./skills/local-skill              │ local  │ installed            │
 └───────────────────────────────────┴────────┴──────────────────────┘
 ```
@@ -395,8 +395,8 @@ See the [agrx guide](agrx.md) for usage patterns and examples.
 ```bash
 agrx anthropics/skills/pdf
 agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
-agrx kasperjunge/commit -i
-agrx kasperjunge/commit --source github
+agrx vercel-labs/agent-browser/agent-browser -i
+agrx vercel-labs/agent-browser/agent-browser --source github
 ```
 
 ## agr.toml Format
@@ -410,7 +410,7 @@ canonical_instructions = "CLAUDE.md" # (5)!
 
 dependencies = [ # (6)!
     {handle = "anthropics/skills/frontend-design", type = "skill"},
-    {handle = "kasperjunge/commit", type = "skill"},
+    {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
     {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
     {path = "./local-skill", type = "skill"}, # (8)!
 ]

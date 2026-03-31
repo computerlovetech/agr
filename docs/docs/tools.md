@@ -281,7 +281,7 @@ Added: cursor
 Syncing 3 dependencies to new tools...
 Installed: anthropics/skills/frontend-design (cursor)
 Installed: anthropics/skills/pdf (cursor)
-Installed: kasperjunge/commit (cursor)
+Installed: vercel-labs/agent-browser/agent-browser (cursor)
 ```
 
 This automatically installs all existing dependencies into the new tool — no

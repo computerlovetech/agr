@@ -67,13 +67,13 @@ cached copy without re-downloading.
 from agr import Skill
 
 # Short handle (looks in user's "skills" repo)
-skill = Skill.from_git("kasperjunge/commit")
+skill = Skill.from_git("vercel-labs/agent-browser/agent-browser")
 
 # Explicit repo
 skill = Skill.from_git("anthropics/skills/code-review")
 
 # Force re-download even if cached (useful after upstream changes)
-skill = Skill.from_git("kasperjunge/commit", force_download=True)
+skill = Skill.from_git("vercel-labs/agent-browser/agent-browser", force_download=True)
 
 # Private repos — set GITHUB_TOKEN or GH_TOKEN in your environment
 # export GITHUB_TOKEN="ghp_..."
@@ -179,7 +179,7 @@ for info in skills:
     print(f"{info.handle}: {info.name}")
 
 # List skills in a user's default "skills" repo
-skills = list_skills("kasperjunge")
+skills = list_skills("vercel-labs")
 ```
 
 !!! note "`list_skills()` does not fetch descriptions"
@@ -225,7 +225,7 @@ deleted = cache.clear()
 
 # Clear specific skills (glob pattern)
 deleted = cache.clear("anthropics/skills/*")
-deleted = cache.clear("kasperjunge/*/*")
+deleted = cache.clear("vercel-labs/*/*")
 ```
 
 ## Handle errors with AgrError subclasses

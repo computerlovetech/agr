@@ -518,7 +518,7 @@ class TestDownloadedRepo:
             type="git",
             url="https://github.com/{owner}/{repo}.git",
         )
-        with downloaded_repo(source, "kasperjunge", "agent-resources") as repo_dir:
+        with downloaded_repo(source, "computerlovetech", "agr") as repo_dir:
             assert repo_dir.exists()
             result = subprocess.run(
                 ["git", "-C", str(repo_dir), "ls-tree", "-r", "--name-only", "HEAD"],

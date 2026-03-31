@@ -36,7 +36,7 @@ class Skill:
     and file listing.
 
     Example:
-        >>> skill = Skill.from_git("kasperjunge/commit")
+        >>> skill = Skill.from_git("vercel-labs/agent-browser/agent-browser")
         >>> print(skill.prompt)  # Contents of SKILL.md
         >>> print(skill.files)   # List of files
     """
@@ -61,7 +61,7 @@ class Skill:
         Downloads the skill from GitHub and caches it locally for subsequent use.
 
         Args:
-            handle: Skill handle (e.g., "kasperjunge/commit" or "owner/repo/skill")
+            handle: Skill handle (e.g., "vercel-labs/agent-browser/agent-browser" or "owner/repo/skill")
             force_download: Force re-download even if cached
 
         Returns:
@@ -72,7 +72,7 @@ class Skill:
             SkillNotFoundError: If skill not found in repository
 
         Example:
-            >>> skill = Skill.from_git("kasperjunge/commit")
+            >>> skill = Skill.from_git("vercel-labs/agent-browser/agent-browser")
             >>> skill = Skill.from_git("anthropics/skills/code-review")
         """
         # Reject obvious local paths early

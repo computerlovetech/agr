@@ -17,9 +17,9 @@ class TestParseHandle:
 
     def test_remote_user_skill(self):
         """Parse user/skill format."""
-        h = parse_handle("kasperjunge/commit")
-        assert h.username == "kasperjunge"
-        assert h.name == "commit"
+        h = parse_handle("vercel-labs/agent-browser")
+        assert h.username == "vercel-labs"
+        assert h.name == "agent-browser"
         assert h.repo is None
         assert h.is_remote
         assert not h.is_local
@@ -71,7 +71,7 @@ class TestParseHandle:
     def test_simple_name_raises(self):
         """Simple name without username raises error."""
         with pytest.raises(InvalidHandleError):
-            parse_handle("commit")
+            parse_handle("agent-browser")
 
     def test_too_many_segments_raises(self):
         """More than 3 segments raises error."""
@@ -119,8 +119,8 @@ class TestParsedHandle:
 
     def test_to_toml_handle_simple(self):
         """to_toml_handle for user/skill."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
-        assert h.to_toml_handle() == "kasperjunge/commit"
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
+        assert h.to_toml_handle() == "vercel-labs/agent-browser"
 
     def test_to_toml_handle_with_repo(self):
         """to_toml_handle for user/repo/skill."""
@@ -146,8 +146,8 @@ class TestParsedHandle:
 
     def test_to_installed_name_simple(self):
         """to_installed_name for user/skill."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
-        assert h.to_installed_name() == "kasperjunge--commit"
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
+        assert h.to_installed_name() == "vercel-labs--agent-browser"
 
     def test_to_installed_name_with_repo(self):
         """to_installed_name for user/repo/skill."""
@@ -161,9 +161,9 @@ class TestParsedHandle:
 
     def test_get_github_repo_simple(self):
         """get_github_repo for user/skill defaults repo."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
         user, repo = h.get_github_repo()
-        assert user == "kasperjunge"
+        assert user == "vercel-labs"
         assert repo == "skills"
 
     def test_get_github_repo_explicit(self):

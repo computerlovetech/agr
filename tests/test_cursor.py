@@ -65,13 +65,13 @@ class TestFlatPaths:
 
     def test_remote_skill_no_repo_flat_claude(self):
         """Remote skill without repo gets flat path for Claude."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
-        assert h.to_skill_path(CLAUDE) == Path("commit")
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
+        assert h.to_skill_path(CLAUDE) == Path("agent-browser")
 
     def test_remote_skill_no_repo_flat_cursor(self):
         """Remote skill without repo gets flat path for Cursor."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
-        assert h.to_skill_path(CURSOR) == Path("commit")
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
+        assert h.to_skill_path(CURSOR) == Path("agent-browser")
 
     def test_local_skill_flat_path_claude(self):
         """Local skill gets flat path for Claude."""

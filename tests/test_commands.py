@@ -153,15 +153,15 @@ class TestAddRemoveCommands:
         """Add a remote skill from GitHub."""
         from agr.commands.add import run_add
 
-        run_add(["kasperjunge/migrate-to-skills"])
+        run_add(["maragudk/skills/collaboration"])
 
         # Check config
         config = AgrConfig.load(git_project / "agr.toml")
         assert len(config.dependencies) == 1
-        assert config.dependencies[0].handle == "kasperjunge/migrate-to-skills"
+        assert config.dependencies[0].handle == "maragudk/skills/collaboration"
 
         # Check installed
-        installed_dir = git_project / ".claude" / "skills" / "migrate-to-skills"
+        installed_dir = git_project / ".claude" / "skills" / "collaboration"
         assert installed_dir.exists()
 
 

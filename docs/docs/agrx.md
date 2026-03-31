@@ -54,7 +54,7 @@ Running skill 'pdf' with claude...
 
 ```bash
 agrx anthropics/skills/pdf -p "Extract tables"      # Pass a prompt
-agrx kasperjunge/commit -i                          # Interactive: skill + chat
+agrx vercel-labs/agent-browser/agent-browser -i                    # Interactive: skill + chat
 ```
 
 ## How It Works
@@ -115,12 +115,12 @@ The `-i` flag runs the skill first, then starts an interactive session so you
 can continue the conversation:
 
 ```bash
-agrx kasperjunge/commit -i
+agrx vercel-labs/agent-browser/agent-browser -i
 ```
 
 ```text
-Downloading kasperjunge/commit...
-Running skill 'commit' with claude...
+Downloading vercel-labs/agent-browser/agent-browser...
+Running skill 'agent-browser' with claude...
 ```
 
 ### Pass a prompt

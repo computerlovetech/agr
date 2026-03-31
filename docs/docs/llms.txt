@@ -2,7 +2,7 @@
 
 > A package manager for AI agent skills. Install, share, and run skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
 
-For the complete documentation in a single file, see [llms-full.txt](https://kasperjunge.github.io/agent-resources/llms-full.txt).
+For the complete documentation in a single file, see [llms-full.txt](https://computerlovetech.github.io/agr/llms-full.txt).
 
 ## Quick Start
 
@@ -20,25 +20,25 @@ agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
 ## Documentation Map
 
 ### Getting Started
-- [Home](https://kasperjunge.github.io/agent-resources/) — Install agr, add your first skill, and see what's available
-- [Tutorial](https://kasperjunge.github.io/agent-resources/tutorial/) — Step-by-step guide from install to sharing your own skill
-- [Core Concepts](https://kasperjunge.github.io/agent-resources/concepts/) — How skills, handles, sources, and scopes work
+- [Home](https://computerlovetech.github.io/agr/) — Install agr, add your first skill, and see what's available
+- [Tutorial](https://computerlovetech.github.io/agr/tutorial/) — Step-by-step guide from install to sharing your own skill
+- [Core Concepts](https://computerlovetech.github.io/agr/concepts/) — How skills, handles, sources, and scopes work
 
 ### Guides
-- [Supported Tools](https://kasperjunge.github.io/agent-resources/tools/) — Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity
-- [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/) — Browse official and community skills
-- [Teams](https://kasperjunge.github.io/agent-resources/teams/) — Set up agr for a team with shared skills and CI/CD
-- [Configuration](https://kasperjunge.github.io/agent-resources/configuration/) — Multi-tool setup, custom sources, instruction syncing
-- [agrx](https://kasperjunge.github.io/agent-resources/agrx/) — Run skills ephemerally without installing
+- [Supported Tools](https://computerlovetech.github.io/agr/tools/) — Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity
+- [Skill Directory](https://computerlovetech.github.io/agr/skills/) — Browse official and community skills
+- [Teams](https://computerlovetech.github.io/agr/teams/) — Set up agr for a team with shared skills and CI/CD
+- [Configuration](https://computerlovetech.github.io/agr/configuration/) — Multi-tool setup, custom sources, instruction syncing
+- [agrx](https://computerlovetech.github.io/agr/agrx/) — Run skills ephemerally without installing
 
 ### Building Skills
-- [Creating Skills](https://kasperjunge.github.io/agent-resources/creating/) — Write, test, and publish AI agent skills
-- [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/) — Use agr as a library to load and inspect skills
+- [Creating Skills](https://computerlovetech.github.io/agr/creating/) — Write, test, and publish AI agent skills
+- [Python SDK](https://computerlovetech.github.io/agr/sdk/) — Use agr as a library to load and inspect skills
 
 ### Reference
-- [CLI Reference](https://kasperjunge.github.io/agent-resources/reference/) — Every command, flag, and config option
-- [Troubleshooting](https://kasperjunge.github.io/agent-resources/troubleshooting/) — Common errors and how to fix them
-- [What's New](https://kasperjunge.github.io/agent-resources/changelog/) — Release notes and breaking changes
+- [CLI Reference](https://computerlovetech.github.io/agr/reference/) — Every command, flag, and config option
+- [Troubleshooting](https://computerlovetech.github.io/agr/troubleshooting/) — Common errors and how to fix them
+- [What's New](https://computerlovetech.github.io/agr/changelog/) — Release notes and breaking changes
 
 ## All Commands
 
@@ -79,7 +79,7 @@ default_tool = "claude"
 
 dependencies = [
     {handle = "anthropics/skills/frontend-design", type = "skill"},
-    {handle = "kasperjunge/commit", type = "skill"},
+    {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
     {path = "./skills/local-skill", type = "skill"},
 ]
 
@@ -150,11 +150,11 @@ cache.clear("anthropics/skills/*")  # Clear by pattern
 
 All errors inherit from `agr.exceptions.AgrError`. Key subclasses: `SkillNotFoundError`, `RepoNotFoundError`, `AuthenticationError`, `RateLimitError`, `InvalidHandleError`, `InvalidLocalPathError`, `CacheError`.
 
-Full SDK docs: [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/)
+Full SDK docs: [Python SDK](https://computerlovetech.github.io/agr/sdk/)
 
 ## Source Code
 
-- GitHub: https://github.com/kasperjunge/agent-resources
+- GitHub: https://github.com/computerlovetech/agr
 - PyPI: https://pypi.org/project/agr/
 - Skills Specification: https://agentskills.io/specification
 - Example Skills: https://github.com/anthropics/skills

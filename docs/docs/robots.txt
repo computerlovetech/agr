@@ -1,9 +1,9 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://kasperjunge.github.io/agent-resources/sitemap.xml
+Sitemap: https://computerlovetech.github.io/agr/sitemap.xml
 
 # LLM-optimized documentation (llms.txt convention)
 # See https://llmstxt.org for the specification
-Llms-txt: https://kasperjunge.github.io/agent-resources/llms.txt
-Llms-full-txt: https://kasperjunge.github.io/agent-resources/llms-full.txt
+Llms-txt: https://computerlovetech.github.io/agr/llms.txt
+Llms-full-txt: https://computerlovetech.github.io/agr/llms-full.txt

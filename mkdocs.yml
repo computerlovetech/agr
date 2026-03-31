@@ -1,9 +1,9 @@
 site_name: agr
-site_url: https://kasperjunge.github.io/agent-resources/
+site_url: https://computerlovetech.github.io/agr/
 site_description: A package manager for AI agent skills.
 site_author: Kasper Junge
-repo_url: https://github.com/kasperjunge/agent-resources
-repo_name: kasperjunge/agent-resources
+repo_url: https://github.com/computerlovetech/agr
+repo_name: computerlovetech/agr
 edit_uri: edit/main/docs/docs/
 
 docs_dir: docs/docs
@@ -59,8 +59,8 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/kasperjunge/agent-resources
-      name: Agent Resources on GitHub
+      link: https://github.com/computerlovetech/agr
+      name: agr on GitHub
   generator: false
   analytics:
     feedback:
@@ -75,7 +75,7 @@ extra:
           data: 0
           note: >-
             Thanks for the feedback! Help us improve by
-            <a href="https://github.com/kasperjunge/agent-resources/issues/new?title=Docs+feedback:+{title}&labels=docs" target="_blank">opening an issue</a>.
+            <a href="https://github.com/computerlovetech/agr/issues/new?title=Docs+feedback:+{title}&labels=docs" target="_blank">opening an issue</a>.
 
 not_in_nav: |
   404.md

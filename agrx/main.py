@@ -175,7 +175,7 @@ def main(
     handle: Annotated[
         str,
         typer.Argument(
-            help="Skill handle to run (e.g., kasperjunge/commit).",
+            help="Skill handle to run (e.g., vercel-labs/agent-browser/agent-browser).",
         ),
     ],
     tool: Annotated[
@@ -228,12 +228,12 @@ def main(
     selected tool's CLI, and cleans up afterwards.
 
     Examples:
-        agrx kasperjunge/commit
+        agrx vercel-labs/agent-browser/agent-browser
         agrx maragudk/skills/collaboration -i
-        agrx kasperjunge/commit -p "Review my changes"
-        agrx kasperjunge/commit --tool cursor
-        agrx kasperjunge/commit --tool codex
-        agrx kasperjunge/commit --tool opencode
+        agrx vercel-labs/agent-browser/agent-browser -p "Automate browser testing"
+        agrx vercel-labs/agent-browser/agent-browser --tool cursor
+        agrx vercel-labs/agent-browser/agent-browser --tool codex
+        agrx vercel-labs/agent-browser/agent-browser --tool opencode
     """
     console = get_console()
 

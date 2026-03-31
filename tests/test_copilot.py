@@ -75,8 +75,8 @@ class TestCopilotPaths:
 
     def test_remote_skill_no_repo_flat(self):
         """Remote skill without repo gets flat path for Copilot."""
-        h = ParsedHandle(username="kasperjunge", name="commit")
-        assert h.to_skill_path(COPILOT) == Path("commit")
+        h = ParsedHandle(username="vercel-labs", name="agent-browser")
+        assert h.to_skill_path(COPILOT) == Path("agent-browser")
 
     def test_local_skill_flat_path(self):
         """Local skill gets flat path for Copilot."""
@@ -87,7 +87,7 @@ class TestCopilotPaths:
         """Copilot uses same path format as Claude (both flat)."""
         handles = [
             ParsedHandle(username="maragudk", repo="skills", name="bluesky"),
-            ParsedHandle(username="kasperjunge", name="commit"),
+            ParsedHandle(username="vercel-labs", name="agent-browser"),
             ParsedHandle(is_local=True, name="my-skill"),
         ]
         for h in handles:

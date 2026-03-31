@@ -14,7 +14,7 @@ keywords:
 # What's New
 
 User-facing changes in each release. For the full changelog with implementation
-details, see [CHANGELOG.md on GitHub](https://github.com/kasperjunge/agent-resources/blob/main/CHANGELOG.md).
+details, see [CHANGELOG.md on GitHub](https://github.com/computerlovetech/agr/blob/main/CHANGELOG.md).
 
 ---
 

@@ -95,7 +95,7 @@ class ParsedHandle:
         """Convert to agr.toml format.
 
         Examples:
-            Remote: "kasperjunge/commit" or "maragudk/skills/collaboration"
+            Remote: "vercel-labs/agent-browser" or "maragudk/skills/collaboration"
             Local: "./my-skill"
         """
         if self.is_local and self.local_path:
@@ -114,7 +114,7 @@ class ParsedHandle:
         Uses INSTALLED_NAME_SEPARATOR (--) for Windows compatibility.
 
         Examples:
-            Remote: "kasperjunge--commit" or "maragudk--skills--collaboration"
+            Remote: "vercel-labs--agent-browser" or "maragudk--skills--collaboration"
             Local: "local--my-skill"
         """
         sep = INSTALLED_NAME_SEPARATOR
@@ -188,7 +188,7 @@ def parse_handle(ref: str, *, prefer_local: bool = True) -> ParsedHandle:
 
     Args:
         ref: Handle string. Examples:
-            - "kasperjunge/commit" -> remote, user=kasperjunge, name=commit
+            - "vercel-labs/agent-browser" -> remote, user=vercel-labs, name=agent-browser
             - "maragudk/skills/collaboration" -> remote,
               user=maragudk, repo=skills, name=collaboration
             - "./my-skill" -> local, name=my-skill

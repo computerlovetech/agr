@@ -48,7 +48,7 @@ class TestAgrxWithClaude:
         # Note: agrx runs claude interactively, so it will timeout
         # We just verify it starts downloading correctly
         try:
-            result = agrx("kasperjunge/migrate-to-skills", timeout=5)
+            result = agrx("maragudk/skills/collaboration", timeout=5)
             # If it completes quickly, check for expected output
             assert "Downloading" in result.stdout_raw or result.returncode == 0
         except subprocess.TimeoutExpired as e:

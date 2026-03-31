@@ -113,8 +113,7 @@ Skills built and shared by the community.
 | Skill | Description | Author | Install |
 |-------|-------------|--------|---------|
 | Collaboration | Contributing to GitHub projects, PRs, and code reviews | [@maragudk](https://github.com/maragudk) | `agr add maragudk/skills/collaboration` |
-| Commit Work | Run quality checks, update changelog, and create commits | [@kasperjunge](https://github.com/kasperjunge) | `agr add kasperjunge/commit-work` |
-| Migrate to Skills | Convert legacy agent resources to the Agent Skills format | [@kasperjunge](https://github.com/kasperjunge) | `agr add kasperjunge/agent-resources/migrate-to-skills` |
+| Code Review | Guide for making code reviews | [@maragudk](https://github.com/maragudk) | `agr add maragudk/skills/code-review` |
 
 ---
 
@@ -187,7 +186,7 @@ agr add your-username/my-skill
 
 ### 3. List it here
 
-Open an issue at [github.com/kasperjunge/agent-resources](https://github.com/kasperjunge/agent-resources/issues) to get your skill added to this directory. For [team-wide sharing](teams.md), you can also use a private repository with [`agr.toml`](configuration.md).
+Open an issue at [github.com/computerlovetech/agr](https://github.com/computerlovetech/agr/issues) to get your skill added to this directory. For [team-wide sharing](teams.md), you can also use a private repository with [`agr.toml`](configuration.md).
 
 See [Creating Skills](creating.md) for a full guide on writing effective skills.
 

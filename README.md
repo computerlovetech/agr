@@ -9,7 +9,7 @@ Copilot, and Antigravity — with a single command.
 
 [![PyPI](https://img.shields.io/pypi/v/agr?color=blue)](https://pypi.org/project/agr/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docs](https://img.shields.io/badge/docs-site-blue)](https://kasperjunge.github.io/agent-resources/)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://computerlovetech.github.io/agr/)
 
 </div>
 
@@ -139,7 +139,7 @@ for info in list_skills("anthropics/skills"):
     print(f"{details.handle}: {details.description}")
 ```
 
-See the [SDK documentation](https://kasperjunge.github.io/agent-resources/sdk/) for
+See the [SDK documentation](https://computerlovetech.github.io/agr/sdk/) for
 cache management, error handling, and the full API.
 
 ---
@@ -183,7 +183,7 @@ agr add anthropics/skills/internal-comms    # Write internal communications
 agr add anthropics/skills/slack-gif-creator # Create animated GIFs for Slack
 ```
 
-Browse the full list in the [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/).
+Browse the full list in the [Skill Directory](https://computerlovetech.github.io/agr/skills/).
 
 ---
 
@@ -219,20 +219,18 @@ agr add madsnorgaard/drupal-agent-resources/drupal-migration
 agr add madsnorgaard/drupal-agent-resources/ddev-expert
 agr add madsnorgaard/drupal-agent-resources/docker-local
 
-# Workflow — @maragudk, @kasperjunge
+# Workflow — @maragudk
 agr add maragudk/skills/collaboration
-agr add kasperjunge/commit-work
-agr add kasperjunge/agent-resources/migrate-to-skills
 ```
 
-Browse all community skills in the [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/).
+Browse all community skills in the [Skill Directory](https://computerlovetech.github.io/agr/skills/).
 
-**Built something?** [Share it here.](https://github.com/kasperjunge/agent-resources/issues)
+**Built something?** [Share it here.](https://github.com/computerlovetech/agr/issues)
 
 ---
 
 <div align="center">
 
-[Documentation](https://kasperjunge.github.io/agent-resources/) · [Skill Directory](https://kasperjunge.github.io/agent-resources/skills/) · [Tutorial](https://kasperjunge.github.io/agent-resources/tutorial/) · [Python SDK](https://kasperjunge.github.io/agent-resources/sdk/) · [MIT License](LICENSE)
+[Documentation](https://computerlovetech.github.io/agr/) · [Skill Directory](https://computerlovetech.github.io/agr/skills/) · [Tutorial](https://computerlovetech.github.io/agr/tutorial/) · [Python SDK](https://computerlovetech.github.io/agr/sdk/) · [MIT License](LICENSE)
 
 </div>

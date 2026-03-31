@@ -298,7 +298,7 @@ each tool's global skills directory (see table above).
 
     dependencies = [ # (6)!
         {handle = "anthropics/skills/frontend-design", type = "skill"},
-        {handle = "kasperjunge/commit", type = "skill"},
+        {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
         {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
         {path = "./skills/local-skill", type = "skill"}, # (8)!
     ]
