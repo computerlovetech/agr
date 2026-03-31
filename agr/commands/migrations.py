@@ -345,7 +345,7 @@ def migrate_flat_installed_names(
         if not (dep.path or dep.handle):
             continue
         try:
-            handle, source_name = dep.resolve(config.default_source)
+            handle, source_name = dep.resolve(config.default_source, config.default_owner)
         except (AgrError, ValueError):
             continue
         handles_by_name.setdefault(handle.name, []).append((handle, source_name))

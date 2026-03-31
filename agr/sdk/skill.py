@@ -12,6 +12,7 @@ from agr.exceptions import (
 from agr.fetcher import prepare_repo_for_skill
 from agr.git import downloaded_repo, get_head_commit
 from agr.handle import (
+    DEFAULT_OWNER,
     ParsedHandle,
     is_local_path_ref,
     iter_repo_candidates,
@@ -82,7 +83,7 @@ class Skill:
             )
 
         # Parse handle
-        parsed = parse_handle(handle, prefer_local=False)
+        parsed = parse_handle(handle, prefer_local=False, default_owner=DEFAULT_OWNER)
         if parsed.is_local:
             raise InvalidHandleError(
                 f"'{handle}' is a local path. Use Skill.from_local() instead."

@@ -258,16 +258,16 @@ def main(
                 raise typer.Exit(1)
             skills_dir = tool_config.get_skills_dir(repo_root)
 
+        config_path = find_config()
+        config = AgrConfig.load(config_path) if config_path else AgrConfig()
+
         # Parse handle
-        parsed = parse_handle(handle)
+        parsed = parse_handle(handle, default_owner=config.default_owner)
 
         if parsed.is_local:
             print_error("agrx only works with remote handles")
             console.print("[dim]Use 'agr add' for local skills[/dim]")
             raise typer.Exit(1)
-
-        config_path = find_config()
-        config = AgrConfig.load(config_path) if config_path else AgrConfig()
         resolver = config.get_source_resolver()
         if source:
             resolver.get(source)

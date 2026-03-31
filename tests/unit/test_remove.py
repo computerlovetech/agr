@@ -71,3 +71,9 @@ class TestIdentifierCandidates:
         )
         result = _identifier_candidates("/abs/skill", handle, "/abs/skill")
         assert result == ["/abs/skill"]
+
+    def test_one_part_handle_produces_ref_and_expanded_toml_handle(self):
+        """1-part ref with resolved handle produces both raw and expanded forms."""
+        handle = ParsedHandle(username="computerlovetech", name="setup")
+        result = _identifier_candidates("setup", handle, None)
+        assert result == ["setup", "computerlovetech/setup"]

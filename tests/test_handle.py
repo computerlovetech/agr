@@ -69,9 +69,49 @@ class TestParseHandle:
             parse_handle("   ")
 
     def test_simple_name_raises(self):
-        """Simple name without username raises error."""
+        """Simple name without username raises error when no default_owner."""
         with pytest.raises(InvalidHandleError):
             parse_handle("agent-browser")
+
+    def test_simple_name_with_default_owner(self):
+        """Simple name resolves with default_owner."""
+        h = parse_handle("setup", default_owner="computerlovetech")
+        assert h.username == "computerlovetech"
+        assert h.name == "setup"
+        assert h.repo is None
+        assert h.is_remote
+        assert not h.is_local
+
+    def test_simple_name_with_custom_default_owner(self):
+        """Simple name resolves with custom default_owner."""
+        h = parse_handle("commit", default_owner="myorg")
+        assert h.username == "myorg"
+        assert h.name == "commit"
+
+    def test_simple_name_default_owner_none_raises(self):
+        """Simple name with default_owner=None still raises."""
+        with pytest.raises(InvalidHandleError):
+            parse_handle("setup", default_owner=None)
+
+    def test_simple_name_default_owner_validates_separator(self):
+        """Simple name with -- is rejected even with default_owner."""
+        with pytest.raises(InvalidHandleError, match="contains reserved sequence"):
+            parse_handle("my--skill", default_owner="computerlovetech")
+
+    def test_simple_name_default_owner_with_separator_rejected(self):
+        """Default owner containing -- is rejected."""
+        with pytest.raises(InvalidHandleError, match="contains reserved sequence"):
+            parse_handle("setup", default_owner="bad--owner")
+
+    def test_simple_name_prefers_local_path(self, tmp_path, monkeypatch):
+        """Existing local path takes precedence over default_owner."""
+        skill_dir = tmp_path / "setup"
+        skill_dir.mkdir()
+        monkeypatch.chdir(tmp_path)
+
+        h = parse_handle("setup", default_owner="computerlovetech")
+        assert h.is_local
+        assert h.name == "setup"
 
     def test_too_many_segments_raises(self):
         """More than 3 segments raises error."""

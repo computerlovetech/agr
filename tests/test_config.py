@@ -137,6 +137,7 @@ class TestAgrConfig:
         assert config.default_source == "github"
         assert config.sources[0].name == "github"
         assert config.default_tool is None
+        assert config.default_owner == "computerlovetech"
         assert config.sync_instructions is None
         assert config.canonical_instructions is None
 
@@ -151,7 +152,9 @@ dependencies = [
 """)
         config = AgrConfig.load(config_path)
         assert len(config.dependencies) == 2
-        assert config.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
+        assert (
+            config.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
+        )
         assert config.dependencies[1].path == "./my-skill"
 
     def test_load_default_tool(self, tmp_path):
@@ -249,7 +252,9 @@ url = "https://github.com/{owner}/{repo}.git"
         # Reload and verify
         loaded = AgrConfig.load(config_path)
         assert len(loaded.dependencies) == 1
-        assert loaded.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
+        assert (
+            loaded.dependencies[0].handle == "vercel-labs/agent-browser/agent-browser"
+        )
         assert loaded.default_source == "github"
         assert loaded.sources[0].name == "github"
 
@@ -428,3 +433,86 @@ class TestGetTools:
 
         loaded = AgrConfig.load(config_path)
         assert loaded.dependencies[0].source == "github"
+
+    def test_default_owner_defaults_to_computerlovetech(self):
+        """Default owner is computerlovetech."""
+        config = AgrConfig()
+        assert config.default_owner == "computerlovetech"
+
+    def test_load_default_owner(self, tmp_path):
+        """Load config with custom default_owner."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = "myorg"\ndependencies = []\n')
+        config = AgrConfig.load(config_path)
+        assert config.default_owner == "myorg"
+
+    def test_save_and_load_default_owner_roundtrip(self, tmp_path):
+        """Custom default_owner persists through save/load."""
+        config = AgrConfig()
+        config.default_owner = "myorg"
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        loaded = AgrConfig.load(config_path)
+        assert loaded.default_owner == "myorg"
+
+    def test_default_owner_not_written_when_default(self, tmp_path):
+        """Default owner value is not written to file."""
+        config = AgrConfig()
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        content = config_path.read_text()
+        assert "default_owner" not in content
+
+    def test_default_owner_written_when_custom(self, tmp_path):
+        """Custom default_owner is written to file."""
+        config = AgrConfig()
+        config.default_owner = "myorg"
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        content = config_path.read_text()
+        assert 'default_owner = "myorg"' in content
+
+    def test_load_empty_default_owner_raises(self, tmp_path):
+        """Empty default_owner in config raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = ""\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="default_owner cannot be empty"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_owner_with_slash_raises(self, tmp_path):
+        """default_owner containing '/' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = "foo/bar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot contain '/'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_owner_with_separator_raises(self, tmp_path):
+        """default_owner containing '--' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = "foo--bar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot contain '--'"):
+            AgrConfig.load(config_path)
+
+    def test_to_parsed_handle_with_default_owner(self):
+        """Dependency.to_parsed_handle passes default_owner through."""
+        dep = Dependency(type="skill", handle="setup")
+        # Without default_owner, this would raise for a 1-part handle
+        parsed = dep.to_parsed_handle(default_owner="myorg")
+        assert parsed.username == "myorg"
+        assert parsed.name == "setup"
+
+    def test_add_dependency_deduplicates_one_part_handle(self):
+        """Adding a normalized handle replaces a 1-part handle via also_matches."""
+        config = AgrConfig()
+        config.add_dependency(Dependency(type="skill", handle="setup"))
+        assert len(config.dependencies) == 1
+
+        config.add_dependency(
+            Dependency(type="skill", handle="computerlovetech/setup"),
+            also_matches=["setup"],
+        )
+        assert len(config.dependencies) == 1
+        assert config.dependencies[0].handle == "computerlovetech/setup"

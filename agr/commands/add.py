@@ -56,7 +56,7 @@ def run_add(
     for ref in refs:
         try:
             # Parse handle
-            handle = parse_handle(ref)
+            handle = parse_handle(ref, default_owner=config.default_owner)
 
             if source and handle.is_local:
                 raise AgrError("Local skills cannot specify a source")
@@ -96,7 +96,8 @@ def run_add(
                         type=DEPENDENCY_TYPE_SKILL,
                         handle=handle.to_toml_handle(),
                         source=source,
-                    )
+                    ),
+                    also_matches=[ref],
                 )
 
             lockfile_updates.append((handle, ref, install_result))

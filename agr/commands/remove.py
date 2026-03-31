@@ -56,7 +56,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     for ref in refs:
         try:
             # Parse handle
-            handle = parse_handle(ref)
+            handle = parse_handle(ref, default_owner=config.default_owner)
 
             # Compute the resolved absolute path once for local global installs
             abs_path_str: str | None = None
@@ -128,7 +128,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         lockfile = load_lockfile(lockfile_path)
         if lockfile is not None:
             for ref in removed_refs:
-                handle = parse_handle(ref)
+                handle = parse_handle(ref, default_owner=config.default_owner)
                 # Try multiple identifier forms (handle string, path, toml handle)
                 abs_path_str: str | None = None
                 if global_install and handle.is_local and handle.local_path is not None:
