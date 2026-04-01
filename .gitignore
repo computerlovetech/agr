@@ -65,7 +65,7 @@ package-lock.json
 .research/
 .repos/
 
-docs/site/
+site/
 docs/.cache/
 .documents/
 

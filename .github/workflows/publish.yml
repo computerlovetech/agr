@@ -40,6 +40,9 @@ jobs:
       - name: Run ruff format check
         run: uv run ruff format --check .
 
+      - name: Run type check
+        run: uv run ty check
+
       - name: Run tests
         run: uv run pytest -m "not e2e and not network and not slow"
 
@@ -61,11 +64,18 @@ jobs:
       - name: Build package
         run: uv build
 
-      - name: Verify package
+      - name: Verify package version matches tag
         run: |
-          uv venv .venv
-          uv pip install dist/*.whl
-          .venv/bin/python -c "import agr; print(f'Built version: {agr.__version__}')"
+          PKG_VERSION=$(python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch: pyproject.toml has $PKG_VERSION but tag is $TAG_VERSION"
+            exit 1
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

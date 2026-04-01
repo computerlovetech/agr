@@ -84,10 +84,9 @@ skip this step and move on.
 
 ## Step 4: Bump the version
 
-The version lives in two places — both must be updated:
+The version lives in `pyproject.toml` (the single source of truth — `importlib.metadata` picks it up at runtime via `agr/__init__.py`):
 
 1. `pyproject.toml` line 7: `version = "X.Y.Z"`
-2. `agr/__init__.py` line 3: `__version__ = "X.Y.Z"`
 
 Calculate the new version based on the current version and the release type the user chose.
 

@@ -29,7 +29,7 @@ Two CLI tools share a common core library:
 - **`agr`** — Main CLI (Typer app in `agr/main.py`). Commands: add, remove, sync, list, init, config.
 - **`agrx`** — Ephemeral skill runner (`agrx/main.py`). Downloads and runs a skill without persisting it.
 
-For detailed architecture, contributing guides, code patterns, and recipes, see `docs/docs/contributing/`.
+For detailed architecture, contributing guides, code patterns, and recipes, see `docs/contributing/`.
 
 ## agr.toml Format
 
@@ -52,6 +52,13 @@ Future: A `tools` section will configure which tools to sync to:
 ```toml
 tools = ["claude", "cursor"]
 ```
+
+## Conventions
+
+- **Commit messages**: `docs: explain X for users who want to Y`, `feat: add X so users can Y`, `fix: resolve X that caused Y`
+- **Dependencies**: Keep runtime deps minimal. Prefer stdlib over new deps.
+- **Tests**: Include tests for new functionality. No external services, no API keys in tests.
+- **Docs**: Run `mkdocs build --strict` before committing doc changes.
 
 ## Boundaries
 

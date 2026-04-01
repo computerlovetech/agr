@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-DOCS_DIR = Path(__file__).parent.parent / "docs" / "docs"
+DOCS_DIR = Path(__file__).parent.parent / "docs"
 
 
 def get_markdown_files() -> list[Path]:
