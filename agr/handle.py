@@ -2,6 +2,7 @@
 
 Handle formats:
 - Remote: "username/skill" or "username/repo/skill"
+- Remote URL: "https://github.com/user/repo/tree/branch/path/to/skill"
 - Local: "./path/to/skill" or "path/to/skill"
 
 Installed naming (Windows-compatible using -- separator) used on collisions:
@@ -16,6 +17,7 @@ For tools with nested directory support (e.g., Cursor):
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import TYPE_CHECKING
 
 from agr.exceptions import InvalidHandleError
@@ -215,6 +217,11 @@ def parse_handle(
 
     ref = ref.strip()
 
+    # Try to parse as a GitHub URL first
+    normalized = _try_parse_github_url(ref)
+    if normalized is not None:
+        ref = normalized
+
     if prefer_local:
         path = Path(ref)
         # Local path detection: starts with ./ ../ / or exists on disk
@@ -267,6 +274,60 @@ def parse_handle(
         "(expected user/name or user/repo/name)"
     )
 
+
+def _try_parse_github_url(ref: str) -> str | None:
+    """Try to parse a GitHub URL into a handle string.
+
+    Converts URLs like:
+        https://github.com/user/repo/tree/branch/path/to/skill
+    Into handle strings like:
+        user/repo/skill
+
+    Args:
+        ref: The input string that might be a GitHub URL.
+
+    Returns:
+        Normalized handle string if the input is a GitHub URL, None otherwise.
+
+    Raises:
+        InvalidHandleError: If it looks like a GitHub URL but can't be parsed.
+    """
+    # Fast path: skip urlparse for non-URL inputs
+    if "://" not in ref:
+        return None
+
+    parsed = urlparse(ref)
+    if parsed.hostname != "github.com":
+        return None
+
+    # Strip leading/trailing slashes and split
+    path_parts = [p for p in parsed.path.split("/") if p]
+
+    if len(path_parts) < 2:
+        raise InvalidHandleError(
+            f"Invalid GitHub URL '{ref}': expected at least user/repo in the path"
+        )
+
+    username = path_parts[0]
+    repo = path_parts[1]
+
+    # Bare repo URL: https://github.com/user/repo
+    if len(path_parts) == 2:
+        return f"{username}/{repo}"
+
+    # URL with /tree/branch/... or /blob/branch/...
+    if len(path_parts) >= 4 and path_parts[2] in ("tree", "blob"):
+        # path after branch — e.g. ["skills", "sample"] from /tree/main/skills/sample
+        skill_path = path_parts[4:]
+        if skill_path:
+            return f"{username}/{repo}/{skill_path[-1]}"
+        # Just https://github.com/user/repo/tree/branch (no subpath)
+        return f"{username}/{repo}"
+
+    raise InvalidHandleError(
+        f"Invalid GitHub URL '{ref}': could not extract skill path. "
+        f"Expected format: https://github.com/user/repo/tree/branch/path/to/skill"
+    )
 
 def _validate_no_separator(ref: str, label: str, value: str) -> None:
     """Validate that a handle component doesn't contain the reserved separator.
