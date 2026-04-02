@@ -293,8 +293,8 @@ dependencies = []
         content = config_path.read_text()
         assert 'tools = ["claude", "cursor"]' in content
 
-    def test_save_default_tools_omits(self, tmp_path):
-        """Default tools (just claude) is not saved."""
+    def test_save_default_tools_always_written(self, tmp_path):
+        """Default tools (just claude) is always written for discoverability."""
         config_path = tmp_path / "agr.toml"
 
         config = AgrConfig()
@@ -302,7 +302,7 @@ dependencies = []
         config.save(config_path)
 
         content = config_path.read_text()
-        assert "tools" not in content
+        assert 'tools = ["claude"]' in content
 
 
 class TestFetchAndInstallWithTool:

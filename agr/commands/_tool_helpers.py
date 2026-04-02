@@ -351,6 +351,7 @@ def sync_dependencies_to_tools(config: AgrConfig, tool_names: list[str]) -> int:
                 overwrite=False,
                 resolver=resolver,
                 source=source_name,
+                default_repo=config.default_repo,
             )
 
             tool_list = ", ".join(t.name for t in tools_needing_install)

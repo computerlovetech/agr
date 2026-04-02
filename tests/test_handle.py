@@ -219,6 +219,26 @@ class TestParsedHandle:
         with pytest.raises(InvalidHandleError):
             h.get_github_repo()
 
+    def test_get_github_repo_custom_default_repo(self):
+        """get_github_repo uses custom default_repo when repo is None."""
+        h = ParsedHandle(username="myorg", name="my-skill")
+        user, repo = h.get_github_repo(default_repo="my-repo")
+        assert user == "myorg"
+        assert repo == "my-repo"
+
+    def test_get_github_repo_explicit_repo_ignores_default(self):
+        """get_github_repo with explicit repo ignores default_repo."""
+        h = ParsedHandle(username="myorg", repo="explicit", name="my-skill")
+        user, repo = h.get_github_repo(default_repo="my-repo")
+        assert user == "myorg"
+        assert repo == "explicit"
+
+    def test_get_github_repo_no_default_repo_falls_back(self):
+        """get_github_repo without default_repo falls back to DEFAULT_REPO_NAME."""
+        h = ParsedHandle(username="myorg", name="my-skill")
+        user, repo = h.get_github_repo()
+        assert repo == DEFAULT_REPO_NAME
+
 
 class TestRepoCandidates:
     """Tests for iter_repo_candidates function."""
@@ -233,3 +253,22 @@ class TestRepoCandidates:
     def test_explicit_repo(self):
         """Explicit repo does not include legacy fallback."""
         assert iter_repo_candidates("custom") == [("custom", False)]
+
+    def test_custom_default_repo(self):
+        """Custom default_repo replaces standard default, no legacy fallback."""
+        assert iter_repo_candidates(None, default_repo="my-repo") == [
+            ("my-repo", False),
+        ]
+
+    def test_custom_default_repo_skills(self):
+        """Setting default_repo to 'skills' keeps legacy fallback."""
+        assert iter_repo_candidates(None, default_repo="skills") == [
+            (DEFAULT_REPO_NAME, False),
+            (LEGACY_DEFAULT_REPO_NAME, True),
+        ]
+
+    def test_explicit_repo_ignores_default_repo(self):
+        """Explicit repo takes precedence over default_repo."""
+        assert iter_repo_candidates("explicit", default_repo="my-repo") == [
+            ("explicit", False),
+        ]

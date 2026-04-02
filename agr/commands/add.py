@@ -74,6 +74,7 @@ def run_add(
                 resolver=resolver,
                 source=source,
                 skills_dirs=skills_dirs,
+                default_repo=config.default_repo,
             )
             installed_paths = [
                 f"{name}: {path}" for name, path in installed_paths_dict.items()
