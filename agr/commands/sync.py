@@ -195,6 +195,7 @@ def _sync_individual_entries(
     repo_root: Path | None,
     tools: list[ToolConfig],
     resolver: SourceResolver,
+    default_repo: str | None = None,
 ) -> None:
     """Sync entries one at a time, each downloading its own repo if needed.
 
@@ -211,6 +212,7 @@ def _sync_individual_entries(
                 tools,
                 resolver,
                 tools_needing_install=entry.tools_needing_install,
+                default_repo=default_repo,
             )
         except INSTALL_ERROR_TYPES as e:
             results[entry.index] = SyncResult.from_error(e)
@@ -223,6 +225,7 @@ def _sync_batched_repo_entries(
     tools: list[ToolConfig],
     resolver: SourceResolver,
     default_source: str,
+    default_repo: str | None = None,
 ) -> None:
     """Sync remote entries grouped by repo, downloading each repo only once.
 
@@ -235,7 +238,7 @@ def _sync_batched_repo_entries(
     for entry in entries:
         handle = entry.handle
         source_name = entry.source_name or default_source
-        owner, repo_name = handle.get_github_repo()
+        owner, repo_name = handle.get_github_repo(default_repo=default_repo)
         key = (source_name, owner, repo_name)
         grouped.setdefault(key, []).append(entry)
 
@@ -324,6 +327,7 @@ def _sync_one_dependency(
     resolver: SourceResolver,
     skills_dirs: dict[str, Path] | None = None,
     tools_needing_install: list[ToolConfig] | None = None,
+    default_repo: str | None = None,
 ) -> SyncResult:
     """Sync a single dependency: check install status and install if needed.
 
@@ -346,6 +350,7 @@ def _sync_one_dependency(
         resolver=resolver,
         source=source_name,
         skills_dirs=skills_dirs,
+        default_repo=default_repo,
     )
     return SyncResult.installed(
         commit=install_result.commit,
@@ -382,7 +387,13 @@ def _run_global_sync() -> None:
                 config.default_source, config.default_owner
             )
             result = _sync_one_dependency(
-                handle, source_name, None, tools, resolver, skills_dirs
+                handle,
+                source_name,
+                None,
+                tools,
+                resolver,
+                skills_dirs,
+                default_repo=config.default_repo,
             )
         except INSTALL_ERROR_TYPES as e:
             result = SyncResult.from_error(e)
@@ -517,7 +528,14 @@ def run_sync(
     # Three categories are processed separately for efficiency:
     #
     # 1. Local skills — no git download, just copy from the local path.
-    _sync_individual_entries(pending_local, results, repo_root, tools, resolver)
+    _sync_individual_entries(
+        pending_local,
+        results,
+        repo_root,
+        tools,
+        resolver,
+        default_repo=config.default_repo,
+    )
 
     # 2. Default-repo remotes (two-part handles like "user/skill") — the
     #    repo name is unknown and must be discovered by trying candidates
@@ -526,7 +544,12 @@ def run_sync(
     pending_remote_specific = [e for e in pending_remote if e.handle.repo is not None]
 
     _sync_individual_entries(
-        pending_remote_default, results, repo_root, tools, resolver
+        pending_remote_default,
+        results,
+        repo_root,
+        tools,
+        resolver,
+        default_repo=config.default_repo,
     )
 
     # 3. Specific-repo remotes (three-part handles like "user/repo/skill") —
@@ -539,6 +562,7 @@ def run_sync(
         tools,
         resolver,
         config.default_source,
+        default_repo=config.default_repo,
     )
 
     # --- Phase 3: Update lockfile ---
@@ -591,6 +615,7 @@ def _sync_from_lockfile(
                     overwrite=False,
                     resolver=resolver,
                     source=source_name,
+                    default_repo=config.default_repo,
                 )
                 results.append((dep.identifier, SyncResult.installed()))
                 continue
@@ -603,7 +628,7 @@ def _sync_from_lockfile(
 
             # Clone the repo and checkout the pinned commit
             source_config = resolver.get(source_name or config.default_source)
-            owner, repo_name = handle.get_github_repo()
+            owner, repo_name = handle.get_github_repo(default_repo=config.default_repo)
             with downloaded_repo(source_config, owner, repo_name) as repo_dir:
                 fetch_and_checkout_commit(repo_dir, locked_skill.commit)
                 install_skill_from_repo_to_tools(

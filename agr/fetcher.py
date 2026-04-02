@@ -508,6 +508,7 @@ def _locate_remote_skill(
     handle: ParsedHandle,
     resolver: SourceResolver | None = None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> Generator[_RemoteSkillLocation, None, None]:
     """Search for a remote skill across sources and repo candidates.
 
@@ -527,7 +528,7 @@ def _locate_remote_skill(
     # "agent-resources") against each configured source (e.g. "github").
     # First match wins. The outer loop is repo candidates so we prefer
     # the primary repo name across all sources before trying fallbacks.
-    for repo_name, is_legacy in iter_repo_candidates(handle.repo):
+    for repo_name, is_legacy in iter_repo_candidates(handle.repo, default_repo):
         for source_config in resolver.ordered(source):
             try:
                 with downloaded_repo(source_config, owner, repo_name) as repo_dir:
@@ -660,6 +661,7 @@ def fetch_and_install_to_tools(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     skills_dirs: dict[str, Path] | None = None,
+    default_repo: str | None = None,
 ) -> tuple[dict[str, Path], InstallResult]:
     """Fetch skill once and install to multiple tools.
 
@@ -704,7 +706,7 @@ def fetch_and_install_to_tools(
     install_result = InstallResult()
     with (
         _rollback_on_failure() as installed,
-        _locate_remote_skill(handle, resolver, source) as loc,
+        _locate_remote_skill(handle, resolver, source, default_repo) as loc,
     ):
         for tool in tools:
             skills_dir = _resolve_skills_dir(

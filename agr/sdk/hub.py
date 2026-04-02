@@ -37,14 +37,19 @@ from agr.skill import (
 GITHUB_API_BASE = "https://api.github.com"
 
 
-def _build_display_handle(owner: str, repo: str, skill_name: str) -> str:
+def _build_display_handle(
+    owner: str,
+    repo: str,
+    skill_name: str,
+    default_repo: str | None = None,
+) -> str:
     """Build a user-facing handle string, omitting the repo for the default.
 
     Two-part handles (``owner/skill``) are used when the skill lives in the
-    default repo (``skills``); three-part handles (``owner/repo/skill``)
-    are used otherwise.
+    default repo; three-part handles (``owner/repo/skill``) are used
+    otherwise.
     """
-    if repo == DEFAULT_REPO_NAME:
+    if repo == (default_repo or DEFAULT_REPO_NAME):
         return f"{owner}/{skill_name}"
     return f"{owner}/{repo}/{skill_name}"
 

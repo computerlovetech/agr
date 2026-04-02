@@ -13,6 +13,7 @@ from agr.console import error_exit
 from agr.exceptions import ConfigError
 from agr.handle import (
     DEFAULT_OWNER,
+    DEFAULT_REPO_NAME,
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
     parse_handle,
@@ -288,6 +289,7 @@ class AgrConfig:
     default_source: str = DEFAULT_SOURCE_NAME
     default_tool: str | None = None
     default_owner: str | None = DEFAULT_OWNER
+    default_repo: str | None = DEFAULT_REPO_NAME
     sync_instructions: bool | None = None
     canonical_instructions: str | None = None
     _path: Path | None = field(default=None, repr=False)
@@ -358,6 +360,27 @@ class AgrConfig:
                 )
             config.default_owner = default_owner
 
+        default_repo = doc.get("default_repo")
+        if default_repo is not None:
+            default_repo = str(default_repo).strip()
+            if not default_repo:
+                raise ConfigError(
+                    "default_repo cannot be empty in agr.toml. "
+                    "Remove the key to use the default, or set a valid repo name."
+                )
+            if "/" in default_repo:
+                raise ConfigError(
+                    f"default_repo cannot contain '/': got '{default_repo}'. "
+                    "Use a plain GitHub repository name."
+                )
+            if INSTALLED_NAME_SEPARATOR in default_repo:
+                raise ConfigError(
+                    f"default_repo cannot contain '{INSTALLED_NAME_SEPARATOR}': "
+                    f"got '{default_repo}'. "
+                    "Use a plain GitHub repository name."
+                )
+            config.default_repo = default_repo
+
         sync_instructions = doc.get("sync_instructions")
         if sync_instructions is not None:
             config.sync_instructions = bool(sync_instructions)
@@ -377,6 +400,10 @@ class AgrConfig:
     def save(self, path: Path | None = None) -> None:
         """Save configuration to agr.toml.
 
+        All configurable options are written with explanatory comments so
+        users can discover and edit them.  Options that are unset (None) are
+        written as commented-out examples.
+
         Args:
             path: Path to save to (uses original path if not specified)
 
@@ -389,34 +416,77 @@ class AgrConfig:
 
         doc: TOMLDocument = tomlkit.document()
 
-        # Always write default source and sources for clarity
+        # --- default_source ---
         default_source = self.default_source or DEFAULT_SOURCE_NAME
         sources = self.sources or default_sources()
         _validate_default_source(default_source, sources)
+        doc.add(tomlkit.comment("Source to fetch skills from"))
         doc["default_source"] = default_source
+        doc.add(tomlkit.nl())
 
-        # Save tools array if not default
-        if self.tools != list(DEFAULT_TOOL_NAMES):
-            tools_array = tomlkit.array()
-            for tool in self.tools:
-                tools_array.append(tool)
-            doc["tools"] = tools_array
+        # --- tools (always written) ---
+        doc.add(
+            tomlkit.comment(
+                'Tools to install skills to (e.g. "claude", "cursor", "codex")'
+            )
+        )
+        tools_array = tomlkit.array()
+        for tool in self.tools:
+            tools_array.append(tool)
+        doc["tools"] = tools_array
+        doc.add(tomlkit.nl())
 
+        # --- default_tool ---
+        doc.add(
+            tomlkit.comment(
+                "Primary tool for instruction sync (must be listed in tools)"
+            )
+        )
         if self.default_tool:
             if self.default_tool not in self.tools:
                 raise ValueError("default_tool must be listed in tools")
             doc["default_tool"] = self.default_tool
+        else:
+            doc.add(tomlkit.comment('default_tool = "claude"'))
+        doc.add(tomlkit.nl())
 
-        if self.default_owner is not None and self.default_owner != DEFAULT_OWNER:
-            doc["default_owner"] = self.default_owner
+        # --- default_owner (always written) ---
+        doc.add(
+            tomlkit.comment(
+                "Default GitHub owner for short handles"
+                ' (e.g. "skill" resolves to "computerlovetech/skill")'
+            )
+        )
+        doc["default_owner"] = self.default_owner or DEFAULT_OWNER
+        doc.add(tomlkit.nl())
 
+        # --- default_repo (always written) ---
+        doc.add(
+            tomlkit.comment(
+                "Default GitHub repo for two-part handles"
+                ' (e.g. "owner/skill" resolves to "owner/skills/skill")'
+            )
+        )
+        doc["default_repo"] = self.default_repo or DEFAULT_REPO_NAME
+        doc.add(tomlkit.nl())
+
+        # --- sync_instructions ---
+        doc.add(tomlkit.comment("Sync instruction files across tools"))
         if self.sync_instructions is not None:
             doc["sync_instructions"] = bool(self.sync_instructions)
+        else:
+            doc.add(tomlkit.comment("sync_instructions = false"))
+        doc.add(tomlkit.nl())
 
+        # --- canonical_instructions ---
+        doc.add(tomlkit.comment("Which tool's instruction file is the source of truth"))
         if self.canonical_instructions:
             doc["canonical_instructions"] = self.canonical_instructions
+        else:
+            doc.add(tomlkit.comment('canonical_instructions = "claude"'))
+        doc.add(tomlkit.nl())
 
-        # Build dependencies array
+        # --- dependencies ---
         deps_array = tomlkit.array()
         deps_array.multiline(True)
 
@@ -432,6 +502,8 @@ class AgrConfig:
             deps_array.append(item)
 
         doc["dependencies"] = deps_array
+
+        # --- sources ---
         sources_array = tomlkit.aot()
         for source in sources:
             table = tomlkit.table()

@@ -115,14 +115,16 @@ class TestLockfileSync:
         skill2.mkdir(parents=True)
         (skill2 / "SKILL.md").write_text("---\nname: second-skill\n---\n# Second")
 
-        config_text = (cli_project / "agr.toml").read_text()
         # Manually append a dependency to agr.toml without running agr add
-        config_text = config_text.replace(
-            "]\n",
-            '    {path = "./skills/second-skill", type = "skill"},\n]\n',
-            1,
-        )
-        (cli_project / "agr.toml").write_text(config_text)
+        import tomlkit
+
+        config_text = (cli_project / "agr.toml").read_text()
+        doc = tomlkit.parse(config_text)
+        dep = tomlkit.inline_table()
+        dep["path"] = "./skills/second-skill"
+        dep["type"] = "skill"
+        doc["dependencies"].append(dep)
+        (cli_project / "agr.toml").write_text(tomlkit.dumps(doc))
 
         result = agr("sync", "--locked")
 

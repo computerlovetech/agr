@@ -60,21 +60,27 @@ def is_local_path_ref(ref: str) -> bool:
     return ref.startswith(LOCAL_PATH_PREFIXES)
 
 
-def iter_repo_candidates(repo: str | None) -> list[tuple[str, bool]]:
+def iter_repo_candidates(
+    repo: str | None, default_repo: str | None = None
+) -> list[tuple[str, bool]]:
     """Return repo candidates for owner-only handles.
 
     Args:
         repo: Explicit repo name or None for defaults.
+        default_repo: Configured default repo name. Falls back to
+            ``DEFAULT_REPO_NAME`` ("skills") when *None*.
 
     Returns:
         List of (repo_name, is_legacy) candidates in priority order.
     """
     if repo:
         return [(repo, False)]
-    return [
-        (DEFAULT_REPO_NAME, False),
-        (LEGACY_DEFAULT_REPO_NAME, True),
-    ]
+    effective_default = default_repo or DEFAULT_REPO_NAME
+    candidates: list[tuple[str, bool]] = [(effective_default, False)]
+    # Only try legacy fallback when using the standard default repo
+    if effective_default == DEFAULT_REPO_NAME:
+        candidates.append((LEGACY_DEFAULT_REPO_NAME, True))
+    return candidates
 
 
 @dataclass
@@ -129,11 +135,15 @@ class ParsedHandle:
             return f"{self.username}{sep}{self.repo}{sep}{self.name}"
         return f"{self.username}{sep}{self.name}"
 
-    def get_github_repo(self) -> tuple[str, str]:
+    def get_github_repo(self, default_repo: str | None = None) -> tuple[str, str]:
         """Get (owner, repo_name) for git download.
 
+        Args:
+            default_repo: Configured default repo name. Falls back to
+                ``DEFAULT_REPO_NAME`` ("skills") when *None*.
+
         Returns:
-            Tuple of (owner, repo_name). repo_name defaults to "skills".
+            Tuple of (owner, repo_name).
 
         Raises:
             InvalidHandleError: If this is a local handle.
@@ -142,7 +152,7 @@ class ParsedHandle:
             raise InvalidHandleError("Cannot get GitHub repo for local handle")
         if not self.username:
             raise InvalidHandleError("No username in handle")
-        return (self.username, self.repo or DEFAULT_REPO_NAME)
+        return (self.username, self.repo or default_repo or DEFAULT_REPO_NAME)
 
     def to_skill_path(self, tool: "ToolConfig") -> Path:
         """Get default skill installation path based on tool capabilities.

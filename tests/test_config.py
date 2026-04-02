@@ -408,16 +408,22 @@ class TestGetTools:
         loaded = AgrConfig.load(config_path)
         assert loaded.tools == ["claude", "cursor"]
 
-    def test_default_tools_not_written_to_file(self, tmp_path):
-        """Default tools array not written to file."""
+    def test_all_options_written_to_file(self, tmp_path):
+        """All config options are written to file with comments."""
         config = AgrConfig()
         config_path = tmp_path / "agr.toml"
         config.save(config_path)
 
         content = config_path.read_text()
-        assert "tools" not in content
+        assert "tools" in content
         assert "default_source" in content
+        assert "default_owner" in content
+        assert "default_repo" in content
         assert "[[source]]" in content
+        # Unset options appear as comments
+        assert "# sync_instructions" in content
+        assert "# canonical_instructions" in content
+        assert "# default_tool" in content
 
     def test_dependency_with_source_roundtrip(self, tmp_path):
         """Dependency source persists through save/load."""
@@ -456,14 +462,14 @@ class TestGetTools:
         loaded = AgrConfig.load(config_path)
         assert loaded.default_owner == "myorg"
 
-    def test_default_owner_not_written_when_default(self, tmp_path):
-        """Default owner value is not written to file."""
+    def test_default_owner_always_written(self, tmp_path):
+        """Default owner value is always written for discoverability."""
         config = AgrConfig()
         config_path = tmp_path / "agr.toml"
         config.save(config_path)
 
         content = config_path.read_text()
-        assert "default_owner" not in content
+        assert 'default_owner = "computerlovetech"' in content
 
     def test_default_owner_written_when_custom(self, tmp_path):
         """Custom default_owner is written to file."""
@@ -516,3 +522,82 @@ class TestGetTools:
         )
         assert len(config.dependencies) == 1
         assert config.dependencies[0].handle == "computerlovetech/setup"
+
+    # --- default_repo ---
+
+    def test_default_repo_defaults_to_skills(self):
+        """Default repo is 'skills'."""
+        config = AgrConfig()
+        assert config.default_repo == "skills"
+
+    def test_load_default_repo(self, tmp_path):
+        """Load config with custom default_repo."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "my-repo"\ndependencies = []\n')
+        config = AgrConfig.load(config_path)
+        assert config.default_repo == "my-repo"
+
+    def test_save_and_load_default_repo_roundtrip(self, tmp_path):
+        """Custom default_repo persists through save/load."""
+        config = AgrConfig()
+        config.default_repo = "my-repo"
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        loaded = AgrConfig.load(config_path)
+        assert loaded.default_repo == "my-repo"
+
+    def test_default_repo_always_written(self, tmp_path):
+        """Default repo value is always written for discoverability."""
+        config = AgrConfig()
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        content = config_path.read_text()
+        assert 'default_repo = "skills"' in content
+
+    def test_default_repo_written_when_custom(self, tmp_path):
+        """Custom default_repo is written to file."""
+        config = AgrConfig()
+        config.default_repo = "my-repo"
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        content = config_path.read_text()
+        assert 'default_repo = "my-repo"' in content
+
+    def test_load_empty_default_repo_raises(self, tmp_path):
+        """Empty default_repo in config raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = ""\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="default_repo cannot be empty"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_with_slash_raises(self, tmp_path):
+        """default_repo containing '/' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo/bar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot contain '/'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_with_separator_raises(self, tmp_path):
+        """default_repo containing '--' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo--bar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot contain '--'"):
+            AgrConfig.load(config_path)
+
+    def test_save_writes_comments(self, tmp_path):
+        """Save writes explanatory comments for all config options."""
+        config = AgrConfig()
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        content = config_path.read_text()
+        assert "# Source to fetch skills from" in content
+        assert "# Tools to install skills to" in content
+        assert "# Default GitHub owner" in content
+        assert "# Default GitHub repo" in content
+        assert "# Sync instruction files" in content
+        assert "# Which tool's instruction file" in content
+        assert "# Primary tool for instruction sync" in content
