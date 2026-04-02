@@ -1,6 +1,6 @@
 # Agent Resources
 
-A package manager for AI agents.
+The package manager for AI agents. Built for teams practicing Agentic Engineering.
 
 ## Commands
 

@@ -2,10 +2,11 @@
 
 # agr
 
-**A package manager for AI agent skills.**
+**The package manager for AI agents.**
 
-Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode,
-Copilot, and Antigravity — with a single command.
+Install, share, and sync agent resources across Claude Code, Cursor, Codex,
+OpenCode, Copilot, and Antigravity — built for teams practicing Agentic
+Engineering.
 
 [![PyPI](https://img.shields.io/pypi/v/agr?color=blue)](https://pypi.org/project/agr/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -61,7 +62,11 @@ agrx anthropics/skills/skill-creator -i   # Interactive: skill + chat
 
 ---
 
-## Team sync
+## Built for teams
+
+`agr` is built for teams practicing **Agentic Engineering** — where AI agents
+are first-class members of your development workflow. Share a consistent set of
+agent resources across every developer and every AI tool on your team.
 
 Dependencies are tracked in `agr.toml` — commit it, and teammates install
 everything with one command:
@@ -74,8 +79,11 @@ dependencies = [
 ```
 
 ```bash
-agr sync   # Like npm install, but for agent skills
+agr sync   # Like npm install, but for AI agents
 ```
+
+New teammate? `agr sync` and they're productive on day one — same agents, same
+skills, same standards.
 
 ---
 

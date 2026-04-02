@@ -29,7 +29,7 @@ GlobalScope = Annotated[
 
 app = typer.Typer(
     name="agr",
-    help="Agent Resources - Install and manage agent skills.",
+    help="Agent Resources - The package manager for AI agents.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -153,7 +153,7 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """Agent Resources - Install and manage agent skills."""
+    """Agent Resources - The package manager for AI agents."""
     set_quiet(quiet)
 
 

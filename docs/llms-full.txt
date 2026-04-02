@@ -1,6 +1,6 @@
 # Agent Resources (agr) — Complete Documentation
 
-> A package manager for AI agent skills. Install, share, and sync skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
+> The package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — built for teams practicing Agentic Engineering.
 
 - Source: https://github.com/computerlovetech/agr
 - PyPI: https://pypi.org/project/agr/
