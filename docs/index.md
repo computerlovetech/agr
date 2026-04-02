@@ -1,37 +1,45 @@
 ---
-title: "agr — A Package Manager for AI Agent Skills"
-description: A package manager for AI agent skills. Install, share, and run skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.
+title: "agr — The Package Manager for AI Agents"
+description: The package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — built for teams practicing Agentic Engineering.
 keywords:
   - agr
-  - AI agent skills
   - package manager for AI agents
-  - install AI coding skills
+  - Agentic Engineering
+  - AI agent team collaboration
+  - install AI agent resources
   - Claude Code skills
   - Cursor skills
   - Codex skills
   - OpenCode skills
   - GitHub Copilot skills
   - Antigravity skills
-  - skill manager
-  - share AI prompts across team
+  - AI agent resource manager
+  - share AI resources across team
   - reusable AI coding instructions
   - npm for AI agents
   - manage Claude Code prompts
   - install Cursor custom instructions
-  - AI coding assistant skills marketplace
+  - AI coding assistant marketplace
   - SKILL.md format
   - agr add install skill
-  - agr sync team skills
-  - how to install AI agent skills
+  - agr sync team resources
+  - team AI agent setup
   - share custom prompts Claude Code Cursor
-  - AI agent prompt management tool
+  - AI agent management tool
+  - Agentic Engineering tools
 ---
 
-# agr — Skills for AI Agents
+# agr — The Package Manager for AI Agents
 
-A package manager for AI agent skills. Install, share, and run skills across
-[Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity](tools.md) — with a single
-command.
+The package manager for AI agents — built for teams practicing **Agentic
+Engineering**. Install, share, and sync agent resources across
+[Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity](tools.md)
+with a single command.
+
+When AI agents are first-class members of your development team, you need a way
+to keep everyone — humans and agents — on the same page. `agr` gives your team
+a single source of truth for agent resources: commit `agr.toml`, run
+`agr sync`, and every developer has the same agent setup from day one.
 
 ## Install
 
@@ -69,9 +77,9 @@ agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
 [`agrx`](agrx.md) downloads the skill, runs it with your tool, and cleans up. Nothing is
 saved to your project.
 
-## Sync skills across a team
+## Built for teams
 
-Dependencies are tracked in [`agr.toml`](configuration.md):
+Dependencies are tracked in [`agr.toml`](configuration.md) — your single source of truth for agent resources:
 
 ```toml
 dependencies = [
@@ -85,6 +93,9 @@ Teammates install everything with one command — see [Teams](teams.md) for CI/C
 ```bash
 agr sync
 ```
+
+New teammate? `agr sync` and they're productive on day one — same agents, same
+skills, same standards across every AI tool your team uses.
 
 ## Create your own
 

@@ -30,7 +30,7 @@ keywords:
 Complete reference for all `agr` and [`agrx`](agrx.md) commands. For guided
 setup, start with the [Tutorial](tutorial.md).
 
-**What is agr?** A package manager for AI agent skills. A **skill** is a folder
+**What is agr?** The package manager for AI agents. A **skill** is a folder
 with a `SKILL.md` file containing instructions for an AI coding agent — see
 [Creating Skills](creating.md) to build your own. A
 **[handle](concepts.md#handles)** like `user/skill` or `user/repo/skill` points

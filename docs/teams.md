@@ -1,9 +1,10 @@
 ---
-title: How to Share AI Agent Skills Across a Team
-description: Share AI coding agent skills with your team using agr.toml as a single source of truth — like package.json for AI prompts. Sync CLAUDE.md, AGENTS.md, and GEMINI.md across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.
+title: How to Share AI Agent Resources Across a Team
+description: Share AI agent resources with your team using agr.toml as a single source of truth — like package.json for AI agents. Sync skills, prompts, and instructions across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.
 keywords:
-  - share AI agent skills across team
-  - sync AI skills across developers
+  - share AI agent resources across team
+  - Agentic Engineering team setup
+  - sync AI agents across developers
   - team AI coding tools setup
   - share CLAUDE.md with team
   - sync AGENTS.md across developers
@@ -11,28 +12,33 @@ keywords:
   - standardize AI agent prompts team
   - onboard developers AI coding tools
   - agr sync team
-  - CI/CD AI agent skills pipeline
-  - private AI skills GitHub repo
+  - CI/CD AI agent resources pipeline
+  - private AI resources GitHub repo
   - multi-tool AI team setup
   - manage AI prompts in git
   - share custom prompts Claude Code Cursor
-  - npm install for AI agent skills
+  - npm install for AI agents
   - sync coding agent instructions across repos
+  - Agentic Engineering
 ---
 
-# Share AI Agent Skills Across Your Team
+# Share AI Agent Resources Across Your Team
 
 !!! tldr
     Commit `agr.toml` to your repo — teammates run `agr sync` to get every
-    skill. Multi-tool teams set `tools = ["claude", "cursor", ...]` so one
+    resource. Multi-tool teams set `tools = ["claude", "cursor", ...]` so one
     `agr add` installs everywhere. Use `GITHUB_TOKEN` for private repos and
     CI/CD.
+
+**Agentic Engineering** means treating AI agents as first-class members of your
+development team. `agr` makes this practical: one manifest file, one sync
+command, and every developer — and every agent — starts with the same setup.
 
 **Prerequisites:** [agr installed](tutorial.md#step-1-install-agr), a git
 repository, and at least one [supported AI tool](tools.md) (Claude Code,
 Cursor, Codex, OpenCode, Copilot, or Antigravity)
 
-Set up agr so everyone shares the same AI coding skills, stays in sync
+Set up agr so everyone shares the same agent resources, stays in sync
 across Claude Code, Cursor, Codex, and other tools — and gets productive on
 day one.
 
@@ -217,7 +223,7 @@ automated environments.
 A complete workflow that syncs skills before your CI jobs run:
 
 ```yaml
-name: Sync agent skills
+name: Sync agent resources
 on: [push, pull_request]
 
 jobs:

@@ -1,4 +1,4 @@
-"""agr: Agent Resources - Install and manage agent skills."""
+"""agr: Agent Resources - The package manager for AI agents."""
 
 from importlib.metadata import version
 

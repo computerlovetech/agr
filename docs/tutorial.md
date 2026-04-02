@@ -1,15 +1,15 @@
 ---
-title: "Get Started with agr: Install, Add, and Share AI Agent Skills"
-description: Step-by-step quickstart for agr — install the CLI, add your first AI agent skill to Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity, sync skills across a team, and create your own.
+title: "Get Started with agr: Install, Add, and Share AI Agent Resources"
+description: Step-by-step quickstart for agr — install the CLI, add your first AI agent resource to Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity, sync resources across a team, and create your own.
 keywords:
   - agr tutorial
   - install agr
   - agr quickstart
-  - how to add AI agent skill
+  - how to add AI agent resource
   - getting started with agr
   - agr getting started guide
-  - manage AI coding agent skills
-  - share skills across team
+  - manage AI agent resources
+  - share resources across team
   - create custom AI skill
   - agr add skill example
   - Claude Code skills tutorial
@@ -18,6 +18,7 @@ keywords:
   - OpenCode skills setup
   - Copilot skills tutorial
   - Antigravity skills setup
+  - Agentic Engineering getting started
 ---
 
 # Get Started with agr

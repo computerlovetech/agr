@@ -1,6 +1,6 @@
 # Agent Resources (agr)
 
-> A package manager for AI agent skills. Install, share, and run skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity with a single command.
+> The package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — built for teams practicing Agentic Engineering.
 
 For the complete documentation in a single file, see [llms-full.txt](https://computerlovetech.github.io/agr/llms-full.txt).
 

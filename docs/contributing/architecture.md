@@ -2,7 +2,7 @@
 
 ## Overview
 
-Agent Resources (`agr`) is a package manager for AI agent skills. It installs skill files (markdown prompts with optional supporting files) from GitHub repositories into the configuration directories of various AI coding tools (Claude Code, Cursor, Codex, etc.).
+Agent Resources (`agr`) is the package manager for AI agents. It installs agent resources (markdown prompts with optional supporting files) from GitHub repositories into the configuration directories of various AI coding tools (Claude Code, Cursor, Codex, etc.).
 
 ## Project structure
 

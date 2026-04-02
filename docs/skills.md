@@ -1,20 +1,20 @@
 ---
-title: "Skill Directory — Browse and Install AI Agent Skills for Claude Code, Cursor, Codex, and More"
-description: Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.
+title: "Resource Directory — Browse and Install AI Agent Resources for Claude Code, Cursor, Codex, and More"
+description: Browse official and community AI agent resources available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.
 keywords:
-  - agr skill directory
-  - AI agent skills list
-  - browse AI agent skills
+  - agr resource directory
+  - AI agent resources list
+  - browse AI agent resources
   - Claude Code skills directory
   - Cursor skills directory
   - Codex skills directory
   - OpenCode skills
   - GitHub Copilot skills
   - Antigravity skills
-  - install AI coding skills
+  - install AI agent resources
   - PDF skill agr
   - frontend design skill
-  - community AI skills
+  - community AI resources
   - SKILL.md
 ---
 
