@@ -84,6 +84,38 @@ name: test
         desc = _extract_description(content)
         assert desc is None
 
+    def test_extracts_frontmatter_description(self):
+        """Test extracting description from frontmatter when body has no paragraph."""
+        content = """---
+name: my-skill
+description: This skill handles code reviews
+---
+
+# my-skill
+
+## When to use
+
+## Instructions
+"""
+        desc = _extract_description(content)
+        assert desc == "This skill handles code reviews"
+
+    def test_body_paragraph_takes_precedence_over_frontmatter(self):
+        """Test that body paragraph is preferred when both exist."""
+        content = """---
+name: my-skill
+description: Frontmatter description
+---
+
+# my-skill
+
+Body paragraph description here.
+
+## More
+"""
+        desc = _extract_description(content)
+        assert desc == "Body paragraph description here."
+
     def test_truncates_long_descriptions(self):
         """Test description is truncated to 200 chars."""
         long_text = "x" * 300

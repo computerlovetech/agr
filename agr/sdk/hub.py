@@ -175,10 +175,28 @@ def _find_skill_md_in_tree(tree_data: dict[str, Any], skill_name: str) -> str | 
     return f"{skill_dir.as_posix()}/{SKILL_MARKER}"
 
 
+def _extract_frontmatter_description(frontmatter: str) -> str | None:
+    """Extract a description value from frontmatter text.
+
+    Looks for a ``description:`` key in the YAML-like frontmatter and
+    returns the trimmed value.  Returns None when no key is found or the
+    value is empty.
+    """
+    for line in frontmatter.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("description:"):
+            value = stripped.split(":", 1)[1].strip()
+            if value:
+                return value[:200]
+    return None
+
+
 def _extract_description(skill_md_content: str) -> str | None:
     """Extract description from SKILL.md content.
 
-    Takes the first paragraph after any frontmatter.
+    Prefers the first body paragraph after frontmatter. Falls back to the
+    frontmatter ``description:`` field when the body contains only
+    headings and blank lines.
     """
     parsed = parse_frontmatter(skill_md_content)
     body = parsed[1] if parsed else skill_md_content
@@ -197,10 +215,14 @@ def _extract_description(skill_md_content: str) -> str | None:
             continue
         description_lines.append(stripped)
 
-    if not description_lines:
-        return None
+    if description_lines:
+        return " ".join(description_lines)[:200]
 
-    return " ".join(description_lines)[:200]
+    # Fall back to frontmatter description field
+    if parsed is not None:
+        return _extract_frontmatter_description(parsed[0])
+
+    return None
 
 
 def list_skills(repo_handle: str) -> list[SkillInfo]:
