@@ -302,17 +302,11 @@ def parse_remote_handle(
         InvalidHandleError: If the handle resolves to a local path.
     """
     if is_local_path_ref(handle):
-        raise InvalidHandleError(
-            f"'{handle}' is a local path, not a remote handle"
-        )
+        raise InvalidHandleError(f"'{handle}' is a local path, not a remote handle")
 
-    parsed = parse_handle(
-        handle, prefer_local=False, default_owner=default_owner
-    )
+    parsed = parse_handle(handle, prefer_local=False, default_owner=default_owner)
     if parsed.is_local:
-        raise InvalidHandleError(
-            f"'{handle}' is a local path, not a remote handle"
-        )
+        raise InvalidHandleError(f"'{handle}' is a local path, not a remote handle")
     return parsed
 
 

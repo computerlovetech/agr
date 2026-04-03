@@ -118,6 +118,57 @@ class TestDependency:
         assert source_name is None
 
 
+class TestRalphDependency:
+    """Tests for ralph dependency type."""
+
+    def test_ralph_remote_dependency(self):
+        """Create a remote ralph dependency."""
+        dep = Dependency(type="ralph", handle="user/repo/my-ralph")
+        assert dep.is_remote
+        assert dep.type == "ralph"
+        assert dep.identifier == "user/repo/my-ralph"
+
+    def test_ralph_local_dependency(self):
+        """Create a local ralph dependency."""
+        dep = Dependency(type="ralph", path="./my-ralph")
+        assert dep.is_local
+        assert dep.type == "ralph"
+
+    def test_unknown_type_in_toml(self, tmp_path):
+        """Unknown dependency type raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            'dependencies = [{handle = "user/repo/foo", type = "unknown"}]\n'
+        )
+        with pytest.raises(ConfigError, match="Unknown dependency type"):
+            AgrConfig.load(config_path)
+
+    def test_ralph_type_in_toml(self, tmp_path):
+        """Ralph type parses successfully."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            'dependencies = [{handle = "user/repo/my-ralph", type = "ralph"}]\n'
+        )
+        config = AgrConfig.load(config_path)
+        assert len(config.dependencies) == 1
+        assert config.dependencies[0].type == "ralph"
+        assert config.dependencies[0].handle == "user/repo/my-ralph"
+
+    def test_mixed_skill_and_ralph(self, tmp_path):
+        """Config with both skill and ralph deps."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            "dependencies = [\n"
+            '    {handle = "user/repo/my-skill", type = "skill"},\n'
+            '    {handle = "user/repo/my-ralph", type = "ralph"},\n'
+            "]\n"
+        )
+        config = AgrConfig.load(config_path)
+        assert len(config.dependencies) == 2
+        assert config.dependencies[0].type == "skill"
+        assert config.dependencies[1].type == "ralph"
+
+
 class TestAgrConfig:
     """Tests for AgrConfig class."""
 

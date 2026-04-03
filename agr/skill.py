@@ -223,7 +223,6 @@ def discover_skills_in_repo_listing(paths: list[str]) -> list[str]:
     return sorted({d.name for d in _find_skill_dirs_in_listing(paths)})
 
 
-
 def parse_frontmatter(content: str) -> tuple[str, str] | None:
     """Parse YAML frontmatter from SKILL.md content.
 
@@ -240,7 +239,6 @@ def parse_frontmatter(content: str) -> tuple[str, str] | None:
     if len(parts) < 3:
         return None
     return parts[1], parts[2]
-
 
 
 def update_skill_md_name(skill_dir: Path, new_name: str) -> None:

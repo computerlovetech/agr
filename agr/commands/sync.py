@@ -12,15 +12,24 @@ from agr.commands.migrations import (
     migrate_legacy_directories,
     run_tool_migrations,
 )
-from agr.config import AgrConfig, find_config, require_repo_root
+from agr.config import (
+    DEPENDENCY_TYPE_RALPH,
+    AgrConfig,
+    find_config,
+    require_repo_root,
+)
 from agr.console import error_exit, get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, AgrError, format_install_error
 from agr.fetcher import (
     InstallResult,
+    fetch_and_install_ralph,
     fetch_and_install_to_tools,
     filter_tools_needing_install,
+    install_ralph_from_repo,
     install_skill_from_repo_to_tools,
+    is_ralph_installed,
     prepare_repo_for_skills,
+    get_ralphs_dir,
     skill_not_found_message,
 )
 from agr.git import downloaded_repo, fetch_and_checkout_commit, get_head_commit_full
@@ -372,6 +381,29 @@ def _sync_one_dependency(
     return SyncResult.from_install_result(install_result)
 
 
+def _sync_ralph_entries(
+    entries: list[SyncEntry],
+    results: list[SyncResult],
+    repo_root: Path | None,
+    resolver: SourceResolver,
+    default_repo: str | None = None,
+) -> None:
+    """Sync ralph dependencies to the project-level ralphs directory."""
+    for entry in entries:
+        try:
+            path, install_result = fetch_and_install_ralph(
+                entry.handle,
+                repo_root,
+                overwrite=False,
+                resolver=resolver,
+                source=entry.source_name,
+                default_repo=default_repo,
+            )
+            results[entry.index] = SyncResult.from_install_result(install_result)
+        except INSTALL_ERROR_TYPES as e:
+            results[entry.index] = SyncResult.from_error(e)
+
+
 def _run_global_sync() -> None:
     """Sync global dependencies from ~/.agr/agr.toml."""
     console = get_console()
@@ -508,6 +540,7 @@ def run_sync(
     results: list[SyncResult] = [SyncResult.pending() for _ in config.dependencies]
     pending_local: list[SyncEntry] = []
     pending_remote: list[SyncEntry] = []
+    pending_ralph: list[SyncEntry] = []
 
     for index, dep in enumerate(config.dependencies):
         try:
@@ -515,30 +548,39 @@ def run_sync(
                 config.default_source, config.default_owner
             )
 
-            # Skip dependencies already installed on every configured tool.
-            tools_needing_install = filter_tools_needing_install(
-                handle, repo_root, tools, source_name
-            )
-
-            if not tools_needing_install:
-                results[index] = SyncResult.up_to_date()
-                continue
-
-            entry = SyncEntry(
-                index=index,
-                handle=handle,
-                source_name=source_name,
-                tools_needing_install=tools_needing_install,
-            )
-            if dep.is_local:
-                pending_local.append(entry)
+            if dep.type == DEPENDENCY_TYPE_RALPH:
+                # Ralphs are tool-agnostic: check project-level ralphs dir.
+                if is_ralph_installed(handle, repo_root, source_name):
+                    results[index] = SyncResult.up_to_date()
+                    continue
+                pending_ralph.append(
+                    SyncEntry(index=index, handle=handle, source_name=source_name)
+                )
             else:
-                pending_remote.append(entry)
+                # Skills: check per-tool install status.
+                tools_needing_install = filter_tools_needing_install(
+                    handle, repo_root, tools, source_name
+                )
+
+                if not tools_needing_install:
+                    results[index] = SyncResult.up_to_date()
+                    continue
+
+                entry = SyncEntry(
+                    index=index,
+                    handle=handle,
+                    source_name=source_name,
+                    tools_needing_install=tools_needing_install,
+                )
+                if dep.is_local:
+                    pending_local.append(entry)
+                else:
+                    pending_remote.append(entry)
         except INSTALL_ERROR_TYPES as e:
             results[index] = SyncResult.from_error(e)
 
     # --- Phase 2: Install pending dependencies ---
-    # Three categories are processed separately for efficiency:
+    # Skills: three categories processed separately for efficiency.
     #
     # 1. Local skills — no git download, just copy from the local path.
     _sync_individual_entries(
@@ -578,6 +620,15 @@ def run_sync(
         default_repo=config.default_repo,
     )
 
+    # 4. Ralphs — installed to project-level .agents/ralphs/ directory.
+    _sync_ralph_entries(
+        pending_ralph,
+        results,
+        repo_root,
+        resolver,
+        config.default_repo,
+    )
+
     # --- Phase 3: Update lockfile ---
     new_lockfile = _build_lockfile_from_results(config, results, existing_lockfile)
     save_lockfile(new_lockfile, lockfile_path)
@@ -599,8 +650,8 @@ def _sync_from_lockfile(
 ) -> None:
     """Install dependencies from lockfile pins (--frozen/--locked mode).
 
-    For remote skills with a pinned commit, clones the repo and checks
-    out the exact commit. For local skills, installs from disk as usual.
+    For remote skills/ralphs with a pinned commit, clones the repo and checks
+    out the exact commit. For local deps, installs from disk as usual.
     """
     results: list[tuple[str, SyncResult]] = []
 
@@ -610,26 +661,43 @@ def _sync_from_lockfile(
                 config.default_source, config.default_owner
             )
 
-            tools_needing_install = filter_tools_needing_install(
-                handle, repo_root, tools, source_name
-            )
-            if not tools_needing_install:
-                results.append((dep.identifier, SyncResult.up_to_date()))
-                continue
+            is_ralph_dep = dep.type == DEPENDENCY_TYPE_RALPH
+
+            if is_ralph_dep:
+                # Ralph: check project-level install status
+                if is_ralph_installed(handle, repo_root, source_name):
+                    results.append((dep.identifier, SyncResult.up_to_date()))
+                    continue
+            else:
+                tools_needing_install = filter_tools_needing_install(
+                    handle, repo_root, tools, source_name
+                )
+                if not tools_needing_install:
+                    results.append((dep.identifier, SyncResult.up_to_date()))
+                    continue
 
             locked_skill = find_locked_skill(lockfile, dep)
 
             if dep.is_local:
-                # Local skills: install from disk, no lockfile pin
-                _paths, _result = fetch_and_install_to_tools(
-                    handle,
-                    repo_root,
-                    tools_needing_install,
-                    overwrite=False,
-                    resolver=resolver,
-                    source=source_name,
-                    default_repo=config.default_repo,
-                )
+                if is_ralph_dep:
+                    _path, _result = fetch_and_install_ralph(
+                        handle,
+                        repo_root,
+                        overwrite=False,
+                        resolver=resolver,
+                        source=source_name,
+                        default_repo=config.default_repo,
+                    )
+                else:
+                    _paths, _result = fetch_and_install_to_tools(
+                        handle,
+                        repo_root,
+                        tools_needing_install,
+                        overwrite=False,
+                        resolver=resolver,
+                        source=source_name,
+                        default_repo=config.default_repo,
+                    )
                 results.append((dep.identifier, SyncResult.installed()))
                 continue
 
@@ -644,15 +712,27 @@ def _sync_from_lockfile(
             owner, repo_name = handle.get_github_repo(default_repo=config.default_repo)
             with downloaded_repo(source_config, owner, repo_name) as repo_dir:
                 fetch_and_checkout_commit(repo_dir, locked_skill.commit)
-                install_skill_from_repo_to_tools(
-                    repo_dir,
-                    handle.name,
-                    handle,
-                    tools_needing_install,
-                    repo_root,
-                    overwrite=False,
-                    install_source=source_name,
-                )
+                if is_ralph_dep:
+                    ralphs_dir = get_ralphs_dir(repo_root)
+                    install_ralph_from_repo(
+                        repo_dir,
+                        handle.name,
+                        handle,
+                        ralphs_dir,
+                        repo_root,
+                        overwrite=False,
+                        install_source=source_name,
+                    )
+                else:
+                    install_skill_from_repo_to_tools(
+                        repo_dir,
+                        handle.name,
+                        handle,
+                        tools_needing_install,
+                        repo_root,
+                        overwrite=False,
+                        install_source=source_name,
+                    )
             results.append((dep.identifier, SyncResult.installed()))
 
         except INSTALL_ERROR_TYPES as e:
@@ -668,16 +748,16 @@ def _build_lockfile_from_results(
 ) -> Lockfile:
     """Build a new lockfile from sync results.
 
-    For freshly installed skills, uses commit/hash from SyncResult.
-    For up-to-date skills, carries forward existing lockfile entries.
+    For freshly installed skills/ralphs, uses commit/hash from SyncResult.
+    For up-to-date entries, carries forward existing lockfile entries.
     """
     lockfile = Lockfile()
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
+        is_ralph = dep.type == DEPENDENCY_TYPE_RALPH
 
         if dep.is_local:
-            # Local skills: record path and name, no commit or hash
             handle = dep.to_parsed_handle(config.default_owner)
             update_lockfile_entry(
                 lockfile,
@@ -685,11 +765,11 @@ def _build_lockfile_from_results(
                     path=dep.path,
                     installed_name=handle.name,
                 ),
+                ralph=is_ralph,
             )
             continue
 
         if result.status == SyncStatus.INSTALLED and result.commit:
-            # Freshly installed: use captured metadata
             handle = dep.to_parsed_handle(config.default_owner)
             update_lockfile_entry(
                 lockfile,
@@ -700,23 +780,19 @@ def _build_lockfile_from_results(
                     content_hash=result.content_hash,
                     installed_name=handle.name,
                 ),
+                ralph=is_ralph,
             )
         else:
-            # Up-to-date or error: carry forward existing entry if available
             existing = (
                 find_locked_skill(existing_lockfile, dep)
                 if existing_lockfile is not None
                 else None
             )
             if existing is not None:
-                update_lockfile_entry(lockfile, existing)
+                update_lockfile_entry(lockfile, existing, ralph=is_ralph)
             elif result.status == SyncStatus.ERROR:
-                # Failed installs: skip — don't write partial entries
-                # that would break --frozen sync.
                 pass
             else:
-                # No existing entry — create a partial one (no commit).
-                # --frozen sync will reject this and require a full sync.
                 handle = dep.to_parsed_handle(config.default_owner)
                 update_lockfile_entry(
                     lockfile,
@@ -725,6 +801,7 @@ def _build_lockfile_from_results(
                         source=dep.resolve_source_name(config.default_source),
                         installed_name=handle.name,
                     ),
+                    ralph=is_ralph,
                 )
 
     return lockfile

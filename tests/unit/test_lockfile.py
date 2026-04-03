@@ -273,3 +273,124 @@ class TestRemoveLockfileEntry:
         )
         remove_lockfile_entry(lockfile, "user/repo/unknown")
         assert len(lockfile.skills) == 1
+
+
+class TestRalphLockfileSupport:
+    """Tests for ralph entries in the lockfile."""
+
+    def test_round_trip_ralph(self, tmp_path):
+        lockfile = Lockfile(
+            skills=[],
+            ralphs=[
+                LockedSkill(
+                    handle="user/repo/my-ralph",
+                    source="github",
+                    commit="c" * 40,
+                    content_hash="sha256:" + "d" * 64,
+                    installed_name="my-ralph",
+                ),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert len(loaded.ralphs) == 1
+        assert len(loaded.skills) == 0
+        r = loaded.ralphs[0]
+        assert r.handle == "user/repo/my-ralph"
+        assert r.source == "github"
+        assert r.commit == "c" * 40
+        assert r.installed_name == "my-ralph"
+
+    def test_round_trip_mixed_skills_and_ralphs(self, tmp_path):
+        lockfile = Lockfile(
+            skills=[
+                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+            ],
+            ralphs=[
+                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert len(loaded.skills) == 1
+        assert len(loaded.ralphs) == 1
+        assert loaded.skills[0].handle == "user/repo/skill"
+        assert loaded.ralphs[0].handle == "user/repo/ralph"
+
+    def test_update_lockfile_entry_ralph(self):
+        lockfile = Lockfile(skills=[], ralphs=[])
+        entry = LockedSkill(handle="user/repo/ralph", installed_name="ralph")
+        update_lockfile_entry(lockfile, entry, ralph=True)
+        assert len(lockfile.ralphs) == 1
+        assert len(lockfile.skills) == 0
+        assert lockfile.ralphs[0].handle == "user/repo/ralph"
+
+    def test_remove_lockfile_entry_ralph(self):
+        lockfile = Lockfile(
+            skills=[],
+            ralphs=[
+                LockedSkill(handle="user/repo/a", installed_name="a"),
+                LockedSkill(handle="user/repo/b", installed_name="b"),
+            ],
+        )
+        remove_lockfile_entry(lockfile, "user/repo/a", ralph=True)
+        assert len(lockfile.ralphs) == 1
+        assert lockfile.ralphs[0].handle == "user/repo/b"
+
+    def test_find_locked_ralph(self):
+        lockfile = Lockfile(
+            skills=[],
+            ralphs=[
+                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+            ],
+        )
+        dep = Dependency(type="ralph", handle="user/repo/ralph")
+        result = find_locked_skill(lockfile, dep)
+        assert result is not None
+        assert result.installed_name == "ralph"
+
+    def test_find_locked_ralph_not_in_skills(self):
+        """Ralph dep should not match entries in the skills list."""
+        lockfile = Lockfile(
+            skills=[
+                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+            ],
+            ralphs=[],
+        )
+        dep = Dependency(type="ralph", handle="user/repo/ralph")
+        result = find_locked_skill(lockfile, dep)
+        assert result is None
+
+    def test_is_lockfile_current_with_ralphs(self):
+        lockfile = Lockfile(
+            skills=[
+                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+            ],
+            ralphs=[
+                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+            ],
+        )
+        deps = [
+            Dependency(type="skill", handle="user/repo/skill"),
+            Dependency(type="ralph", handle="user/repo/ralph"),
+        ]
+        assert is_lockfile_current(lockfile, deps) is True
+
+    def test_is_lockfile_current_missing_ralph(self):
+        lockfile = Lockfile(
+            skills=[
+                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+            ],
+            ralphs=[],
+        )
+        deps = [
+            Dependency(type="skill", handle="user/repo/skill"),
+            Dependency(type="ralph", handle="user/repo/ralph"),
+        ]
+        assert is_lockfile_current(lockfile, deps) is False

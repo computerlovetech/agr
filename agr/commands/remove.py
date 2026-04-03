@@ -3,9 +3,10 @@
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
 from agr.commands.migrations import run_tool_migrations
+from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
-from agr.fetcher import uninstall_skill
+from agr.fetcher import uninstall_ralph, uninstall_skill
 from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
     build_lockfile_path,
@@ -54,6 +55,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     # removal so we can update the lockfile without re-parsing handles.
     results: list[CommandResult] = []
     removed_candidates: list[list[str]] = []
+    removed_ralph_flags: list[bool] = []
 
     for ref in refs:
         try:
@@ -77,17 +79,23 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             if dep and dep.is_remote:
                 source_name = dep.source or config.default_source
 
-            # Remove from filesystem for all configured tools
+            is_ralph = dep is not None and dep.type == DEPENDENCY_TYPE_RALPH
+
+            # Remove from filesystem
             removed_fs = False
-            for tool in tools:
-                if uninstall_skill(
-                    handle,
-                    repo_root,
-                    tool,
-                    source_name,
-                    skills_dir=lookup_skills_dir(skills_dirs, tool),
-                ):
+            if is_ralph:
+                if uninstall_ralph(handle, repo_root, source_name):
                     removed_fs = True
+            else:
+                for tool in tools:
+                    if uninstall_skill(
+                        handle,
+                        repo_root,
+                        tool,
+                        source_name,
+                        skills_dir=lookup_skills_dir(skills_dirs, tool),
+                    ):
+                        removed_fs = True
 
             # Remove from config (try same candidate identifiers)
             removed_config = False
@@ -99,6 +107,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             if removed_fs or removed_config:
                 results.append(CommandResult(ref, True, "Removed"))
                 removed_candidates.append(candidates)
+                removed_ralph_flags.append(is_ralph)
             else:
                 results.append(CommandResult(ref, False, "Not found"))
 
@@ -124,12 +133,12 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         exit_on_failure=False,
     )
 
-    # Update lockfile: remove entries for successfully removed skills
+    # Update lockfile: remove entries for successfully removed deps
     if removed_candidates:
         lockfile_path = build_lockfile_path(config_path)
         lockfile = load_lockfile(lockfile_path)
         if lockfile is not None:
-            for candidates in removed_candidates:
+            for candidates, is_ralph_lf in zip(removed_candidates, removed_ralph_flags):
                 for identifier in candidates:
-                    remove_lockfile_entry(lockfile, identifier)
+                    remove_lockfile_entry(lockfile, identifier, ralph=is_ralph_lf)
             save_lockfile(lockfile, lockfile_path)

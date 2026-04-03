@@ -36,6 +36,8 @@ from agr.tool import (
 
 CONFIG_FILENAME = "agr.toml"
 DEPENDENCY_TYPE_SKILL = "skill"
+DEPENDENCY_TYPE_RALPH = "ralph"
+VALID_DEPENDENCY_TYPES = {DEPENDENCY_TYPE_SKILL, DEPENDENCY_TYPE_RALPH}
 
 
 def validate_canonical_instructions(value: str) -> None:
@@ -66,8 +68,7 @@ def _validate_config_identifier(value: object, key: str, description: str) -> st
         )
     if "/" in result:
         raise ConfigError(
-            f"{key} cannot contain '/': got '{result}'. "
-            f"Use a plain {description}."
+            f"{key} cannot contain '/': got '{result}'. Use a plain {description}."
         )
     if INSTALLED_NAME_SEPARATOR in result:
         raise ConfigError(
@@ -179,7 +180,7 @@ class Dependency:
         Local:  { path = "./my-skill", type = "skill" }
     """
 
-    type: str  # Always "skill" for now
+    type: str  # "skill" or "ralph"
     handle: str | None = None  # Remote Git reference
     path: str | None = None  # Local path
     source: str | None = None  # Optional source name for remote handles
@@ -260,6 +261,11 @@ def _parse_dependencies_from_doc(
         if not isinstance(item, dict):
             continue
         dep_type = item.get("type", DEPENDENCY_TYPE_SKILL)
+        if dep_type not in VALID_DEPENDENCY_TYPES:
+            raise ConfigError(
+                f"Unknown dependency type '{dep_type}'. "
+                f"Valid types: {', '.join(sorted(VALID_DEPENDENCY_TYPES))}"
+            )
         handle = item.get("handle")
         path_val = item.get("path")
         source = item.get("source")
