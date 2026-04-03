@@ -426,3 +426,36 @@ class TestRemoveLockfileEntryReturnValue:
         )
         assert remove_lockfile_entry(lockfile, "user/repo/x", ralph=True) is False
         assert len(lockfile.ralphs) == 1
+
+
+class TestLockfileConfigConsistency:
+    """Test that lockfile entries use the same identifiers as config dependencies.
+
+    Regression: agr add --global ./local-skill wrote the raw relative ref to
+    the lockfile (e.g. "./skills/my-skill") while the config dependency stored
+    the resolved absolute path. This caused is_lockfile_current() to report
+    the lockfile as stale and find_locked_skill() to miss the entry.
+    """
+
+    def test_lockfile_path_must_match_dependency_path(self):
+        """Lockfile entry path must match the dependency identifier for lookups."""
+        # Simulate a global add where the config stores the absolute path
+        abs_path = "/home/user/projects/skills/my-skill"
+        dep = Dependency(type="skill", path=abs_path)
+
+        # Bug: lockfile entry was written with the raw relative ref
+        lockfile_with_raw_ref = Lockfile(
+            skills=[LockedSkill(path="./skills/my-skill", installed_name="my-skill")]
+        )
+
+        # The lockfile identifier doesn't match the dependency identifier
+        assert find_locked_skill(lockfile_with_raw_ref, dep) is None
+        assert is_lockfile_current(lockfile_with_raw_ref, [dep]) is False
+
+        # Fix: lockfile entry should use the same path as the dependency
+        lockfile_with_resolved_path = Lockfile(
+            skills=[LockedSkill(path=abs_path, installed_name="my-skill")]
+        )
+
+        assert find_locked_skill(lockfile_with_resolved_path, dep) is not None
+        assert is_lockfile_current(lockfile_with_resolved_path, [dep]) is True

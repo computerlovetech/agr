@@ -134,3 +134,36 @@ class TestGlobalFlags:
         config_path = home / ".agr" / "agr.toml"
         config_content = config_path.read_text()
         assert str((workspace / "skills" / "test-skill").resolve()) in config_content
+
+    def test_global_add_lockfile_path_matches_config(self, tmp_path):
+        """agr add -g lockfile entry path must match the config dependency path.
+
+        Regression: lockfile entry used the raw CLI ref (e.g. "./skills/my-skill")
+        while the config stored the resolved absolute path, causing --locked sync
+        to report the lockfile as stale.
+        """
+        from agr.lockfile import load_lockfile
+
+        home = tmp_path / "home"
+        home.mkdir()
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        _create_skill(workspace / "skills" / "test-skill", "test-skill")
+
+        add_result = run_cli(
+            ["agr", "add", "-g", "./skills/test-skill"],
+            cwd=workspace,
+            env={"HOME": str(home)},
+        )
+        assert_cli(add_result).succeeded()
+
+        # The lockfile path must match the config dependency path (absolute)
+        lockfile = load_lockfile(home / ".agr" / "agr.lock")
+        assert lockfile is not None
+        assert len(lockfile.skills) == 1
+        skill = lockfile.skills[0]
+        expected_abs_path = str((workspace / "skills" / "test-skill").resolve())
+        assert skill.path == expected_abs_path, (
+            f"Lockfile path '{skill.path}' should be the resolved absolute path "
+            f"'{expected_abs_path}' to match the config dependency identifier"
+        )

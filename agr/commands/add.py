@@ -190,7 +190,11 @@ def run_add(
                     also_matches=[ref],
                 )
 
-            lockfile_updates.append((handle, ref, install_result, dep_type))
+            # For local global installs, use the resolved path (same as the
+            # dependency identifier) so the lockfile stays consistent with
+            # agr.toml.  For everything else the raw ref is correct.
+            lockfile_ref = path_value if handle.is_local else ref
+            lockfile_updates.append((handle, lockfile_ref, install_result, dep_type))
             results.append(CommandResult(ref, True, ", ".join(installed_paths)))
 
         except SkillNotFoundError as e:
