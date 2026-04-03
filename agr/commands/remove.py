@@ -50,8 +50,10 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     tools, repo_root, skills_dirs = loaded.tools, loaded.repo_root, loaded.skills_dirs
     run_tool_migrations(tools, repo_root, global_install=global_install)
 
-    # Track results
+    # Track results and the identifier candidates used for each successful
+    # removal so we can update the lockfile without re-parsing handles.
     results: list[CommandResult] = []
+    removed_candidates: list[list[str]] = []
 
     for ref in refs:
         try:
@@ -96,6 +98,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
 
             if removed_fs or removed_config:
                 results.append(CommandResult(ref, True, "Removed"))
+                removed_candidates.append(candidates)
             else:
                 results.append(CommandResult(ref, False, "Not found"))
 
@@ -122,17 +125,11 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     )
 
     # Update lockfile: remove entries for successfully removed skills
-    removed_refs = [r.ref for r in results if r.success]
-    if removed_refs:
+    if removed_candidates:
         lockfile_path = build_lockfile_path(config_path)
         lockfile = load_lockfile(lockfile_path)
         if lockfile is not None:
-            for ref in removed_refs:
-                handle = parse_handle(ref, default_owner=config.default_owner)
-                # Try multiple identifier forms (handle string, path, toml handle)
-                abs_path_str: str | None = None
-                if global_install and handle.is_local and handle.local_path is not None:
-                    abs_path_str = str(handle.resolve_local_path())
-                for identifier in _identifier_candidates(ref, handle, abs_path_str):
+            for candidates in removed_candidates:
+                for identifier in candidates:
                     remove_lockfile_entry(lockfile, identifier)
             save_lockfile(lockfile, lockfile_path)
