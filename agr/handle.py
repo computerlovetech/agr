@@ -225,6 +225,11 @@ def parse_handle(
 
     ref = ref.strip()
 
+    # Strip trailing slashes for remote handles (e.g. "owner/repo/skill/").
+    # Only strip when the ref is not a local path prefix — preserve "./" and "../".
+    if not is_local_path_ref(ref):
+        ref = ref.rstrip("/")
+
     if prefer_local:
         path = Path(ref)
         # Local path detection: starts with ./ ../ / or exists on disk

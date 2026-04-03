@@ -118,6 +118,28 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError):
             parse_handle("a/b/c/d")
 
+    def test_trailing_slash_three_part(self):
+        """Trailing slash on user/repo/skill/ is stripped."""
+        h = parse_handle("owner/repo/skill/")
+        assert h.username == "owner"
+        assert h.repo == "repo"
+        assert h.name == "skill"
+        assert h.is_remote
+
+    def test_trailing_slash_two_part(self):
+        """Trailing slash on user/skill/ is stripped."""
+        h = parse_handle("owner/skill/")
+        assert h.username == "owner"
+        assert h.name == "skill"
+        assert h.repo is None
+        assert h.is_remote
+
+    def test_trailing_slash_one_part_with_default_owner(self):
+        """Trailing slash on skill/ is stripped."""
+        h = parse_handle("skill/", default_owner="myorg")
+        assert h.username == "myorg"
+        assert h.name == "skill"
+
     def test_parse_handle_rejects_double_hyphen_in_username(self):
         """Username containing -- raises error."""
         with pytest.raises(InvalidHandleError, match="contains reserved sequence"):
