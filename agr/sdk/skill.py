@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from agr.exceptions import (
-    InvalidHandleError,
     InvalidLocalPathError,
     RepoNotFoundError,
     SkillNotFoundError,
@@ -14,9 +13,8 @@ from agr.git import downloaded_repo, get_head_commit
 from agr.handle import (
     DEFAULT_OWNER,
     ParsedHandle,
-    is_local_path_ref,
     iter_repo_candidates,
-    parse_handle,
+    parse_remote_handle,
     warn_legacy_repo,
 )
 from agr.metadata import (
@@ -76,18 +74,7 @@ class Skill:
             >>> skill = Skill.from_git("vercel-labs/agent-browser/agent-browser")
             >>> skill = Skill.from_git("anthropics/skills/code-review")
         """
-        # Reject obvious local paths early
-        if is_local_path_ref(handle):
-            raise InvalidHandleError(
-                f"'{handle}' is a local path. Use Skill.from_local() instead."
-            )
-
-        # Parse handle
-        parsed = parse_handle(handle, prefer_local=False, default_owner=DEFAULT_OWNER)
-        if parsed.is_local:
-            raise InvalidHandleError(
-                f"'{handle}' is a local path. Use Skill.from_local() instead."
-            )
+        parsed = parse_remote_handle(handle, default_owner=DEFAULT_OWNER)
 
         owner = parsed.username or ""
         repo_candidates = iter_repo_candidates(parsed.repo)

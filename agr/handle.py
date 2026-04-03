@@ -283,6 +283,39 @@ def parse_handle(
     )
 
 
+def parse_remote_handle(
+    handle: str, *, default_owner: str | None = None
+) -> ParsedHandle:
+    """Parse a handle that must be a remote GitHub reference.
+
+    Convenience wrapper around :func:`parse_handle` that rejects local paths
+    up-front and enforces ``prefer_local=False``.
+
+    Args:
+        handle: Handle string (e.g. ``"anthropics/skills/code-review"``).
+        default_owner: Forwarded to :func:`parse_handle`.
+
+    Returns:
+        A :class:`ParsedHandle` guaranteed to be remote.
+
+    Raises:
+        InvalidHandleError: If the handle resolves to a local path.
+    """
+    if is_local_path_ref(handle):
+        raise InvalidHandleError(
+            f"'{handle}' is a local path, not a remote handle"
+        )
+
+    parsed = parse_handle(
+        handle, prefer_local=False, default_owner=default_owner
+    )
+    if parsed.is_local:
+        raise InvalidHandleError(
+            f"'{handle}' is a local path, not a remote handle"
+        )
+    return parsed
+
+
 def _validate_no_separator(ref: str, label: str, value: str) -> None:
     """Validate that a handle component doesn't contain the reserved separator.
 

@@ -20,9 +20,8 @@ from agr.handle import (
     DEFAULT_OWNER,
     DEFAULT_REPO_NAME,
     LEGACY_DEFAULT_REPO_NAME,
-    is_local_path_ref,
     iter_repo_candidates,
-    parse_handle,
+    parse_remote_handle,
     warn_legacy_repo,
 )
 from agr.sdk.types import SkillInfo
@@ -286,13 +285,7 @@ def skill_info(handle: str) -> SkillInfo:
         >>> info = skill_info("anthropics/skills/code-review")
         >>> print(info.description)
     """
-    # Reject obvious local paths
-    if is_local_path_ref(handle):
-        raise InvalidHandleError(f"'{handle}' is a local path, not a remote handle")
-
-    parsed = parse_handle(handle, prefer_local=False, default_owner=DEFAULT_OWNER)
-    if parsed.is_local:
-        raise InvalidHandleError(f"'{handle}' is a local path, not a remote handle")
+    parsed = parse_remote_handle(handle, default_owner=DEFAULT_OWNER)
 
     owner, initial_repo = parsed.get_github_repo()
     repo_candidates = iter_repo_candidates(parsed.repo)
