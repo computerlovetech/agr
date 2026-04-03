@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import ClassVar
 
 import tomlkit
+import tomlkit.items
 from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
@@ -39,6 +41,16 @@ class LockedSkill:
     # Local field
     path: str | None = None
 
+    # Mapping from dataclass field names to TOML key names.
+    # Order defines the serialization order in the lockfile.
+    _TOML_OPTIONAL_FIELDS: ClassVar[tuple[tuple[str, str], ...]] = (
+        ("handle", "handle"),
+        ("path", "path"),
+        ("source", "source"),
+        ("commit", "commit"),
+        ("content_hash", "content-hash"),
+    )
+
     @property
     def is_local(self) -> bool:
         return self.path is not None
@@ -47,6 +59,32 @@ class LockedSkill:
     def identifier(self) -> str:
         """Unique identifier matching Dependency.identifier."""
         return self.path or self.handle or ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> LockedSkill:
+        """Deserialize a TOML table into a LockedSkill."""
+        def _get_optional_str(key: str) -> str | None:
+            value = data.get(key)
+            return str(value) if value is not None else None
+
+        return cls(
+            installed_name=str(data.get("installed-name", "")),
+            handle=_get_optional_str("handle"),
+            path=_get_optional_str("path"),
+            source=_get_optional_str("source"),
+            commit=_get_optional_str("commit"),
+            content_hash=_get_optional_str("content-hash"),
+        )
+
+    def to_toml_table(self) -> tomlkit.items.Table:
+        """Serialize this entry into a tomlkit Table."""
+        table = tomlkit.table()
+        for attr, key in self._TOML_OPTIONAL_FIELDS:
+            value = getattr(self, attr)
+            if value is not None:
+                table[key] = value
+        table["installed-name"] = self.installed_name
+        return table
 
 
 @dataclass
@@ -87,16 +125,7 @@ def load_lockfile(path: Path) -> Lockfile | None:
     for item in doc.get("skill", []):
         if not isinstance(item, dict):
             continue
-        skills.append(
-            LockedSkill(
-                installed_name=str(item.get("installed-name", "")),
-                handle=item.get("handle"),
-                source=item.get("source"),
-                commit=item.get("commit"),
-                content_hash=item.get("content-hash"),
-                path=item.get("path"),
-            )
-        )
+        skills.append(LockedSkill.from_dict(item))
 
     return Lockfile(version=version, skills=skills)
 
@@ -110,19 +139,7 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
 
     skills_aot = tomlkit.aot()
     for skill in lockfile.skills:
-        table = tomlkit.table()
-        if skill.handle is not None:
-            table["handle"] = skill.handle
-        if skill.path is not None:
-            table["path"] = skill.path
-        if skill.source is not None:
-            table["source"] = skill.source
-        if skill.commit is not None:
-            table["commit"] = skill.commit
-        if skill.content_hash is not None:
-            table["content-hash"] = skill.content_hash
-        table["installed-name"] = skill.installed_name
-        skills_aot.append(table)
+        skills_aot.append(skill.to_toml_table())
 
     doc["skill"] = skills_aot
     path.write_text(tomlkit.dumps(doc))
