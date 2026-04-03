@@ -16,7 +16,7 @@ import tomlkit.items
 from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
-from agr.config import Dependency
+from agr.config import DEPENDENCY_TYPE_RALPH, Dependency
 from agr.exceptions import ConfigError
 
 LOCKFILE_FILENAME = "agr.lock"
@@ -63,6 +63,7 @@ class LockedSkill:
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> LockedSkill:
         """Deserialize a TOML table into a LockedSkill."""
+
         def _get_optional_str(key: str) -> str | None:
             value = data.get(key)
             return str(value) if value is not None else None
@@ -93,11 +94,22 @@ class Lockfile:
 
     version: int = LOCKFILE_VERSION
     skills: list[LockedSkill] = field(default_factory=list)
+    ralphs: list[LockedSkill] = field(default_factory=list)
 
 
 def build_lockfile_path(config_path: Path) -> Path:
     """Return the lockfile path alongside the given config path."""
     return config_path.parent / LOCKFILE_FILENAME
+
+
+def _parse_locked_entries(doc: TOMLDocument, key: str) -> list[LockedSkill]:
+    """Parse locked entries from a TOML section."""
+    entries: list[LockedSkill] = []
+    for item in doc.get(key, []):
+        if not isinstance(item, dict):
+            continue
+        entries.append(LockedSkill.from_dict(item))
+    return entries
 
 
 def load_lockfile(path: Path) -> Lockfile | None:
@@ -121,13 +133,10 @@ def load_lockfile(path: Path) -> Lockfile | None:
             f"Unsupported lockfile version {version} (expected {LOCKFILE_VERSION})"
         )
 
-    skills: list[LockedSkill] = []
-    for item in doc.get("skill", []):
-        if not isinstance(item, dict):
-            continue
-        skills.append(LockedSkill.from_dict(item))
+    skills = _parse_locked_entries(doc, "skill")
+    ralphs = _parse_locked_entries(doc, "ralph")
 
-    return Lockfile(version=version, skills=skills)
+    return Lockfile(version=version, skills=skills, ralphs=ralphs)
 
 
 def save_lockfile(lockfile: Lockfile, path: Path) -> None:
@@ -137,20 +146,31 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
     doc.add(tomlkit.nl())
     doc["version"] = lockfile.version
 
-    skills_aot = tomlkit.aot()
-    for skill in lockfile.skills:
-        skills_aot.append(skill.to_toml_table())
+    def _build_aot(entries: list[LockedSkill]) -> tomlkit.items.AoT:
+        aot = tomlkit.aot()
+        for entry in entries:
+            aot.append(entry.to_toml_table())
+        return aot
 
-    doc["skill"] = skills_aot
+    doc["skill"] = _build_aot(lockfile.skills)
+    if lockfile.ralphs:
+        doc["ralph"] = _build_aot(lockfile.ralphs)
     path.write_text(tomlkit.dumps(doc))
+
+
+def _lockfile_list_for_dep(lockfile: Lockfile, dep: Dependency) -> list[LockedSkill]:
+    """Return the appropriate lockfile list for a dependency's type."""
+    if dep.type == DEPENDENCY_TYPE_RALPH:
+        return lockfile.ralphs
+    return lockfile.skills
 
 
 def find_locked_skill(lockfile: Lockfile, dep: Dependency) -> LockedSkill | None:
     """Look up a dependency's entry in the lockfile."""
     identifier = dep.identifier
-    for skill in lockfile.skills:
-        if skill.identifier == identifier:
-            return skill
+    for entry in _lockfile_list_for_dep(lockfile, dep):
+        if entry.identifier == identifier:
+            return entry
     return None
 
 
@@ -160,17 +180,41 @@ def is_lockfile_current(lockfile: Lockfile, dependencies: list[Dependency]) -> b
     Returns True only if the lockfile has entries for all dependencies
     and no extra entries. Does not check whether SHAs are stale.
     """
-    lockfile_ids = {s.identifier for s in lockfile.skills}
-    config_ids = {d.identifier for d in dependencies}
-    return lockfile_ids == config_ids
+    lockfile_skill_ids = {s.identifier for s in lockfile.skills}
+    lockfile_ralph_ids = {r.identifier for r in lockfile.ralphs}
+    config_skill_ids = {
+        d.identifier for d in dependencies if d.type != DEPENDENCY_TYPE_RALPH
+    }
+    config_ralph_ids = {
+        d.identifier for d in dependencies if d.type == DEPENDENCY_TYPE_RALPH
+    }
+    return (
+        lockfile_skill_ids == config_skill_ids
+        and lockfile_ralph_ids == config_ralph_ids
+    )
 
 
-def update_lockfile_entry(lockfile: Lockfile, entry: LockedSkill) -> None:
+def update_lockfile_entry(
+    lockfile: Lockfile, entry: LockedSkill, *, ralph: bool = False
+) -> None:
     """Add or replace an entry in the lockfile by identifier."""
-    lockfile.skills = [s for s in lockfile.skills if s.identifier != entry.identifier]
-    lockfile.skills.append(entry)
+    if ralph:
+        lockfile.ralphs = [
+            r for r in lockfile.ralphs if r.identifier != entry.identifier
+        ]
+        lockfile.ralphs.append(entry)
+    else:
+        lockfile.skills = [
+            s for s in lockfile.skills if s.identifier != entry.identifier
+        ]
+        lockfile.skills.append(entry)
 
 
-def remove_lockfile_entry(lockfile: Lockfile, identifier: str) -> None:
+def remove_lockfile_entry(
+    lockfile: Lockfile, identifier: str, *, ralph: bool = False
+) -> None:
     """Remove an entry from the lockfile by identifier."""
-    lockfile.skills = [s for s in lockfile.skills if s.identifier != identifier]
+    if ralph:
+        lockfile.ralphs = [r for r in lockfile.ralphs if r.identifier != identifier]
+    else:
+        lockfile.skills = [s for s in lockfile.skills if s.identifier != identifier]

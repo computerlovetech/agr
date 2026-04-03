@@ -136,6 +136,37 @@ def write_skill_metadata(
     metadata_path.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n")
 
 
+def write_ralph_metadata(
+    ralph_dir: Path,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    installed_name: str,
+    source: str | None = None,
+    content_hash: str | None = None,
+) -> None:
+    """Write metadata for an installed ralph (tool-agnostic, no tool field)."""
+    resolved_local = (
+        handle.resolve_local_path(repo_root) if handle.local_path is not None else None
+    )
+    data: dict[str, Any] = {
+        METADATA_KEY_ID: build_handle_id(handle, repo_root, source),
+        METADATA_KEY_INSTALLED_NAME: installed_name,
+    }
+    if handle.is_local:
+        data[METADATA_KEY_TYPE] = METADATA_TYPE_LOCAL
+        data[METADATA_KEY_LOCAL_PATH] = str(resolved_local) if resolved_local else None
+    else:
+        data[METADATA_KEY_TYPE] = METADATA_TYPE_REMOTE
+        data[METADATA_KEY_HANDLE] = handle.to_toml_handle()
+        data[METADATA_KEY_SOURCE] = source or DEFAULT_SOURCE_NAME
+
+    if content_hash is not None:
+        data[METADATA_KEY_CONTENT_HASH] = content_hash
+
+    metadata_path = ralph_dir / METADATA_FILENAME
+    metadata_path.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n")
+
+
 def stamp_skill_metadata(
     skill_dir: Path,
     handle: ParsedHandle,
@@ -156,6 +187,25 @@ def stamp_skill_metadata(
         handle,
         repo_root,
         tool_name,
+        installed_name,
+        source,
+        content_hash,
+    )
+
+
+def stamp_ralph_metadata(
+    ralph_dir: Path,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    installed_name: str,
+    source: str | None = None,
+) -> None:
+    """Compute content hash and write metadata for a ralph in one step."""
+    content_hash = compute_content_hash(ralph_dir)
+    write_ralph_metadata(
+        ralph_dir,
+        handle,
+        repo_root,
         installed_name,
         source,
         content_hash,

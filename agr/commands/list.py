@@ -5,10 +5,11 @@ from pathlib import Path
 from rich.table import Table
 
 from agr.commands._tool_helpers import load_existing_config, print_missing_config_hint
+from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console
 from agr.exceptions import AgrError, InvalidHandleError
 from agr.metadata import METADATA_TYPE_LOCAL, METADATA_TYPE_REMOTE
-from agr.fetcher import filter_tools_needing_install
+from agr.fetcher import filter_tools_needing_install, is_ralph_installed
 from agr.handle import ParsedHandle
 from agr.tool import ToolConfig
 
@@ -45,6 +46,17 @@ def _get_installation_status(
         return "[yellow]not synced[/yellow]"
 
 
+def _get_ralph_installation_status(
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    source: str | None = None,
+) -> str:
+    """Get installation status for a ralph dependency."""
+    if is_ralph_installed(handle, repo_root, source):
+        return "[green]installed[/green]"
+    return "[yellow]not synced[/yellow]"
+
+
 def run_list(global_install: bool = False) -> None:
     """Run the list command.
 
@@ -60,12 +72,12 @@ def run_list(global_install: bool = False) -> None:
 
     if not config.dependencies:
         console.print("[yellow]No dependencies in agr.toml.[/yellow]")
-        console.print("[dim]Run 'agr add <handle>' to add skills.[/dim]")
+        console.print("[dim]Run 'agr add <handle>' to add skills or ralphs.[/dim]")
         return
 
     # Build table
     table = Table(show_header=True, header_style="bold")
-    table.add_column("Skill", style="cyan")
+    table.add_column("Name", style="cyan")
     table.add_column("Type")
     table.add_column("Status")
 
@@ -78,18 +90,25 @@ def run_list(global_install: bool = False) -> None:
             display_name = dep.handle or ""
             kind = METADATA_TYPE_REMOTE
 
+        # Show dep type alongside local/remote
+        dep_type_label = dep.type
+        kind_display = f"{kind} ({dep_type_label})"
+
         # Check installation status
         try:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
-            status = _get_installation_status(
-                handle, repo_root, tools, source_name, skills_dirs
-            )
+            if dep.type == DEPENDENCY_TYPE_RALPH:
+                status = _get_ralph_installation_status(handle, repo_root, source_name)
+            else:
+                status = _get_installation_status(
+                    handle, repo_root, tools, source_name, skills_dirs
+                )
         except (InvalidHandleError, AgrError):
             status = "[red]invalid[/red]"
 
-        table.add_row(display_name, kind, status)
+        table.add_row(display_name, kind_display, status)
 
     console.print(table)
 

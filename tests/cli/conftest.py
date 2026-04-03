@@ -58,6 +58,25 @@ A test skill for CLI testing.
 
 
 @pytest.fixture
+def cli_ralph(cli_project: Path) -> Path:
+    """Create a test ralph in the project."""
+    ralph_dir = cli_project / "ralphs" / "test-ralph"
+    ralph_dir.mkdir(parents=True)
+    (ralph_dir / "RALPH.md").write_text("""---
+agent: claude -p
+commands:
+  - name: tests
+    run: uv run pytest
+---
+
+# Test Ralph
+
+A test ralph for CLI testing.
+""")
+    return ralph_dir
+
+
+@pytest.fixture
 def cli_config(cli_project: Path):
     """Factory fixture to create agr.toml with custom content."""
 

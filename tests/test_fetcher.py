@@ -761,3 +761,122 @@ class TestFetchAndInstallToTools:
 
         with pytest.raises(ValueError, match="No tools provided"):
             fetch_and_install_to_tools(handle, repo_root, [], overwrite=False)
+
+
+class TestInstallLocalRalph:
+    """Tests for installing a local ralph."""
+
+    def test_installs_local_ralph(self, tmp_path, ralph_fixture):
+        """Installs a local ralph to ralphs dir."""
+        from agr.fetcher import install_local_ralph, get_ralphs_dir
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        ralphs_dir = get_ralphs_dir(repo_root)
+        path = install_local_ralph(ralph_fixture, ralphs_dir, repo_root=repo_root)
+
+        assert path.exists()
+        assert (path / "RALPH.md").exists()
+        assert path.parent == ralphs_dir
+
+    def test_rejects_non_ralph_dir(self, tmp_path):
+        """Raises when source dir is not a valid ralph."""
+        from agr.exceptions import RalphNotFoundError
+        from agr.fetcher import install_local_ralph, get_ralphs_dir
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        not_a_ralph = tmp_path / "empty-dir"
+        not_a_ralph.mkdir()
+
+        ralphs_dir = get_ralphs_dir(repo_root)
+        with pytest.raises(RalphNotFoundError, match="not a valid ralph"):
+            install_local_ralph(not_a_ralph, ralphs_dir, repo_root=repo_root)
+
+    def test_stamps_metadata(self, tmp_path, ralph_fixture):
+        """Installed ralph has .agr.json metadata."""
+        from agr.fetcher import install_local_ralph, get_ralphs_dir
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        ralphs_dir = get_ralphs_dir(repo_root)
+        path = install_local_ralph(ralph_fixture, ralphs_dir, repo_root=repo_root)
+
+        meta = read_skill_metadata(path)
+        assert meta is not None
+        assert "tool" not in meta  # Ralphs are tool-agnostic
+
+
+class TestUninstallRalph:
+    """Tests for uninstalling a ralph."""
+
+    def test_uninstall_ralph(self, tmp_path, ralph_fixture):
+        """Uninstalls an installed ralph."""
+        from agr.fetcher import install_local_ralph, uninstall_ralph, get_ralphs_dir
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        ralphs_dir = get_ralphs_dir(repo_root)
+        path = install_local_ralph(ralph_fixture, ralphs_dir, repo_root=repo_root)
+        assert path.exists()
+
+        handle = ParsedHandle(
+            is_local=True, name=ralph_fixture.name, local_path=ralph_fixture
+        )
+        result = uninstall_ralph(handle, repo_root)
+        assert result is True
+        assert not path.exists()
+
+    def test_uninstall_nonexistent_ralph(self, tmp_path):
+        """Returns False when ralph is not installed."""
+        from agr.fetcher import uninstall_ralph
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        handle = ParsedHandle(
+            is_local=True, name="nonexistent", local_path=tmp_path / "nonexistent"
+        )
+        assert uninstall_ralph(handle, repo_root) is False
+
+
+class TestIsRalphInstalled:
+    """Tests for checking ralph installation status."""
+
+    def test_is_installed(self, tmp_path, ralph_fixture):
+        """Returns True when ralph is installed."""
+        from agr.fetcher import install_local_ralph, is_ralph_installed, get_ralphs_dir
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        ralphs_dir = get_ralphs_dir(repo_root)
+        install_local_ralph(ralph_fixture, ralphs_dir, repo_root=repo_root)
+
+        handle = ParsedHandle(
+            is_local=True, name=ralph_fixture.name, local_path=ralph_fixture
+        )
+        assert is_ralph_installed(handle, repo_root) is True
+
+    def test_not_installed(self, tmp_path):
+        """Returns False when ralph is not installed."""
+        from agr.fetcher import is_ralph_installed
+
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        handle = ParsedHandle(
+            is_local=True, name="nonexistent", local_path=tmp_path / "nonexistent"
+        )
+        assert is_ralph_installed(handle, repo_root) is False

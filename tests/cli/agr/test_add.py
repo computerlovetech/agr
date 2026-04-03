@@ -1,6 +1,6 @@
 """CLI tests for agr add command."""
 
-from agr.config import AgrConfig
+from agr.config import DEPENDENCY_TYPE_RALPH, AgrConfig
 from tests.cli.assertions import assert_cli
 
 
@@ -88,3 +88,35 @@ class TestAgrAdd:
         assert_cli(result).succeeded()
         config = AgrConfig.load(cli_project / "agr.toml")
         assert config.tools == ["claude"]
+
+
+class TestAgrAddRalph:
+    """Tests for agr add with ralph type."""
+
+    def test_add_local_ralph_succeeds(self, agr, cli_ralph):
+        """agr add ./path adds local ralph."""
+        result = agr("add", "./ralphs/test-ralph")
+        assert_cli(result).succeeded().stdout_contains("Added:")
+
+    def test_add_local_ralph_creates_installed_dir(self, agr, cli_project, cli_ralph):
+        """agr add creates ralph in .agents/ralphs."""
+        agr("add", "./ralphs/test-ralph")
+        installed = cli_project / ".agents" / "ralphs" / "test-ralph"
+        assert installed.exists()
+        assert (installed / "RALPH.md").exists()
+
+    def test_add_local_ralph_updates_config_with_ralph_type(
+        self, agr, cli_project, cli_ralph
+    ):
+        """agr add updates agr.toml with type = ralph."""
+        agr("add", "./ralphs/test-ralph")
+        config = AgrConfig.load(cli_project / "agr.toml")
+        ralph_deps = [d for d in config.dependencies if d.type == DEPENDENCY_TYPE_RALPH]
+        assert len(ralph_deps) == 1
+        assert ralph_deps[0].path == "./ralphs/test-ralph"
+
+    def test_add_local_ralph_not_installed_to_tools(self, agr, cli_project, cli_ralph):
+        """Ralphs should NOT be installed to .claude/skills/."""
+        agr("add", "./ralphs/test-ralph")
+        tool_dir = cli_project / ".claude" / "skills" / "test-ralph"
+        assert not tool_dir.exists()

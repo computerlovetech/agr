@@ -61,3 +61,22 @@ name: test-skill
 A test skill for unit tests.
 """)
     return skill_dir
+
+
+@pytest.fixture
+def ralph_fixture(tmp_path: Path) -> Path:
+    """Create a valid ralph directory."""
+    ralph_dir = tmp_path / "test-ralph"
+    ralph_dir.mkdir()
+    (ralph_dir / "RALPH.md").write_text("""---
+agent: claude -p
+commands:
+  - name: tests
+    run: uv run pytest
+---
+
+# Test Ralph
+
+A test ralph for unit tests.
+""")
+    return ralph_dir

@@ -1,18 +1,22 @@
 """agr add command implementation."""
 
+from pathlib import Path
+
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
 from agr.commands.migrations import run_tool_migrations
-from agr.config import DEPENDENCY_TYPE_SKILL, Dependency
+from agr.config import DEPENDENCY_TYPE_RALPH, DEPENDENCY_TYPE_SKILL, Dependency
 from agr.console import get_console
 from agr.exceptions import (
     INSTALL_ERROR_TYPES,
     AgrError,
+    RalphNotFoundError,
     SkillNotFoundError,
     format_install_error,
 )
 from agr.fetcher import (
     InstallResult,
+    fetch_and_install_ralph,
     fetch_and_install_to_tools,
     list_remote_repo_skills,
 )
@@ -25,7 +29,28 @@ from agr.lockfile import (
     save_lockfile,
     update_lockfile_entry,
 )
+from agr.ralph import is_valid_ralph_dir
+from agr.skill import is_valid_skill_dir
 from agr.source import SourceResolver
+
+
+def _detect_local_type(source_path: Path) -> str:
+    """Detect whether a local path is a skill or ralph.
+
+    Checks for RALPH.md and SKILL.md markers. If both exist,
+    raises an error. If neither exists, defaults to skill (existing behaviour).
+    """
+    has_ralph = is_valid_ralph_dir(source_path)
+    has_skill = is_valid_skill_dir(source_path)
+
+    if has_ralph and has_skill:
+        raise AgrError(
+            f"'{source_path}' contains both SKILL.md and RALPH.md. "
+            "A directory can only be one type. Remove one marker file."
+        )
+    if has_ralph:
+        return DEPENDENCY_TYPE_RALPH
+    return DEPENDENCY_TYPE_SKILL
 
 
 def run_add(
@@ -50,8 +75,8 @@ def run_add(
 
     # Track results for summary
     results: list[CommandResult] = []
-    # Track install results for lockfile
-    lockfile_updates: list[tuple[ParsedHandle, str, InstallResult]] = []
+    # Track install results for lockfile: (handle, ref, install_result, dep_type)
+    lockfile_updates: list[tuple[ParsedHandle, str, InstallResult, str]] = []
 
     for ref in refs:
         try:
@@ -59,26 +84,90 @@ def run_add(
             handle = parse_handle(ref, default_owner=config.default_owner)
 
             if source and handle.is_local:
-                raise AgrError("Local skills cannot specify a source")
+                raise AgrError("Local dependencies cannot specify a source")
 
             # Validate explicit source if provided
             if source:
                 resolver.get(source)
 
-            # Install the skill to all configured tools (downloads once)
-            installed_paths_dict, install_result = fetch_and_install_to_tools(
-                handle,
-                repo_root,
-                tools,
-                overwrite,
-                resolver=resolver,
-                source=source,
-                skills_dirs=skills_dirs,
-                default_repo=config.default_repo,
-            )
-            installed_paths = [
-                f"{name}: {path}" for name, path in installed_paths_dict.items()
-            ]
+            # Auto-detect type and install
+            if handle.is_local:
+                source_path = handle.resolve_local_path(repo_root)
+                dep_type = _detect_local_type(source_path)
+            else:
+                dep_type = DEPENDENCY_TYPE_SKILL  # default, may change below
+
+            if dep_type == DEPENDENCY_TYPE_RALPH or (
+                not handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL
+            ):
+                # For remote handles, try skill first; if not found, try ralph
+                if handle.is_local:
+                    # Local ralph
+                    installed_path, install_result = fetch_and_install_ralph(
+                        handle,
+                        repo_root,
+                        overwrite,
+                        resolver=resolver,
+                        source=source,
+                        default_repo=config.default_repo,
+                    )
+                    installed_paths = [str(installed_path)]
+                    dep_type = DEPENDENCY_TYPE_RALPH
+                else:
+                    # Remote: try as skill first
+                    try:
+                        installed_paths_dict, install_result = (
+                            fetch_and_install_to_tools(
+                                handle,
+                                repo_root,
+                                tools,
+                                overwrite,
+                                resolver=resolver,
+                                source=source,
+                                skills_dirs=skills_dirs,
+                                default_repo=config.default_repo,
+                            )
+                        )
+                        installed_paths = [
+                            f"{name}: {path}"
+                            for name, path in installed_paths_dict.items()
+                        ]
+                        dep_type = DEPENDENCY_TYPE_SKILL
+                    except SkillNotFoundError:
+                        # Skill not found — try as ralph
+                        try:
+                            installed_path, install_result = fetch_and_install_ralph(
+                                handle,
+                                repo_root,
+                                overwrite,
+                                resolver=resolver,
+                                source=source,
+                                default_repo=config.default_repo,
+                            )
+                            installed_paths = [str(installed_path)]
+                            dep_type = DEPENDENCY_TYPE_RALPH
+                        except RalphNotFoundError:
+                            # Neither skill nor ralph found — re-raise as skill error
+                            # for backwards-compatible error messages
+                            raise SkillNotFoundError(
+                                f"'{handle.name}' not found as a skill or ralph "
+                                f"in any configured source."
+                            ) from None
+            else:
+                # Local skill (already detected)
+                installed_paths_dict, install_result = fetch_and_install_to_tools(
+                    handle,
+                    repo_root,
+                    tools,
+                    overwrite,
+                    resolver=resolver,
+                    source=source,
+                    skills_dirs=skills_dirs,
+                    default_repo=config.default_repo,
+                )
+                installed_paths = [
+                    f"{name}: {path}" for name, path in installed_paths_dict.items()
+                ]
 
             # Add to config
             if handle.is_local:
@@ -87,21 +176,21 @@ def run_add(
                     path_value = str(handle.resolve_local_path())
                 config.add_dependency(
                     Dependency(
-                        type=DEPENDENCY_TYPE_SKILL,
+                        type=dep_type,
                         path=path_value,
                     )
                 )
             else:
                 config.add_dependency(
                     Dependency(
-                        type=DEPENDENCY_TYPE_SKILL,
+                        type=dep_type,
                         handle=handle.to_toml_handle(),
                         source=source,
                     ),
                     also_matches=[ref],
                 )
 
-            lockfile_updates.append((handle, ref, install_result))
+            lockfile_updates.append((handle, ref, install_result, dep_type))
             results.append(CommandResult(ref, True, ", ".join(installed_paths)))
 
         except SkillNotFoundError as e:
@@ -131,11 +220,13 @@ def run_add(
     if lockfile_updates:
         lockfile_path = build_lockfile_path(config_path)
         lockfile = load_lockfile(lockfile_path) or Lockfile()
-        for handle, ref, install_result in lockfile_updates:
+        for handle, ref, install_result, dep_type in lockfile_updates:
+            is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
             if handle.is_local:
                 update_lockfile_entry(
                     lockfile,
                     LockedSkill(path=ref, installed_name=handle.name),
+                    ralph=is_ralph,
                 )
             else:
                 update_lockfile_entry(
@@ -147,6 +238,7 @@ def run_add(
                         content_hash=install_result.content_hash,
                         installed_name=handle.name,
                     ),
+                    ralph=is_ralph,
                 )
         save_lockfile(lockfile, lockfile_path)
 

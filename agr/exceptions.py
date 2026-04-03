@@ -17,6 +17,10 @@ class SkillNotFoundError(AgrError):
     """Raised when the skill doesn't exist in the repo."""
 
 
+class RalphNotFoundError(AgrError):
+    """Raised when the ralph doesn't exist in the repo."""
+
+
 class ConfigError(AgrError):
     """Raised when agr.toml has issues (not found or invalid)."""
 
