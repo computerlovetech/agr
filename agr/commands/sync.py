@@ -16,6 +16,7 @@ from agr.config import AgrConfig, find_config, require_repo_root
 from agr.console import error_exit, get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, AgrError, format_install_error
 from agr.fetcher import (
+    InstallResult,
     fetch_and_install_to_tools,
     filter_tools_needing_install,
     install_skill_from_repo_to_tools,
@@ -58,10 +59,20 @@ class SyncResult:
 
     status: SyncStatus
     error: str | None = None
-    # Lockfile metadata captured during install
-    commit: str | None = None
-    content_hash: str | None = None
-    source_name: str | None = None
+    # Lockfile metadata captured during install (reuses InstallResult)
+    install: InstallResult | None = None
+
+    @property
+    def commit(self) -> str | None:
+        return self.install.commit if self.install else None
+
+    @property
+    def content_hash(self) -> str | None:
+        return self.install.content_hash if self.install else None
+
+    @property
+    def source_name(self) -> str | None:
+        return self.install.source_name if self.install else None
 
     @classmethod
     def installed(
@@ -72,10 +83,16 @@ class SyncResult:
     ) -> SyncResult:
         return cls(
             SyncStatus.INSTALLED,
-            commit=commit,
-            content_hash=content_hash,
-            source_name=source_name,
+            install=InstallResult(
+                commit=commit,
+                content_hash=content_hash,
+                source_name=source_name,
+            ),
         )
+
+    @classmethod
+    def from_install_result(cls, result: InstallResult) -> SyncResult:
+        return cls(SyncStatus.INSTALLED, install=result)
 
     @classmethod
     def up_to_date(cls) -> SyncResult:
@@ -352,11 +369,7 @@ def _sync_one_dependency(
         skills_dirs=skills_dirs,
         default_repo=default_repo,
     )
-    return SyncResult.installed(
-        commit=install_result.commit,
-        content_hash=install_result.content_hash,
-        source_name=install_result.source_name,
-    )
+    return SyncResult.from_install_result(install_result)
 
 
 def _run_global_sync() -> None:
