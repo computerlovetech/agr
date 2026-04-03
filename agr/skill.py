@@ -13,9 +13,6 @@ SKILL_MARKER = "SKILL.md"
 # Regex for detecting a frontmatter ``name:`` line (with or without a value).
 _FRONTMATTER_NAME_LINE_RE = re.compile(r"^\s*name\s*:")
 
-# Regex for extracting the value from a frontmatter ``name: <value>`` line.
-_FRONTMATTER_NAME_VALUE_RE = re.compile(r"^\s*name\s*:\s*(.+)\s*$")
-
 # Regex for validating a skill name per the Agent Skills spec:
 # 1-64 lowercase alphanumeric chars and hyphens,
 # no leading/trailing/consecutive hyphens.
@@ -226,17 +223,6 @@ def discover_skills_in_repo_listing(paths: list[str]) -> list[str]:
     return sorted({d.name for d in _find_skill_dirs_in_listing(paths)})
 
 
-def discover_all_skill_dirs(repo_dir: Path) -> list[Path]:
-    """Discover all skill directories in a repository (no dedupe).
-
-    Args:
-        repo_dir: Path to repository root
-
-    Returns:
-        List of skill directories, sorted by path for determinism
-    """
-    return sorted(_find_skill_dirs(repo_dir), key=lambda p: p.as_posix())
-
 
 def parse_frontmatter(content: str) -> tuple[str, str] | None:
     """Parse YAML frontmatter from SKILL.md content.
@@ -255,23 +241,6 @@ def parse_frontmatter(content: str) -> tuple[str, str] | None:
         return None
     return parts[1], parts[2]
 
-
-def get_skill_frontmatter_name(skill_dir: Path) -> str | None:
-    """Extract the frontmatter name from SKILL.md if present."""
-    skill_md = skill_dir / SKILL_MARKER
-    if not skill_md.exists():
-        return None
-
-    parsed = parse_frontmatter(skill_md.read_text())
-    if parsed is None:
-        return None
-
-    frontmatter, _ = parsed
-    for line in frontmatter.splitlines():
-        match = _FRONTMATTER_NAME_VALUE_RE.match(line)
-        if match:
-            return match.group(1).strip()
-    return None
 
 
 def update_skill_md_name(skill_dir: Path, new_name: str) -> None:
