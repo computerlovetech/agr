@@ -117,13 +117,15 @@ class TestLockfileSync:
 
         # Manually append a dependency to agr.toml without running agr add
         import tomlkit
+        from typing import cast
+        from tomlkit.items import Array
 
         config_text = (cli_project / "agr.toml").read_text()
         doc = tomlkit.parse(config_text)
         dep = tomlkit.inline_table()
         dep["path"] = "./skills/second-skill"
         dep["type"] = "skill"
-        doc["dependencies"].append(dep)
+        cast(Array, doc["dependencies"]).append(dep)
         (cli_project / "agr.toml").write_text(tomlkit.dumps(doc))
 
         result = agr("sync", "--locked")

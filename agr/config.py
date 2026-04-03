@@ -53,6 +53,31 @@ def _validate_default_source(default_source: str, sources: list[SourceConfig]) -
         )
 
 
+def _validate_config_identifier(value: object, key: str, description: str) -> str:
+    """Validate a simple config identifier (owner or repo name).
+
+    Returns the stripped string value, or raises ``ConfigError``.
+    """
+    result = str(value).strip()
+    if not result:
+        raise ConfigError(
+            f"{key} cannot be empty in agr.toml. "
+            f"Remove the key to use the default, or set a valid value."
+        )
+    if "/" in result:
+        raise ConfigError(
+            f"{key} cannot contain '/': got '{result}'. "
+            f"Use a plain {description}."
+        )
+    if INSTALLED_NAME_SEPARATOR in result:
+        raise ConfigError(
+            f"{key} cannot contain '{INSTALLED_NAME_SEPARATOR}': "
+            f"got '{result}'. "
+            f"Use a plain {description}."
+        )
+    return result
+
+
 def _parse_tools_from_doc(doc: TOMLDocument) -> list[str]:
     """Parse and validate tools list from TOML document."""
     tools_list = doc.get("tools", list(DEFAULT_TOOL_NAMES))
@@ -341,45 +366,15 @@ class AgrConfig:
 
         default_owner = doc.get("default_owner")
         if default_owner is not None:
-            default_owner = str(default_owner).strip()
-            if not default_owner:
-                raise ConfigError(
-                    "default_owner cannot be empty in agr.toml. "
-                    "Remove the key to use the default, or set a valid owner."
-                )
-            if "/" in default_owner:
-                raise ConfigError(
-                    f"default_owner cannot contain '/': got '{default_owner}'. "
-                    "Use a plain GitHub username or organization name."
-                )
-            if INSTALLED_NAME_SEPARATOR in default_owner:
-                raise ConfigError(
-                    f"default_owner cannot contain '{INSTALLED_NAME_SEPARATOR}': "
-                    f"got '{default_owner}'. "
-                    "Use a plain GitHub username or organization name."
-                )
-            config.default_owner = default_owner
+            config.default_owner = _validate_config_identifier(
+                default_owner, "default_owner", "GitHub username or organization name"
+            )
 
         default_repo = doc.get("default_repo")
         if default_repo is not None:
-            default_repo = str(default_repo).strip()
-            if not default_repo:
-                raise ConfigError(
-                    "default_repo cannot be empty in agr.toml. "
-                    "Remove the key to use the default, or set a valid repo name."
-                )
-            if "/" in default_repo:
-                raise ConfigError(
-                    f"default_repo cannot contain '/': got '{default_repo}'. "
-                    "Use a plain GitHub repository name."
-                )
-            if INSTALLED_NAME_SEPARATOR in default_repo:
-                raise ConfigError(
-                    f"default_repo cannot contain '{INSTALLED_NAME_SEPARATOR}': "
-                    f"got '{default_repo}'. "
-                    "Use a plain GitHub repository name."
-                )
-            config.default_repo = default_repo
+            config.default_repo = _validate_config_identifier(
+                default_repo, "default_repo", "GitHub repository name"
+            )
 
         sync_instructions = doc.get("sync_instructions")
         if sync_instructions is not None:
