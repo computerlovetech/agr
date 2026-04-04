@@ -73,12 +73,6 @@ def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
     return any(part in EXCLUDED_DIRS for part in parts)
 
 
-def _is_excluded_path(path: Path, repo_dir: Path) -> bool:
-    """Check if a path should be excluded from skill discovery."""
-    rel = path.relative_to(repo_dir)
-    return _is_excluded_skill_path(rel.parts)
-
-
 # ---------------------------------------------------------------------------
 # Generic resource discovery functions
 # ---------------------------------------------------------------------------
@@ -167,19 +161,9 @@ def is_valid_skill_dir(path: Path) -> bool:
     return is_valid_resource_dir(path, SKILL_MARKER)
 
 
-def _find_skill_dirs(repo_dir: Path) -> list[Path]:
-    """Find all valid skill directories in a repo."""
-    return _find_resource_dirs(repo_dir, SKILL_MARKER)
-
-
 def find_skill_in_repo(repo_dir: Path, skill_name: str) -> Path | None:
     """Find a skill directory in a downloaded repo."""
     return find_resource_in_repo(repo_dir, skill_name, SKILL_MARKER)
-
-
-def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
-    """Return valid skill directories from a git file listing."""
-    return _find_resource_dirs_in_listing(paths, SKILL_MARKER)
 
 
 def find_skill_in_repo_listing(

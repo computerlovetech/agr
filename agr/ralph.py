@@ -7,7 +7,6 @@ Thin wrappers around the generic resource-discovery functions in
 from pathlib import Path, PurePosixPath
 
 from agr.skill import (
-    _is_excluded_skill_path,
     discover_resources_in_repo_listing,
     find_resource_in_repo,
     find_resource_in_repo_listing,
@@ -18,9 +17,6 @@ from agr.skill import (
 
 # Marker file for ralphs
 RALPH_MARKER = "RALPH.md"
-
-# Reuse skill exclusion logic — same rules apply to ralphs.
-_is_excluded_marker_path = _is_excluded_skill_path
 
 
 def is_valid_ralph_dir(path: Path) -> bool:
