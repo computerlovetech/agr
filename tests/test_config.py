@@ -476,6 +476,28 @@ class TestGetTools:
         assert "# canonical_instructions" in content
         assert "# default_tool" in content
 
+    def test_commented_canonical_instructions_example_is_valid(self, tmp_path):
+        """Commented-out canonical_instructions example must be a valid value.
+
+        When agr saves a config without canonical_instructions set, it writes
+        a commented example. If a user uncomments it, the resulting value must
+        pass validation (i.e. be a valid instruction filename, not a tool name).
+        """
+        config = AgrConfig()
+        config_path = tmp_path / "agr.toml"
+        config.save(config_path)
+
+        # Uncomment the canonical_instructions line
+        content = config_path.read_text()
+        content = content.replace(
+            "# canonical_instructions", "canonical_instructions"
+        )
+        config_path.write_text(content)
+
+        # Should load without error — the example value must be valid
+        loaded = AgrConfig.load(config_path)
+        assert loaded.canonical_instructions is not None
+
     def test_dependency_with_source_roundtrip(self, tmp_path):
         """Dependency source persists through save/load."""
         config = AgrConfig()

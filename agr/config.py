@@ -484,7 +484,7 @@ class AgrConfig:
         if self.canonical_instructions:
             doc["canonical_instructions"] = self.canonical_instructions
         else:
-            doc.add(tomlkit.comment('canonical_instructions = "claude"'))
+            doc.add(tomlkit.comment('canonical_instructions = "CLAUDE.md"'))
         doc.add(tomlkit.nl())
 
         # --- dependencies ---
