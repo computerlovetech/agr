@@ -28,14 +28,48 @@ keywords:
 # Core Concepts
 
 !!! tldr
-    agr has five building blocks: **skills** (folders with a `SKILL.md`),
-    **handles** (like `user/skill`) to reference them, **tools** (Claude Code,
-    Cursor, etc.) that consume them, **sources** (where to fetch from), and
-    **scopes** (local per-project vs global). `agr.toml` ties it all together.
+    agr manages **resources** for AI coding agents. Today there are two
+    resource types: **skills** (folders with a `SKILL.md`, consumed by AI
+    tools) and **ralphs** (folders with a `RALPH.md`, autonomous loops
+    executed by a ralph runtime). Around those sit **handles** (like
+    `user/skill`) to reference them, **tools** (Claude Code, Cursor, etc.)
+    that consume skills, **sources** (where to fetch from), and **scopes**
+    (local per-project vs global). [`agr.toml`](#agrtoml) is the manifest
+    and [`agr.lock`](#agrlock) pins exact commit SHAs.
 
 This page explains the building blocks of agr. Read it after the
 [Tutorial](tutorial.md) to understand *why* things work the way they do, or
 skim it before diving into [Configuration](configuration.md).
+
+---
+
+## Resources
+
+**agr** stands for *agent resources*. A **resource** is a versioned,
+shareable directory that gives an AI coding agent new capabilities. agr's
+job is to package these resources, distribute them from Git, and sync them
+into your project reproducibly.
+
+Today agr supports two resource types:
+
+| Resource | Marker file | Consumed by | Installed to | `agr.toml` `type` |
+|---|---|---|---|---|
+| **Skill** | `SKILL.md` | AI coding tool (Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity) | Each configured tool's skills directory (e.g. `.claude/skills/`) | `"skill"` |
+| **Ralph** | `RALPH.md` | A ralph runtime such as [ralphify](https://github.com/kasperjunge/ralphify) | `.agents/ralphs/<name>/` (once per project) | `"ralph"` |
+
+Every other concept on this page — handles, sources, scopes, the
+manifest, the lockfile, the install flow — applies to **both** resource
+types. `agr add`, `agr sync`, `agr remove`, and `agr list` all accept
+either kind; agr detects which is which from the marker file (for local
+paths) or by searching the remote repo (for remote handles).
+
+!!! note "Why two resource types?"
+    Skills and ralphs answer different questions. A **skill** is context an
+    AI tool loads to do what *you* asked it to. A **ralph** is an
+    autonomous loop that runs on its own under a ralph runtime, re-deriving
+    progress from the codebase on every iteration. Both benefit from the
+    same packaging, pinning, and team-sync story — so agr treats them as
+    two types of the same underlying resource concept.
 
 ---
 
@@ -64,6 +98,38 @@ place for each tool.
 
 See [Creating Skills](creating.md) for how to write one, or browse the
 [Skill Directory](skills.md) for published skills you can install.
+
+---
+
+## Ralphs
+
+A **ralph** is a folder containing a `RALPH.md` file. Like a skill, it's a
+portable directory you can install with `agr add`. Unlike a skill, it
+describes an **autonomous agent loop** — a YAML frontmatter block with an
+agent command, shell commands whose output fills the prompt, and args the
+runtime fills in on each iteration:
+
+```text
+my-ralph/
+├── RALPH.md          # Required — frontmatter + prompt body
+└── scripts/          # Optional — helpers referenced from commands
+    └── precheck.sh
+```
+
+Ralphs are not consumed by AI tools the way skills are. Instead, a
+**ralph runtime** like [ralphify](https://github.com/kasperjunge/ralphify)
+runs the loop: substitute command output and args into the body, invoke the
+agent, repeat. agr only packages and distributes ralphs — running them is
+the runtime's job.
+
+Because a ralph is not tied to any particular AI tool, agr installs it
+**once per project** into `.agents/ralphs/<name>/` rather than fanning out
+into each tool's skills folder. For the same reason, global installs (`-g`)
+skip ralph dependencies — a ralph's commands (like `uv run pytest`) only
+make sense inside a specific project.
+
+See the [Ralph Directory](ralphs.md) for the full `RALPH.md` format,
+installation details, and publishing guide.
 
 ---
 
@@ -139,7 +205,9 @@ shallowest path wins.
 
 ## Tools
 
-A **tool** is an AI coding agent that reads skills. agr supports six:
+A **tool** is an AI coding agent that reads skills. Tools only consume
+skills — [ralphs](#ralphs) are consumed by a separate ralph runtime rather
+than by any tool in this list. agr supports six tools:
 
 | Tool | Config name | How skills are invoked |
 |------|-------------|----------------------|
@@ -243,11 +311,24 @@ globally without conflict.
 
 ---
 
-## agr.toml
+## agr.toml and agr.lock
 
-`agr.toml` is the manifest file that tracks your skill dependencies and
-configuration. It's similar to `package.json` or `pyproject.toml` — commit it
-to version control so your team shares the same skills.
+agr tracks your project's resources in two committed files, just like npm
+uses `package.json` + `package-lock.json` or Cargo uses `Cargo.toml` +
+`Cargo.lock`:
+
+| File | Hand-edited? | What it records |
+|---|---|---|
+| **`agr.toml`** | Yes | The manifest: which resources your team depends on, plus settings (tools, sources, default owner, …) |
+| **`agr.lock`** | No — auto-generated | The resolved state: exact git commit SHA, content hash, and installed name for every resolved dependency |
+
+**Commit both.** `agr.toml` declares intent; `agr.lock` makes installs
+reproducible across machines and over time.
+
+### agr.toml
+
+The manifest. Hand-edited (or updated via `agr add` / `agr remove`) and
+committed to version control so your team shares the same resources.
 
 ```toml
 tools = ["claude", "cursor"]
@@ -257,26 +338,66 @@ dependencies = [
     {handle = "anthropics/skills/frontend-design", type = "skill"},
     {handle = "anthropics/skills/pdf", type = "skill"},
     {path = "./skills/internal-review", type = "skill"},
+    {handle = "your-username/agent-resources/bug-hunter", type = "ralph"},
 ]
 ```
 
-### How agr finds it
+Each entry has a `type` field — `"skill"` or `"ralph"`. agr sets this
+automatically on `agr add`; you rarely need to touch it by hand.
 
-agr looks for `agr.toml` starting from the current directory and searching
-upward through parent directories until it finds one or reaches the filesystem
-root. This means you can run `agr` commands from any subdirectory in your
-project.
+**How agr finds it.** agr looks for `agr.toml` starting from the current
+directory and searching upward through parent directories until it finds one
+or reaches the filesystem root. You can run `agr` commands from any
+subdirectory. For global scope (`-g`), agr uses `~/.agr/agr.toml`.
 
-For global scope (`-g`), agr uses `~/.agr/agr.toml`.
+**Creating it.** `agr init` creates the file and auto-detects your tools;
+`agr add` creates it on the fly if it doesn't exist.
 
-### Creating it
+### agr.lock
 
-You don't need to create `agr.toml` manually. It's created automatically by:
+`agr.lock` is written alongside `agr.toml` by `agr add`, `agr remove`, and
+`agr sync`. It pins the exact git commit SHA and content hash for every
+resolved dependency, so a teammate running `agr sync` later gets the same
+bytes you did — even if upstream `main` has moved on.
 
-- `agr init` — Creates the file and auto-detects your tools
-- `agr add` — Creates the file if it doesn't exist
+```toml
+# This file is auto-generated by agr. Do not edit.
 
-See [Configuration](configuration.md) for all options and
+version = 1
+
+[[skill]]
+handle = "anthropics/skills/pdf"
+source = "github"
+commit = "a0d5bfd4d9658073029d33f979ac5a027568caec"
+content-hash = "sha256:75e47183c30bc8651e76286680eddac88a3024a7ee5a7f1bc486d4d3fdee34ce"
+installed-name = "pdf"
+
+[[ralph]]
+handle = "your-username/agent-resources/bug-hunter"
+source = "github"
+commit = "9859f7bceb7a46af8482cabb9aa24e0d38a49413"
+content-hash = "sha256:fa1ce825fa7e11cd5aac55ee7eac5e9c918e3af113b7988fdbd281a319acc110"
+installed-name = "bug-hunter"
+```
+
+**Lockfile-aware sync modes** (for CI and reproducibility):
+
+| Command | Behavior |
+|---|---|
+| `agr sync` | Install missing dependencies, refresh `agr.lock` with the commits that were actually used. |
+| `agr sync --frozen` | Install **exactly** what `agr.lock` specifies. Fail if `agr.lock` is missing. Never re-resolve. |
+| `agr sync --locked` | Fail if `agr.lock` is out of date vs `agr.toml` (e.g. a teammate added a dep but forgot to commit the lockfile), then install from the lockfile. |
+
+Use `--frozen` in CI and deploy pipelines where you want guaranteed-identical
+installs. Use `--locked` in CI to assert that whoever opened the PR committed
+a consistent lockfile.
+
+!!! warning "Don't edit agr.lock by hand"
+    agr overwrites `agr.lock` on every mutating command. Hand-edits will be
+    clobbered. If you need to update a pinned commit, run `agr add <handle>
+    --overwrite` (which re-resolves that dep) or re-run `agr sync`.
+
+See [Configuration](configuration.md) for all manifest options and
 [Reference — agr.toml Format](reference.md#agrtoml-format) for the full schema.
 
 ---
@@ -308,11 +429,14 @@ This keeps all your tools aligned without maintaining multiple files manually.
 
 agr ships two commands:
 
-**`agr`** — The main CLI for managing skills. Install, remove, sync, list,
-configure. Changes persist in `agr.toml` and your tool's skills directories.
+**`agr`** — The main CLI for managing resources (skills and ralphs). Install,
+remove, sync, list, configure. Changes persist in `agr.toml`, `agr.lock`, and
+your tool's skills directories (or `.agents/ralphs/` for ralphs).
 
-**`agrx`** — The ephemeral runner. Downloads a skill, runs it with your tool's
-CLI, and cleans up. Nothing is saved. Think of it as `npx` for skills.
+**`agrx`** — The ephemeral runner for skills only. Downloads a skill, runs
+it with your tool's CLI, and cleans up. Nothing is saved. Think of it as
+`npx` for skills. `agrx` does not support ralphs — install them with
+`agr add` and run them with a ralph runtime.
 
 ```bash
 agr add anthropics/skills/pdf         # Permanent: install and track
@@ -333,22 +457,29 @@ When you run `agr add anthropics/skills/pdf`, agr parses the handle, clones
 the repo (sparse checkout), finds the `pdf/SKILL.md` directory, copies it into
 each configured tool's skills folder, and updates `agr.toml`.
 
-???+ note "Full install flow (7 steps)"
+???+ note "Full install flow (8 steps)"
     1. **Parse the handle** — `anthropics` is the owner, `skills` is the repo,
        `pdf` is the skill name
     2. **Load config** — Read `agr.toml` (or create it) to find configured tools
        and sources
     3. **Clone the repo** — Sparse-checkout `github.com/anthropics/skills`
-    4. **Find the skill** — Recursively search for a directory named `pdf`
-       containing `SKILL.md`
+    4. **Find the resource** — Recursively search for a directory named `pdf`
+       containing `SKILL.md` (or `RALPH.md` for a ralph)
     5. **Install to each tool** — Copy the skill directory to each configured
        tool's skills folder (e.g., `.claude/skills/pdf/`, `.cursor/skills/pdf/`)
     6. **Write metadata** — Save `.agr.json` in each installed copy with the
        source handle, install details, and content hash
     7. **Update agr.toml** — Add the dependency to the manifest
+    8. **Update agr.lock** — Record the resolved commit SHA and content hash
+       so future `agr sync` runs are reproducible
 
     If any tool's install fails, already-installed copies are rolled back
     automatically.
+
+    **For ralphs**, steps 5–6 install the directory once into
+    `.agents/ralphs/<name>/` — there is no per-tool fan-out. agr picks the
+    ralph path automatically when the source directory contains a
+    `RALPH.md` (local) or when a remote handle does not match a skill.
 
 ---
 

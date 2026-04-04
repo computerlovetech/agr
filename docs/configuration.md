@@ -36,10 +36,13 @@ see [Core Concepts](concepts.md).
 
 **Key terms used on this page:**
 
+- A **resource** is the unit agr manages. Today there are two resource types: **skills** and **ralphs**. Every `agr.toml` dependency entry has a `type` field set to `"skill"` or `"ralph"`.
 - A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and markdown instructions for an AI coding agent.
-- A **handle** identifies a skill: `skill` (from default owner's `skills` repo), `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/skill` (local).
-- A **source** is a Git server URL template (e.g., GitHub, GitLab, self-hosted) where agr fetches remote skills from.
-- A **tool** is one of the supported AI coding agents: Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, or Antigravity.
+- A **ralph** is a directory containing a `RALPH.md` file that defines an autonomous agent loop — executed by a ralph runtime such as [ralphify](https://github.com/kasperjunge/ralphify), not by the AI tools below. See the [Ralph Directory](ralphs.md) for the full format.
+- A **handle** identifies a resource: `skill` (from default owner's `skills` repo), `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/resource` (local).
+- A **source** is a Git server URL template (e.g., GitHub, GitLab, self-hosted) where agr fetches remote resources from.
+- A **tool** is one of the supported AI coding agents: Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, or Antigravity. Tools consume skills — ralphs are consumed by a separate ralph runtime.
+- **`agr.toml`** is the hand-edited manifest. **`agr.lock`** is the auto-generated lockfile sitting next to it, pinning exact commit SHAs and content hashes for every resolved dependency. See [agr.toml and agr.lock](concepts.md#agrtoml-and-agrlock) in Core Concepts.
 
 ## All agr.toml Settings
 
@@ -52,7 +55,13 @@ see [Core Concepts](concepts.md).
 | `sync_instructions` | bool | `false` | Copy the canonical instruction file to other tools on [`agr sync`](reference.md#agr-sync) |
 | `canonical_instructions` | string | auto from `default_tool` | Which [instruction file](#instruction-syncing) is the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`) |
 
-Dependencies and sources are configured separately — see [Full Example](#full-agrtoml-example) below.
+Dependencies and sources are configured separately — see [Full Example](#full-agrtoml-example) below. Each dependency entry carries a `type` field whose value is `"skill"` or `"ralph"`; agr sets this automatically on `agr add` and you rarely need to edit it by hand.
+
+!!! note "`tools` does not apply to ralphs"
+    The `tools` list only affects where **skills** are installed. **Ralphs**
+    are installed once per project into `.agents/ralphs/<name>/` regardless
+    of the configured tools — they are executed by a ralph runtime, not by
+    the tools in the list.
 
 ## Multi-Tool Setup
 
@@ -272,6 +281,55 @@ needed. It works with `agr add`, `agr sync`, `agrx`, and the Python SDK.
     git config --global credential.helper store
     ```
 
+## agr.lock — the reproducibility lockfile
+
+Every mutating `agr` command (`add`, `remove`, `sync`) writes an `agr.lock`
+file alongside `agr.toml`. The lockfile pins the exact git commit SHA and
+content hash for every resolved dependency so that `agr sync` produces
+byte-identical installs across machines and over time. agr.lock plays the
+same role as `package-lock.json` or `Cargo.lock`.
+
+```toml
+# agr.lock — auto-generated. Do not edit.
+version = 1
+
+[[skill]]
+handle = "anthropics/skills/pdf"
+source = "github"
+commit = "a0d5bfd4d9658073029d33f979ac5a027568caec"
+content-hash = "sha256:75e47183c30bc8651e76286680eddac88a3024a7ee5a7f1bc486d4d3fdee34ce"
+installed-name = "pdf"
+
+[[ralph]]
+handle = "your-username/agent-resources/bug-hunter"
+source = "github"
+commit = "9859f7bceb7a46af8482cabb9aa24e0d38a49413"
+content-hash = "sha256:fa1ce825fa7e11cd5aac55ee7eac5e9c918e3af113b7988fdbd281a319acc110"
+installed-name = "bug-hunter"
+```
+
+**Commit `agr.lock` alongside `agr.toml`.** Without it, `agr sync` would
+re-resolve against whatever commit is at each repo's HEAD today, and your
+teammates would get drift.
+
+### Lockfile-aware sync modes
+
+`agr sync` has two flags that enforce lockfile discipline — use them in CI:
+
+| Flag | Behavior | When to use |
+|---|---|---|
+| *(no flag)* | Install missing deps, re-resolve, refresh `agr.lock` | Local dev |
+| `--locked` | Fail if `agr.lock` is out of date vs `agr.toml`, then install from the lockfile. Never re-resolves. | CI PR checks — catches contributors who forgot to commit an updated lockfile |
+| `--frozen` | Install exactly what `agr.lock` specifies. Fail if `agr.lock` is missing or incomplete. Never re-resolves. | CI deploys — guarantees byte-identical installs |
+
+`--frozen` and `--locked` are mutually exclusive. Both work with `-g` for
+global scope (`~/.agr/agr.lock`).
+
+!!! warning "Do not edit agr.lock by hand"
+    agr overwrites the lockfile on every mutating command. Hand-edits will
+    be clobbered. To update a pinned commit, run `agr add <handle>
+    --overwrite` or remove-and-re-add the dependency.
+
 ## Global Installs
 
 Skills can be installed globally (available in all projects) using the `-g` flag:
@@ -302,6 +360,7 @@ each tool's global skills directory (see table above).
         {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
         {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
         {path = "./skills/local-skill", type = "skill"}, # (8)!
+        {handle = "your-username/agent-resources/bug-hunter", type = "ralph"}, # (10)!
     ]
 
     [[source]] # (9)!
@@ -320,10 +379,11 @@ each tool's global skills directory (see table above).
     3. Tool used by `agrx` and for instruction sync — defaults to the first in `tools`
     4. Copies the canonical instruction file to other tools on `agr sync`
     5. The instruction file treated as the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`)
-    6. Must appear before any `[[source]]` blocks
+    6. Must appear before any `[[source]]` blocks — each entry needs `type = "skill"` or `type = "ralph"` plus either `handle` or `path`
     7. Pin a dependency to a specific source instead of using `default_source`
     8. Local path dependencies point to a directory on disk — no Git fetch needed
     9. Each `[[source]]` defines a Git server URL template with `{owner}` and `{repo}` placeholders
+    10. Ralph dependencies install to `.agents/ralphs/<name>/` once per project, ignoring the `tools` list — see the [Ralph Directory](ralphs.md) for details
 
 ## Managing Config
 

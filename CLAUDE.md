@@ -40,11 +40,12 @@ dependencies = [
     {handle = "username/repo/skill", type = "skill"},
     {handle = "username/skill", type = "skill"},
     {path = "./local/skill", type = "skill"},
+    {handle = "username/repo/my-ralph", type = "ralph"},
 ]
 ```
 
 Each dependency has:
-- `type`: Always "skill" for now
+- `type`: `"skill"` or `"ralph"`. Skills install into each configured tool's skills dir; ralphs install once into `.agents/ralphs/<name>/` (project-scoped, no per-tool fan-out, no global installs).
 - `handle`: Remote GitHub reference (username/repo/skill or username/skill)
 - `path`: Local path (alternative to handle)
 

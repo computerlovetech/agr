@@ -344,6 +344,30 @@ agr add your-username/my-repo/my-skill
     This deletes the skill from your tool's skills folder and removes the entry
     from `agr.toml`.
 
+??? note "Install a ralph"
+    agr also manages **ralphs** — directories with a `RALPH.md` file that
+    describe autonomous agent loops. The same `agr add` command works:
+
+    ```bash
+    agr add your-username/agent-resources/bug-hunter
+    ```
+
+    ```text
+    Added: your-username/agent-resources/bug-hunter
+      Installed to .agents/ralphs/bug-hunter
+    ```
+
+    The ralph lands in `.agents/ralphs/<name>/` — once per project, not per
+    tool. agr only packages ralphs; to actually run one, use a ralph runtime
+    such as [ralphify](https://github.com/kasperjunge/ralphify):
+
+    ```bash
+    uvx ralphify run .agents/ralphs/bug-hunter --max-iterations 5
+    ```
+
+    See the [Ralph Directory](ralphs.md) for the `RALPH.md` format and the
+    full publishing workflow.
+
 ??? note "Install skills globally (available in every project)"
     Some skills are useful across every project — not just one. Add `-g` to
     install globally:

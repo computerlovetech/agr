@@ -123,6 +123,7 @@ nav:
   - Guides:
     - Supported Tools: tools.md
     - Skill Directory: skills.md
+    - Ralph Directory: ralphs.md
     - Teams: teams.md
     - Configuration: configuration.md
     - "agrx — Try Without Installing": agrx.md
