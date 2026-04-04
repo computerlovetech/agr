@@ -1,3 +1,11 @@
+---
+title: "Contributing to agr — Developer Guide for Humans and AI Agents"
+description: How to contribute to agr — run tests, lint, navigate the codebase, add tools and commands, and follow conventions. For both human and AI contributors.
+keywords:
+  - agr contributing guide
+  - agr developer setup
+---
+
 # Contributing
 
 This guide is for contributors — both humans and AI agents — working on the `agr` codebase.
@@ -42,7 +50,7 @@ uv run agrx --help
 | Change migration logic | `agr/commands/migrations.py` |
 | Add a new exception type | `agr/exceptions.py` — add class, register in `INSTALL_ERROR_TYPES` if catchable during sync |
 | Change sync command stages | `agr/commands/sync.py` |
-| Update MkDocs site | `docs/docs/` |
+| Update MkDocs site | `docs/` |
 
 ## Conventions
 
@@ -99,14 +107,14 @@ The path where a skill is installed depends on the tool:
 1. **Define the tool** in `agr/tool.py`: create a `ToolConfig` instance with paths, CLI fields, and detection signals
 2. **Register it** in the `TOOLS` dict at the bottom of `tool.py`
 3. **Add tests** in a new `tests/test_<tool>.py` — test install paths, naming, and detection
-4. **Update docs**: add the tool to the table in `docs/docs/configuration.md` and the CLI table in `docs/docs/agrx.md`
+4. **Update docs**: add the tool to the table in `docs/configuration.md` and the CLI table in `docs/agrx.md`
 
 ### Adding a new CLI command
 
 1. **Create the module** in `agr/commands/<name>.py` — implement the logic, keep the command thin
 2. **Wire it in** `agr/main.py` — add the Typer command or subcommand
 3. **Add tests** in `tests/test_commands.py` or a dedicated test file
-4. **Document it** in `docs/docs/reference.md` with arguments, options, and examples
+4. **Document it** in `docs/reference.md` with arguments, options, and examples
 
 ## Supported tool documentation
 
@@ -153,4 +161,4 @@ agr installs skills into multiple AI coding tools. When working on tool compatib
 1. **Add the field** to `AgrConfig` in `agr/config.py`
 2. **Handle serialization** in `to_dict()` and `load()` methods
 3. **Add CLI access** via `agr config get/set` in `agr/commands/config_cmd.py`
-4. **Document it** in `docs/docs/configuration.md` and `docs/docs/reference.md`
+4. **Document it** in `docs/configuration.md` and `docs/reference.md`

@@ -1,3 +1,11 @@
+---
+title: "agr Architecture — Project Structure, Key Types, and Core Workflows"
+description: Deep dive into agr internals — project structure, handle parsing, tool config, install and sync workflows, resource discovery, metadata, migrations, and testing patterns.
+keywords:
+  - agr architecture
+  - agr internals
+---
+
 # Architecture
 
 ## Overview
