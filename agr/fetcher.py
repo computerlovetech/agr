@@ -324,16 +324,18 @@ def _copy_skill_to_destination(
     return dest
 
 
-def skill_not_found_message(name: str) -> str:
-    """Build a user-friendly message for a missing skill in a repository.
-
-    Used by both fetcher and sync to produce consistent error text.
-    """
+def _dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> str:
+    """Build a user-friendly message for a missing dependency in a repository."""
     return (
-        f"Skill '{name}' not found in repository.\n"
-        f"No directory named '{name}' containing SKILL.md was found.\n"
-        f"Hint: Create a skill at 'skills/{name}/SKILL.md' or '{name}/SKILL.md'"
+        f"{kind} '{name}' not found in repository.\n"
+        f"No directory named '{name}' containing {marker} was found.\n"
+        f"Hint: Create a {kind.lower()} at '{subdir}/{name}/{marker}' or '{name}/{marker}'"
     )
+
+
+def skill_not_found_message(name: str) -> str:
+    """Build a user-friendly message for a missing skill in a repository."""
+    return _dep_not_found_message("Skill", name, SKILL_MARKER, "skills")
 
 
 def install_skill_from_repo(
@@ -998,11 +1000,7 @@ def _copy_ralph_to_destination(
 
 def ralph_not_found_message(name: str) -> str:
     """Build a user-friendly message for a missing ralph in a repository."""
-    return (
-        f"Ralph '{name}' not found in repository.\n"
-        f"No directory named '{name}' containing RALPH.md was found.\n"
-        f"Hint: Create a ralph at 'ralphs/{name}/RALPH.md' or '{name}/RALPH.md'"
-    )
+    return _dep_not_found_message("Ralph", name, RALPH_MARKER, "ralphs")
 
 
 def prepare_repo_for_ralph(repo_dir: Path, ralph_name: str) -> Path | None:
@@ -1070,6 +1068,41 @@ def install_ralph_from_repo(
     )
 
 
+def _find_local_ralph_name_conflicts(
+    handle: ParsedHandle,
+    ralphs_dir: Path,
+    repo_root: Path | None,
+    default_dest: Path,
+) -> tuple[list[Path], bool]:
+    """Find conflicting local installs with the same ralph name.
+
+    Returns a tuple of (conflict_paths, has_unknown_metadata).
+    """
+    handle_id = build_handle_id(handle, repo_root)
+    conflicts: list[Path] = []
+    has_unknown = False
+
+    candidates = [ralphs_dir / handle.name, ralphs_dir / handle.to_installed_name()]
+
+    for path in candidates:
+        if path.resolve() == default_dest.resolve():
+            continue
+        if not is_valid_ralph_dir(path):
+            continue
+        meta = read_skill_metadata(path)
+        if meta:
+            if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
+                continue
+            if meta.get(METADATA_KEY_ID) == handle_id:
+                continue
+            conflicts.append(path)
+            continue
+        has_unknown = True
+        conflicts.append(path)
+
+    return conflicts, has_unknown
+
+
 def install_local_ralph(
     source_path: Path,
     ralphs_dir: Path,
@@ -1103,6 +1136,25 @@ def install_local_ralph(
         if read_skill_metadata(default_dest) is None:
             stamp_ralph_metadata(default_dest, handle, repo_root, default_dest.name)
         return default_dest
+
+    conflicts, has_unknown = _find_local_ralph_name_conflicts(
+        handle, ralphs_dir, repo_root, default_dest
+    )
+    if conflicts:
+        locations = ", ".join(str(path) for path in conflicts)
+        hint = ""
+        if has_unknown:
+            hint = (
+                " If this is a remote ralph, run "
+                "`agr sync` or reinstall it to "
+                "add metadata."
+            )
+        raise AgrError(
+            f"Local ralph name '{handle.name}' is already installed at {locations}. "
+            "agr allows only one local ralph with a given name. "
+            "Rename the ralph or remove the existing one."
+            f"{hint}"
+        )
 
     ralph_dest = _resolve_ralph_destination(handle, ralphs_dir, repo_root)
 

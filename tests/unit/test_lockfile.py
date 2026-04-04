@@ -394,3 +394,35 @@ class TestRalphLockfileSupport:
             Dependency(type="ralph", handle="user/repo/ralph"),
         ]
         assert is_lockfile_current(lockfile, deps) is False
+
+
+class TestRemoveLockfileEntryReturnValue:
+    """Tests for remove_lockfile_entry return value."""
+
+    def test_returns_true_on_match(self):
+        lockfile = Lockfile(
+            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+        )
+        assert remove_lockfile_entry(lockfile, "user/repo/a") is True
+        assert len(lockfile.skills) == 0
+
+    def test_returns_false_on_miss(self):
+        lockfile = Lockfile(
+            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+        )
+        assert remove_lockfile_entry(lockfile, "user/repo/unknown") is False
+        assert len(lockfile.skills) == 1
+
+    def test_returns_true_on_ralph_match(self):
+        lockfile = Lockfile(
+            ralphs=[LockedSkill(handle="user/repo/r", installed_name="r")]
+        )
+        assert remove_lockfile_entry(lockfile, "user/repo/r", ralph=True) is True
+        assert len(lockfile.ralphs) == 0
+
+    def test_returns_false_on_ralph_miss(self):
+        lockfile = Lockfile(
+            ralphs=[LockedSkill(handle="user/repo/r", installed_name="r")]
+        )
+        assert remove_lockfile_entry(lockfile, "user/repo/x", ralph=True) is False
+        assert len(lockfile.ralphs) == 1

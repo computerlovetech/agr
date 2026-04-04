@@ -140,5 +140,6 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         if lockfile is not None:
             for candidates, is_ralph_lf in zip(removed_candidates, removed_ralph_flags):
                 for identifier in candidates:
-                    remove_lockfile_entry(lockfile, identifier, ralph=is_ralph_lf)
+                    if remove_lockfile_entry(lockfile, identifier, ralph=is_ralph_lf):
+                        break
             save_lockfile(lockfile, lockfile_path)

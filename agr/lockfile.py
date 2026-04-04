@@ -153,8 +153,7 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
         return aot
 
     doc["skill"] = _build_aot(lockfile.skills)
-    if lockfile.ralphs:
-        doc["ralph"] = _build_aot(lockfile.ralphs)
+    doc["ralph"] = _build_aot(lockfile.ralphs)
     path.write_text(tomlkit.dumps(doc))
 
 
@@ -212,9 +211,16 @@ def update_lockfile_entry(
 
 def remove_lockfile_entry(
     lockfile: Lockfile, identifier: str, *, ralph: bool = False
-) -> None:
-    """Remove an entry from the lockfile by identifier."""
+) -> bool:
+    """Remove an entry from the lockfile by identifier.
+
+    Returns True if an entry was removed, False if no match was found.
+    """
     if ralph:
+        before = len(lockfile.ralphs)
         lockfile.ralphs = [r for r in lockfile.ralphs if r.identifier != identifier]
+        return len(lockfile.ralphs) < before
     else:
+        before = len(lockfile.skills)
         lockfile.skills = [s for s in lockfile.skills if s.identifier != identifier]
+        return len(lockfile.skills) < before
