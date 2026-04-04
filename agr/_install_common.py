@@ -24,7 +24,7 @@ from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
     METADATA_KEY_ID,
     build_handle_ids,
-    read_skill_metadata,
+    read_resource_metadata,
 )
 from agr.source import SourceConfig, SourceResolver
 from agr.tool import ToolConfig
@@ -57,7 +57,7 @@ class _RemoteDepLocation(NamedTuple):
 
 def _dir_matches_handle(dep_dir: Path, handle_ids: list[str]) -> bool:
     """Check whether an installed dependency directory matches a handle via metadata."""
-    meta = read_skill_metadata(dep_dir)
+    meta = read_resource_metadata(dep_dir)
     if not meta:
         return False
     return meta.get(METADATA_KEY_ID) in handle_ids

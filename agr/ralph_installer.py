@@ -39,7 +39,7 @@ from agr.metadata import (
     METADATA_TYPE_LOCAL,
     build_handle_id,
     compute_content_hash,
-    read_skill_metadata,
+    read_resource_metadata,
     stamp_ralph_metadata,
 )
 from agr.ralph import (
@@ -212,7 +212,7 @@ def _find_local_ralph_name_conflicts(
             continue
         if not is_valid_ralph_dir(path):
             continue
-        meta = read_skill_metadata(path)
+        meta = read_resource_metadata(path)
         if meta:
             if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
                 continue
@@ -258,7 +258,7 @@ def install_local_ralph(
     if source_path.resolve() == default_dest.resolve() and is_valid_ralph_dir(
         default_dest
     ):
-        if read_skill_metadata(default_dest) is None:
+        if read_resource_metadata(default_dest) is None:
             stamp_ralph_metadata(default_dest, handle, repo_root, default_dest.name)
         return default_dest
 

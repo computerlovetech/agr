@@ -19,7 +19,7 @@ from agr.metadata import (
     METADATA_KEY_ID,
     build_handle_id,
     build_handle_ids,
-    read_skill_metadata,
+    read_resource_metadata,
     stamp_skill_metadata,
 )
 from agr.skill import SKILL_MARKER, is_valid_skill_dir, update_skill_md_name
@@ -358,7 +358,7 @@ def migrate_flat_installed_names(
 
         # Read metadata once — reused by both the matched-handle check and
         # the Case 1 / Case 2 branches below.
-        name_dir_meta = read_skill_metadata(name_dir) if name_dir_is_skill else None
+        name_dir_meta = read_resource_metadata(name_dir) if name_dir_is_skill else None
 
         # Check if the plain-name dir already belongs to one of the known
         # handles (by comparing .agr.json metadata IDs). This tells us

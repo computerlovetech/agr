@@ -23,7 +23,7 @@ from agr.fetcher import (
 )
 from agr.git import get_github_token, downloaded_repo
 from agr.handle import ParsedHandle
-from agr.metadata import build_handle_id, read_skill_metadata
+from agr.metadata import build_handle_id, read_resource_metadata
 from agr.source import SourceConfig
 from agr.skill import SKILL_MARKER
 from agr.tool import CLAUDE, CURSOR
@@ -420,7 +420,7 @@ class TestMetadataMatching:
             install_source="github",
         )
 
-        meta = read_skill_metadata(installed)
+        meta = read_resource_metadata(installed)
         assert meta is not None
         assert meta["id"] == build_handle_id(handle, repo_root, "github")
         assert is_skill_installed(handle, repo_root, CLAUDE, "github")
@@ -462,7 +462,7 @@ class TestMetadataMatching:
         assert (skills_dir / "test-skill").exists()
         assert (skills_dir / handle_b.to_installed_name()).exists()
 
-        meta_b = read_skill_metadata(installed_b)
+        meta_b = read_resource_metadata(installed_b)
         assert meta_b is not None
         assert meta_b["id"] == build_handle_id(handle_b, repo_root, "github")
 
@@ -621,7 +621,7 @@ class TestContentHashOnInstall:
 
         installed_path = install_local_skill(skill_fixture, dest_dir, CLAUDE)
 
-        meta = read_skill_metadata(installed_path)
+        meta = read_resource_metadata(installed_path)
         assert meta is not None
         assert "content_hash" in meta
         assert meta["content_hash"].startswith("sha256:")
@@ -638,7 +638,7 @@ class TestContentHashOnInstall:
 
         installed_path = install_local_skill(skill_fixture, dest_dir, CLAUDE)
 
-        meta = read_skill_metadata(installed_path)
+        meta = read_resource_metadata(installed_path)
         assert meta is not None
         assert meta["content_hash"] == compute_content_hash(installed_path)
 
@@ -659,7 +659,7 @@ class TestContentHashOnInstall:
             skill_dir, skills_dir, CLAUDE, repo_root=repo_root, handle=handle
         )
 
-        meta = read_skill_metadata(installed)
+        meta = read_resource_metadata(installed)
         assert meta is not None
         assert "content_hash" in meta
         assert meta["content_hash"].startswith("sha256:")
@@ -684,7 +684,7 @@ class TestContentHashOnInstall:
             install_source="github",
         )
 
-        meta = read_skill_metadata(installed)
+        meta = read_resource_metadata(installed)
         assert meta is not None
         assert "content_hash" in meta
         assert meta["content_hash"].startswith("sha256:")
@@ -808,7 +808,7 @@ class TestInstallLocalRalph:
         ralphs_dir = get_ralphs_dir(repo_root)
         path = install_local_ralph(ralph_fixture, ralphs_dir, repo_root=repo_root)
 
-        meta = read_skill_metadata(path)
+        meta = read_resource_metadata(path)
         assert meta is not None
         assert "tool" not in meta  # Ralphs are tool-agnostic
 

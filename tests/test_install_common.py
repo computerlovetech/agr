@@ -55,21 +55,21 @@ class TestDirMatchesHandle:
     def test_matches_when_metadata_id_present(self, tmp_path):
         dep_dir = tmp_path / "my-skill"
         dep_dir.mkdir()
-        with patch("agr._install_common.read_skill_metadata") as mock_meta:
+        with patch("agr._install_common.read_resource_metadata") as mock_meta:
             mock_meta.return_value = {METADATA_KEY_ID: "user/repo/my-skill"}
             assert _dir_matches_handle(dep_dir, ["user/repo/my-skill"]) is True
 
     def test_no_match_when_id_differs(self, tmp_path):
         dep_dir = tmp_path / "my-skill"
         dep_dir.mkdir()
-        with patch("agr._install_common.read_skill_metadata") as mock_meta:
+        with patch("agr._install_common.read_resource_metadata") as mock_meta:
             mock_meta.return_value = {METADATA_KEY_ID: "other/repo/my-skill"}
             assert _dir_matches_handle(dep_dir, ["user/repo/my-skill"]) is False
 
     def test_no_match_when_no_metadata(self, tmp_path):
         dep_dir = tmp_path / "my-skill"
         dep_dir.mkdir()
-        with patch("agr._install_common.read_skill_metadata") as mock_meta:
+        with patch("agr._install_common.read_resource_metadata") as mock_meta:
             mock_meta.return_value = None
             assert _dir_matches_handle(dep_dir, ["user/repo/my-skill"]) is False
 

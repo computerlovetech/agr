@@ -20,7 +20,7 @@ from agr.handle import (
 from agr.metadata import (
     METADATA_KEY_CONTENT_HASH,
     compute_content_hash,
-    read_skill_metadata,
+    read_resource_metadata,
 )
 from agr.sdk.cache import cache_skill, get_skill_cache_path, is_cached
 from agr.skill import SKILL_MARKER, is_valid_skill_dir
@@ -232,7 +232,7 @@ class Skill:
         Returns:
             The stored content hash string, or None if not present.
         """
-        meta = read_skill_metadata(self.path)
+        meta = read_resource_metadata(self.path)
         if meta is None:
             return None
         return meta.get(METADATA_KEY_CONTENT_HASH)

@@ -62,9 +62,9 @@ def build_handle_ids(
     return handle_ids
 
 
-def read_skill_metadata(skill_dir: Path) -> dict[str, Any] | None:
-    """Read metadata from a skill directory."""
-    metadata_path = skill_dir / METADATA_FILENAME
+def read_resource_metadata(resource_dir: Path) -> dict[str, Any] | None:
+    """Read metadata from an installed resource directory (skill or ralph)."""
+    metadata_path = resource_dir / METADATA_FILENAME
     if not metadata_path.exists():
         return None
     try:
@@ -74,6 +74,10 @@ def read_skill_metadata(skill_dir: Path) -> dict[str, Any] | None:
     if not isinstance(data, dict):
         return None
     return data
+
+
+# Backward-compatible alias
+read_skill_metadata = read_resource_metadata
 
 
 def compute_content_hash(skill_dir: Path) -> str:

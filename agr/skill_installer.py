@@ -40,7 +40,7 @@ from agr.metadata import (
     METADATA_TYPE_LOCAL,
     build_handle_id,
     compute_content_hash,
-    read_skill_metadata,
+    read_resource_metadata,
     stamp_skill_metadata,
 )
 from agr.skill import (
@@ -90,7 +90,7 @@ def _find_local_name_conflicts(
             continue
         if not is_valid_skill_dir(path):
             continue
-        meta = read_skill_metadata(path)
+        meta = read_resource_metadata(path)
         if meta:
             # Remote skills at this path are not local conflicts.
             if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
@@ -391,7 +391,7 @@ def install_local_skill(
     if source_path.resolve() == default_dest.resolve() and is_valid_skill_dir(
         default_dest
     ):
-        if read_skill_metadata(default_dest) is None:
+        if read_resource_metadata(default_dest) is None:
             stamp_skill_metadata(
                 default_dest, handle, repo_root, tool.name, default_dest.name
             )

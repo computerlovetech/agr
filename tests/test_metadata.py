@@ -18,7 +18,7 @@ from agr.metadata import (
     build_handle_id,
     build_handle_ids,
     compute_content_hash,
-    read_skill_metadata,
+    read_resource_metadata,
     stamp_skill_metadata,
     write_skill_metadata,
 )
@@ -147,7 +147,7 @@ class TestWriteSkillMetadataContentHash:
             content_hash="sha256:abc123",
         )
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert meta["content_hash"] == "sha256:abc123"
 
@@ -159,20 +159,20 @@ class TestWriteSkillMetadataContentHash:
         handle = ParsedHandle(is_local=True, name="test", local_path=skill_dir)
         write_skill_metadata(skill_dir, handle, tmp_path, "claude", "test")
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert "content_hash" not in meta
 
 
 class TestReadSkillMetadata:
-    """Tests for read_skill_metadata function."""
+    """Tests for read_resource_metadata function."""
 
     def test_returns_none_for_missing_file(self, tmp_path: Path):
         """Returns None when .agr.json does not exist."""
         skill_dir = tmp_path / "skill"
         skill_dir.mkdir()
 
-        assert read_skill_metadata(skill_dir) is None
+        assert read_resource_metadata(skill_dir) is None
 
     def test_reads_valid_metadata(self, tmp_path: Path):
         """Reads and returns valid JSON metadata."""
@@ -181,7 +181,7 @@ class TestReadSkillMetadata:
         data = {"id": "remote:github:user/skill", "tool": "claude", "type": "remote"}
         (skill_dir / METADATA_FILENAME).write_text(json.dumps(data))
 
-        result = read_skill_metadata(skill_dir)
+        result = read_resource_metadata(skill_dir)
         assert result == data
 
     def test_returns_none_for_invalid_json(self, tmp_path: Path):
@@ -190,7 +190,7 @@ class TestReadSkillMetadata:
         skill_dir.mkdir()
         (skill_dir / METADATA_FILENAME).write_text("not valid json {{{")
 
-        assert read_skill_metadata(skill_dir) is None
+        assert read_resource_metadata(skill_dir) is None
 
     def test_returns_none_for_non_dict_json(self, tmp_path: Path):
         """Returns None when .agr.json contains a JSON array instead of object."""
@@ -198,7 +198,7 @@ class TestReadSkillMetadata:
         skill_dir.mkdir()
         (skill_dir / METADATA_FILENAME).write_text('["not", "a", "dict"]')
 
-        assert read_skill_metadata(skill_dir) is None
+        assert read_resource_metadata(skill_dir) is None
 
     def test_returns_none_for_empty_file(self, tmp_path: Path):
         """Returns None when .agr.json is empty."""
@@ -206,7 +206,7 @@ class TestReadSkillMetadata:
         skill_dir.mkdir()
         (skill_dir / METADATA_FILENAME).write_text("")
 
-        assert read_skill_metadata(skill_dir) is None
+        assert read_resource_metadata(skill_dir) is None
 
 
 class TestBuildHandleId:
@@ -351,7 +351,7 @@ class TestStampSkillMetadata:
         handle = ParsedHandle(username="user", name="my-skill")
         stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert "content_hash" in meta
         assert re.fullmatch(r"sha256:[0-9a-f]{64}", meta["content_hash"])
@@ -365,7 +365,7 @@ class TestStampSkillMetadata:
         handle = ParsedHandle(username="user", name="my-skill")
         stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         # The hash was computed before .agr.json was written, and
         # compute_content_hash excludes .agr.json, so they should match.
@@ -382,7 +382,7 @@ class TestStampSkillMetadata:
             skill_dir, handle, tmp_path, "cursor", "my-skill", source="github"
         )
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert meta[METADATA_KEY_TYPE] == METADATA_TYPE_REMOTE
         assert meta[METADATA_KEY_HANDLE] == "owner/repo/my-skill"
@@ -399,7 +399,7 @@ class TestStampSkillMetadata:
         handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
         stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert meta[METADATA_KEY_TYPE] == METADATA_TYPE_LOCAL
         assert meta[METADATA_KEY_LOCAL_PATH] == str(skill_dir.resolve())
@@ -413,6 +413,6 @@ class TestStampSkillMetadata:
         handle = ParsedHandle(username="user", name="my-skill")
         stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
 
-        meta = read_skill_metadata(skill_dir)
+        meta = read_resource_metadata(skill_dir)
         assert meta is not None
         assert meta[METADATA_KEY_SOURCE] == DEFAULT_SOURCE_NAME
