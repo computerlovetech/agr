@@ -22,7 +22,7 @@ from agr.fetcher import (
 )
 from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
-    LockedSkill,
+    LockedEntry,
     Lockfile,
     build_lockfile_path,
     load_lockfile,
@@ -236,13 +236,13 @@ def run_add(
             if handle.is_local:
                 update_lockfile_entry(
                     lockfile,
-                    LockedSkill(path=ref, installed_name=handle.name),
+                    LockedEntry(path=ref, installed_name=handle.name),
                     ralph=is_ralph,
                 )
             else:
                 update_lockfile_entry(
                     lockfile,
-                    LockedSkill(
+                    LockedEntry(
                         handle=handle.to_toml_handle(),
                         source=install_result.source_name,
                         commit=install_result.commit,

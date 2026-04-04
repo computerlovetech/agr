@@ -24,7 +24,7 @@ LOCKFILE_VERSION = 1
 
 
 @dataclass
-class LockedSkill:
+class LockedEntry:
     """A single locked dependency entry.
 
     Remote skills have handle/source/commit/content_hash.
@@ -61,8 +61,8 @@ class LockedSkill:
         return self.path or self.handle or ""
 
     @classmethod
-    def from_dict(cls, data: dict[str, object]) -> LockedSkill:
-        """Deserialize a TOML table into a LockedSkill."""
+    def from_dict(cls, data: dict[str, object]) -> LockedEntry:
+        """Deserialize a TOML table into a LockedEntry."""
 
         def _get_optional_str(key: str) -> str | None:
             value = data.get(key)
@@ -93,8 +93,8 @@ class Lockfile:
     """The full lockfile state."""
 
     version: int = LOCKFILE_VERSION
-    skills: list[LockedSkill] = field(default_factory=list)
-    ralphs: list[LockedSkill] = field(default_factory=list)
+    skills: list[LockedEntry] = field(default_factory=list)
+    ralphs: list[LockedEntry] = field(default_factory=list)
 
 
 def build_lockfile_path(config_path: Path) -> Path:
@@ -102,13 +102,13 @@ def build_lockfile_path(config_path: Path) -> Path:
     return config_path.parent / LOCKFILE_FILENAME
 
 
-def _parse_locked_entries(doc: TOMLDocument, key: str) -> list[LockedSkill]:
+def _parse_locked_entries(doc: TOMLDocument, key: str) -> list[LockedEntry]:
     """Parse locked entries from a TOML section."""
-    entries: list[LockedSkill] = []
+    entries: list[LockedEntry] = []
     for item in doc.get(key, []):
         if not isinstance(item, dict):
             continue
-        entries.append(LockedSkill.from_dict(item))
+        entries.append(LockedEntry.from_dict(item))
     return entries
 
 
@@ -146,7 +146,7 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
     doc.add(tomlkit.nl())
     doc["version"] = lockfile.version
 
-    def _build_aot(entries: list[LockedSkill]) -> tomlkit.items.AoT:
+    def _build_aot(entries: list[LockedEntry]) -> tomlkit.items.AoT:
         aot = tomlkit.aot()
         for entry in entries:
             aot.append(entry.to_toml_table())
@@ -157,14 +157,14 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
     path.write_text(tomlkit.dumps(doc))
 
 
-def _lockfile_list_for_dep(lockfile: Lockfile, dep: Dependency) -> list[LockedSkill]:
+def _lockfile_list_for_dep(lockfile: Lockfile, dep: Dependency) -> list[LockedEntry]:
     """Return the appropriate lockfile list for a dependency's type."""
     if dep.type == DEPENDENCY_TYPE_RALPH:
         return lockfile.ralphs
     return lockfile.skills
 
 
-def find_locked_skill(lockfile: Lockfile, dep: Dependency) -> LockedSkill | None:
+def find_locked_entry(lockfile: Lockfile, dep: Dependency) -> LockedEntry | None:
     """Look up a dependency's entry in the lockfile."""
     identifier = dep.identifier
     for entry in _lockfile_list_for_dep(lockfile, dep):
@@ -194,7 +194,7 @@ def is_lockfile_current(lockfile: Lockfile, dependencies: list[Dependency]) -> b
 
 
 def update_lockfile_entry(
-    lockfile: Lockfile, entry: LockedSkill, *, ralph: bool = False
+    lockfile: Lockfile, entry: LockedEntry, *, ralph: bool = False
 ) -> None:
     """Add or replace an entry in the lockfile by identifier."""
     if ralph:

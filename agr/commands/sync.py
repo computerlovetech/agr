@@ -34,10 +34,10 @@ from agr.fetcher import (
 )
 from agr.git import downloaded_repo, fetch_and_checkout_commit, get_head_commit_full
 from agr.lockfile import (
-    LockedSkill,
+    LockedEntry,
     Lockfile,
     build_lockfile_path,
-    find_locked_skill,
+    find_locked_entry,
     is_lockfile_current,
     load_lockfile,
     save_lockfile,
@@ -683,7 +683,7 @@ def _sync_from_lockfile(
                     results.append((dep.identifier, SyncResult.up_to_date()))
                     continue
 
-            locked_skill = find_locked_skill(lockfile, dep)
+            locked_skill = find_locked_entry(lockfile, dep)
 
             if dep.is_local:
                 if is_ralph_dep:
@@ -770,7 +770,7 @@ def _build_lockfile_from_results(
             handle = dep.to_parsed_handle(config.default_owner)
             update_lockfile_entry(
                 lockfile,
-                LockedSkill(
+                LockedEntry(
                     path=dep.path,
                     installed_name=handle.name,
                 ),
@@ -782,7 +782,7 @@ def _build_lockfile_from_results(
             handle = dep.to_parsed_handle(config.default_owner)
             update_lockfile_entry(
                 lockfile,
-                LockedSkill(
+                LockedEntry(
                     handle=dep.handle,
                     source=result.source_name,
                     commit=result.commit,
@@ -793,7 +793,7 @@ def _build_lockfile_from_results(
             )
         else:
             existing = (
-                find_locked_skill(existing_lockfile, dep)
+                find_locked_entry(existing_lockfile, dep)
                 if existing_lockfile is not None
                 else None
             )
@@ -805,7 +805,7 @@ def _build_lockfile_from_results(
                 handle = dep.to_parsed_handle(config.default_owner)
                 update_lockfile_entry(
                     lockfile,
-                    LockedSkill(
+                    LockedEntry(
                         handle=dep.handle,
                         source=dep.resolve_source_name(config.default_source),
                         installed_name=handle.name,

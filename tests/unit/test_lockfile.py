@@ -7,10 +7,10 @@ from agr.config import AgrConfig, Dependency
 from agr.exceptions import ConfigError
 from agr.lockfile import (
     LOCKFILE_VERSION,
-    LockedSkill,
+    LockedEntry,
     Lockfile,
     build_lockfile_path,
-    find_locked_skill,
+    find_locked_entry,
     is_lockfile_current,
     load_lockfile,
     remove_lockfile_entry,
@@ -19,9 +19,9 @@ from agr.lockfile import (
 )
 
 
-class TestLockedSkill:
+class TestLockedEntry:
     def test_remote_skill_identifier(self):
-        skill = LockedSkill(
+        skill = LockedEntry(
             handle="user/repo/skill",
             source="github",
             commit="abc123",
@@ -32,7 +32,7 @@ class TestLockedSkill:
         assert not skill.is_local
 
     def test_local_skill_identifier(self):
-        skill = LockedSkill(path="./local/skill", installed_name="skill")
+        skill = LockedEntry(path="./local/skill", installed_name="skill")
         assert skill.identifier == "./local/skill"
         assert skill.is_local
 
@@ -47,7 +47,7 @@ class TestSaveAndLoad:
     def test_round_trip_remote_skills(self, tmp_path):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(
+                LockedEntry(
                     handle="user/repo/skill",
                     source="github",
                     commit="a" * 40,
@@ -73,7 +73,7 @@ class TestSaveAndLoad:
     def test_round_trip_local_skills(self, tmp_path):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(path="./local/my-skill", installed_name="my-skill"),
+                LockedEntry(path="./local/my-skill", installed_name="my-skill"),
             ]
         )
         path = tmp_path / "agr.lock"
@@ -92,14 +92,14 @@ class TestSaveAndLoad:
     def test_round_trip_mixed_skills(self, tmp_path):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(
+                LockedEntry(
                     handle="user/repo/skill",
                     source="github",
                     commit="a" * 40,
                     content_hash="sha256:" + "b" * 64,
                     installed_name="skill",
                 ),
-                LockedSkill(path="./local/other", installed_name="other"),
+                LockedEntry(path="./local/other", installed_name="other"),
             ]
         )
         path = tmp_path / "agr.lock"
@@ -141,47 +141,47 @@ class TestSaveAndLoad:
         assert "auto-generated" in content
 
 
-class TestFindLockedSkill:
+class TestFindLockedEntry:
     def test_find_by_handle(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(handle="user/repo/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
             ]
         )
         dep = Dependency(type="skill", handle="user/repo/b")
-        result = find_locked_skill(lockfile, dep)
+        result = find_locked_entry(lockfile, dep)
         assert result is not None
         assert result.installed_name == "b"
 
     def test_find_by_path(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(path="./local/skill", installed_name="skill")]
+            skills=[LockedEntry(path="./local/skill", installed_name="skill")]
         )
         dep = Dependency(type="skill", path="./local/skill")
-        result = find_locked_skill(lockfile, dep)
+        result = find_locked_entry(lockfile, dep)
         assert result is not None
         assert result.installed_name == "skill"
 
     def test_returns_none_for_unknown(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+            skills=[LockedEntry(handle="user/repo/a", installed_name="a")]
         )
         dep = Dependency(type="skill", handle="user/repo/unknown")
-        assert find_locked_skill(lockfile, dep) is None
+        assert find_locked_entry(lockfile, dep) is None
 
     def test_returns_none_for_empty_lockfile(self):
         lockfile = Lockfile(skills=[])
         dep = Dependency(type="skill", handle="user/repo/skill")
-        assert find_locked_skill(lockfile, dep) is None
+        assert find_locked_entry(lockfile, dep) is None
 
 
 class TestIsLockfileCurrent:
     def test_matching_deps(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(path="./local/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(path="./local/b", installed_name="b"),
             ]
         )
         deps = [
@@ -193,8 +193,8 @@ class TestIsLockfileCurrent:
     def test_extra_in_lockfile(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(handle="user/repo/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
             ]
         )
         deps = [Dependency(type="skill", handle="user/repo/a")]
@@ -202,7 +202,7 @@ class TestIsLockfileCurrent:
 
     def test_missing_from_lockfile(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+            skills=[LockedEntry(handle="user/repo/a", installed_name="a")]
         )
         deps = [
             Dependency(type="skill", handle="user/repo/a"),
@@ -217,7 +217,7 @@ class TestIsLockfileCurrent:
 class TestUpdateLockfileEntry:
     def test_adds_new_entry(self):
         lockfile = Lockfile(skills=[])
-        entry = LockedSkill(handle="user/repo/a", installed_name="a")
+        entry = LockedEntry(handle="user/repo/a", installed_name="a")
         update_lockfile_entry(lockfile, entry)
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].handle == "user/repo/a"
@@ -225,14 +225,14 @@ class TestUpdateLockfileEntry:
     def test_replaces_existing_entry(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(
+                LockedEntry(
                     handle="user/repo/a",
                     commit="old",
                     installed_name="a",
                 )
             ]
         )
-        entry = LockedSkill(handle="user/repo/a", commit="new", installed_name="a")
+        entry = LockedEntry(handle="user/repo/a", commit="new", installed_name="a")
         update_lockfile_entry(lockfile, entry)
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].commit == "new"
@@ -240,11 +240,11 @@ class TestUpdateLockfileEntry:
     def test_preserves_other_entries(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(handle="user/repo/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
             ]
         )
-        entry = LockedSkill(handle="user/repo/a", commit="new", installed_name="a")
+        entry = LockedEntry(handle="user/repo/a", commit="new", installed_name="a")
         update_lockfile_entry(lockfile, entry)
         assert len(lockfile.skills) == 2
 
@@ -253,8 +253,8 @@ class TestRemoveLockfileEntry:
     def test_removes_by_handle(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(handle="user/repo/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
             ]
         )
         remove_lockfile_entry(lockfile, "user/repo/a")
@@ -263,14 +263,14 @@ class TestRemoveLockfileEntry:
 
     def test_removes_by_path(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(path="./local/skill", installed_name="skill")]
+            skills=[LockedEntry(path="./local/skill", installed_name="skill")]
         )
         remove_lockfile_entry(lockfile, "./local/skill")
         assert lockfile.skills == []
 
     def test_noop_for_unknown_identifier(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+            skills=[LockedEntry(handle="user/repo/a", installed_name="a")]
         )
         remove_lockfile_entry(lockfile, "user/repo/unknown")
         assert len(lockfile.skills) == 1
@@ -283,7 +283,7 @@ class TestRalphLockfileSupport:
         lockfile = Lockfile(
             skills=[],
             ralphs=[
-                LockedSkill(
+                LockedEntry(
                     handle="user/repo/my-ralph",
                     source="github",
                     commit="c" * 40,
@@ -308,10 +308,10 @@ class TestRalphLockfileSupport:
     def test_round_trip_mixed_skills_and_ralphs(self, tmp_path):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
             ],
             ralphs=[
-                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+                LockedEntry(handle="user/repo/ralph", installed_name="ralph"),
             ],
         )
         path = tmp_path / "agr.lock"
@@ -326,7 +326,7 @@ class TestRalphLockfileSupport:
 
     def test_update_lockfile_entry_ralph(self):
         lockfile = Lockfile(skills=[], ralphs=[])
-        entry = LockedSkill(handle="user/repo/ralph", installed_name="ralph")
+        entry = LockedEntry(handle="user/repo/ralph", installed_name="ralph")
         update_lockfile_entry(lockfile, entry, ralph=True)
         assert len(lockfile.ralphs) == 1
         assert len(lockfile.skills) == 0
@@ -336,8 +336,8 @@ class TestRalphLockfileSupport:
         lockfile = Lockfile(
             skills=[],
             ralphs=[
-                LockedSkill(handle="user/repo/a", installed_name="a"),
-                LockedSkill(handle="user/repo/b", installed_name="b"),
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
             ],
         )
         remove_lockfile_entry(lockfile, "user/repo/a", ralph=True)
@@ -348,11 +348,11 @@ class TestRalphLockfileSupport:
         lockfile = Lockfile(
             skills=[],
             ralphs=[
-                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+                LockedEntry(handle="user/repo/ralph", installed_name="ralph"),
             ],
         )
         dep = Dependency(type="ralph", handle="user/repo/ralph")
-        result = find_locked_skill(lockfile, dep)
+        result = find_locked_entry(lockfile, dep)
         assert result is not None
         assert result.installed_name == "ralph"
 
@@ -360,21 +360,21 @@ class TestRalphLockfileSupport:
         """Ralph dep should not match entries in the skills list."""
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+                LockedEntry(handle="user/repo/ralph", installed_name="ralph"),
             ],
             ralphs=[],
         )
         dep = Dependency(type="ralph", handle="user/repo/ralph")
-        result = find_locked_skill(lockfile, dep)
+        result = find_locked_entry(lockfile, dep)
         assert result is None
 
     def test_is_lockfile_current_with_ralphs(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
             ],
             ralphs=[
-                LockedSkill(handle="user/repo/ralph", installed_name="ralph"),
+                LockedEntry(handle="user/repo/ralph", installed_name="ralph"),
             ],
         )
         deps = [
@@ -386,7 +386,7 @@ class TestRalphLockfileSupport:
     def test_is_lockfile_current_missing_ralph(self):
         lockfile = Lockfile(
             skills=[
-                LockedSkill(handle="user/repo/skill", installed_name="skill"),
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
             ],
             ralphs=[],
         )
@@ -402,28 +402,28 @@ class TestRemoveLockfileEntryReturnValue:
 
     def test_returns_true_on_match(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+            skills=[LockedEntry(handle="user/repo/a", installed_name="a")]
         )
         assert remove_lockfile_entry(lockfile, "user/repo/a") is True
         assert len(lockfile.skills) == 0
 
     def test_returns_false_on_miss(self):
         lockfile = Lockfile(
-            skills=[LockedSkill(handle="user/repo/a", installed_name="a")]
+            skills=[LockedEntry(handle="user/repo/a", installed_name="a")]
         )
         assert remove_lockfile_entry(lockfile, "user/repo/unknown") is False
         assert len(lockfile.skills) == 1
 
     def test_returns_true_on_ralph_match(self):
         lockfile = Lockfile(
-            ralphs=[LockedSkill(handle="user/repo/r", installed_name="r")]
+            ralphs=[LockedEntry(handle="user/repo/r", installed_name="r")]
         )
         assert remove_lockfile_entry(lockfile, "user/repo/r", ralph=True) is True
         assert len(lockfile.ralphs) == 0
 
     def test_returns_false_on_ralph_miss(self):
         lockfile = Lockfile(
-            ralphs=[LockedSkill(handle="user/repo/r", installed_name="r")]
+            ralphs=[LockedEntry(handle="user/repo/r", installed_name="r")]
         )
         assert remove_lockfile_entry(lockfile, "user/repo/x", ralph=True) is False
         assert len(lockfile.ralphs) == 1
@@ -435,7 +435,7 @@ class TestLockfileConfigConsistency:
     Regression: agr add --global ./local-skill wrote the raw relative ref to
     the lockfile (e.g. "./skills/my-skill") while the config dependency stored
     the resolved absolute path. This caused is_lockfile_current() to report
-    the lockfile as stale and find_locked_skill() to miss the entry.
+    the lockfile as stale and find_locked_entry() to miss the entry.
     """
 
     def test_lockfile_path_must_match_dependency_path(self):
@@ -446,19 +446,19 @@ class TestLockfileConfigConsistency:
 
         # Bug: lockfile entry was written with the raw relative ref
         lockfile_with_raw_ref = Lockfile(
-            skills=[LockedSkill(path="./skills/my-skill", installed_name="my-skill")]
+            skills=[LockedEntry(path="./skills/my-skill", installed_name="my-skill")]
         )
 
         # The lockfile identifier doesn't match the dependency identifier
-        assert find_locked_skill(lockfile_with_raw_ref, dep) is None
+        assert find_locked_entry(lockfile_with_raw_ref, dep) is None
         assert is_lockfile_current(lockfile_with_raw_ref, [dep]) is False
 
         # Fix: lockfile entry should use the same path as the dependency
         lockfile_with_resolved_path = Lockfile(
-            skills=[LockedSkill(path=abs_path, installed_name="my-skill")]
+            skills=[LockedEntry(path=abs_path, installed_name="my-skill")]
         )
 
-        assert find_locked_skill(lockfile_with_resolved_path, dep) is not None
+        assert find_locked_entry(lockfile_with_resolved_path, dep) is not None
         assert is_lockfile_current(lockfile_with_resolved_path, [dep]) is True
 
 
