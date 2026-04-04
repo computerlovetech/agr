@@ -11,7 +11,6 @@ from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
     build_lockfile_path,
     load_lockfile,
-    remove_lockfile_entry,
     save_lockfile,
 )
 from agr.tool import lookup_skills_dir
@@ -140,6 +139,6 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         if lockfile is not None:
             for candidates, is_ralph_lf in zip(removed_candidates, removed_ralph_flags):
                 for identifier in candidates:
-                    if remove_lockfile_entry(lockfile, identifier, ralph=is_ralph_lf):
+                    if lockfile.remove_entry(identifier, ralph=is_ralph_lf):
                         break
             save_lockfile(lockfile, lockfile_path)

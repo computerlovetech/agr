@@ -27,7 +27,6 @@ from agr.lockfile import (
     build_lockfile_path,
     load_lockfile,
     save_lockfile,
-    update_lockfile_entry,
 )
 from agr.ralph import is_valid_ralph_dir
 from agr.skill import is_valid_skill_dir
@@ -234,14 +233,12 @@ def run_add(
         for handle, ref, install_result, dep_type in lockfile_updates:
             is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
             if handle.is_local:
-                update_lockfile_entry(
-                    lockfile,
+                lockfile.update_entry(
                     LockedEntry(path=ref, installed_name=handle.name),
                     ralph=is_ralph,
                 )
             else:
-                update_lockfile_entry(
-                    lockfile,
+                lockfile.update_entry(
                     LockedEntry(
                         handle=handle.to_toml_handle(),
                         source=install_result.source_name,

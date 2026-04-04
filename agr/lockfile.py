@@ -96,6 +96,61 @@ class Lockfile:
     skills: list[LockedEntry] = field(default_factory=list)
     ralphs: list[LockedEntry] = field(default_factory=list)
 
+    def _entries(self, ralph: bool) -> list[LockedEntry]:
+        """Return the skill or ralph entries list."""
+        return self.ralphs if ralph else self.skills
+
+    def _set_entries(self, entries: list[LockedEntry], ralph: bool) -> None:
+        """Replace the skill or ralph entries list."""
+        if ralph:
+            self.ralphs = entries
+        else:
+            self.skills = entries
+
+    def update_entry(self, entry: LockedEntry, *, ralph: bool = False) -> None:
+        """Add or replace an entry by identifier."""
+        filtered = [e for e in self._entries(ralph) if e.identifier != entry.identifier]
+        filtered.append(entry)
+        self._set_entries(filtered, ralph)
+
+    def remove_entry(self, identifier: str, *, ralph: bool = False) -> bool:
+        """Remove an entry by identifier.
+
+        Returns True if an entry was removed, False if no match was found.
+        """
+        entries = self._entries(ralph)
+        filtered = [e for e in entries if e.identifier != identifier]
+        self._set_entries(filtered, ralph)
+        return len(filtered) < len(entries)
+
+    def find_entry(self, dep: Dependency) -> LockedEntry | None:
+        """Look up a dependency's entry."""
+        identifier = dep.identifier
+        ralph = dep.type == DEPENDENCY_TYPE_RALPH
+        for entry in self._entries(ralph):
+            if entry.identifier == identifier:
+                return entry
+        return None
+
+    def is_current(self, dependencies: list[Dependency]) -> bool:
+        """Check if the lockfile covers exactly the same deps as agr.toml.
+
+        Returns True only if the lockfile has entries for all dependencies
+        and no extra entries. Does not check whether SHAs are stale.
+        """
+        lockfile_skill_ids = {s.identifier for s in self.skills}
+        lockfile_ralph_ids = {r.identifier for r in self.ralphs}
+        config_skill_ids = {
+            d.identifier for d in dependencies if d.type != DEPENDENCY_TYPE_RALPH
+        }
+        config_ralph_ids = {
+            d.identifier for d in dependencies if d.type == DEPENDENCY_TYPE_RALPH
+        }
+        return (
+            lockfile_skill_ids == config_skill_ids
+            and lockfile_ralph_ids == config_ralph_ids
+        )
+
 
 def build_lockfile_path(config_path: Path) -> Path:
     """Return the lockfile path alongside the given config path."""
@@ -155,72 +210,3 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
     doc["skill"] = _build_aot(lockfile.skills)
     doc["ralph"] = _build_aot(lockfile.ralphs)
     path.write_text(tomlkit.dumps(doc))
-
-
-def _lockfile_list_for_dep(lockfile: Lockfile, dep: Dependency) -> list[LockedEntry]:
-    """Return the appropriate lockfile list for a dependency's type."""
-    if dep.type == DEPENDENCY_TYPE_RALPH:
-        return lockfile.ralphs
-    return lockfile.skills
-
-
-def find_locked_entry(lockfile: Lockfile, dep: Dependency) -> LockedEntry | None:
-    """Look up a dependency's entry in the lockfile."""
-    identifier = dep.identifier
-    for entry in _lockfile_list_for_dep(lockfile, dep):
-        if entry.identifier == identifier:
-            return entry
-    return None
-
-
-def is_lockfile_current(lockfile: Lockfile, dependencies: list[Dependency]) -> bool:
-    """Check if the lockfile covers exactly the same deps as agr.toml.
-
-    Returns True only if the lockfile has entries for all dependencies
-    and no extra entries. Does not check whether SHAs are stale.
-    """
-    lockfile_skill_ids = {s.identifier for s in lockfile.skills}
-    lockfile_ralph_ids = {r.identifier for r in lockfile.ralphs}
-    config_skill_ids = {
-        d.identifier for d in dependencies if d.type != DEPENDENCY_TYPE_RALPH
-    }
-    config_ralph_ids = {
-        d.identifier for d in dependencies if d.type == DEPENDENCY_TYPE_RALPH
-    }
-    return (
-        lockfile_skill_ids == config_skill_ids
-        and lockfile_ralph_ids == config_ralph_ids
-    )
-
-
-def update_lockfile_entry(
-    lockfile: Lockfile, entry: LockedEntry, *, ralph: bool = False
-) -> None:
-    """Add or replace an entry in the lockfile by identifier."""
-    if ralph:
-        lockfile.ralphs = [
-            r for r in lockfile.ralphs if r.identifier != entry.identifier
-        ]
-        lockfile.ralphs.append(entry)
-    else:
-        lockfile.skills = [
-            s for s in lockfile.skills if s.identifier != entry.identifier
-        ]
-        lockfile.skills.append(entry)
-
-
-def remove_lockfile_entry(
-    lockfile: Lockfile, identifier: str, *, ralph: bool = False
-) -> bool:
-    """Remove an entry from the lockfile by identifier.
-
-    Returns True if an entry was removed, False if no match was found.
-    """
-    if ralph:
-        before = len(lockfile.ralphs)
-        lockfile.ralphs = [r for r in lockfile.ralphs if r.identifier != identifier]
-        return len(lockfile.ralphs) < before
-    else:
-        before = len(lockfile.skills)
-        lockfile.skills = [s for s in lockfile.skills if s.identifier != identifier]
-        return len(lockfile.skills) < before

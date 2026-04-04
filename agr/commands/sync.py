@@ -37,11 +37,8 @@ from agr.lockfile import (
     LockedEntry,
     Lockfile,
     build_lockfile_path,
-    find_locked_entry,
-    is_lockfile_current,
     load_lockfile,
     save_lockfile,
-    update_lockfile_entry,
 )
 from agr.handle import ParsedHandle
 from agr.metadata import compute_content_hash
@@ -525,7 +522,7 @@ def run_sync(
                 f"No agr.lock found. Cannot use {mode} without a lockfile.",
                 hint="Run 'agr sync' first to generate a lockfile.",
             )
-        if locked and not is_lockfile_current(existing_lockfile, config.dependencies):
+        if locked and not existing_lockfile.is_current(config.dependencies):
             error_exit(
                 "agr.lock is out of date with agr.toml.",
                 hint="Run 'agr sync' to update the lockfile.",
@@ -675,7 +672,7 @@ def _sync_from_lockfile(
                     results.append((dep.identifier, SyncResult.up_to_date()))
                     continue
 
-            locked_skill = find_locked_entry(lockfile, dep)
+            locked_skill = lockfile.find_entry(dep)
 
             if dep.is_local:
                 if is_ralph_dep:
@@ -760,8 +757,7 @@ def _build_lockfile_from_results(
             if result.status == SyncStatus.ERROR:
                 continue
             handle = dep.to_parsed_handle(config.default_owner)
-            update_lockfile_entry(
-                lockfile,
+            lockfile.update_entry(
                 LockedEntry(
                     path=dep.path,
                     installed_name=handle.name,
@@ -772,8 +768,7 @@ def _build_lockfile_from_results(
 
         if result.status == SyncStatus.INSTALLED and result.commit:
             handle = dep.to_parsed_handle(config.default_owner)
-            update_lockfile_entry(
-                lockfile,
+            lockfile.update_entry(
                 LockedEntry(
                     handle=dep.handle,
                     source=result.source_name,
@@ -785,18 +780,17 @@ def _build_lockfile_from_results(
             )
         else:
             existing = (
-                find_locked_entry(existing_lockfile, dep)
+                existing_lockfile.find_entry(dep)
                 if existing_lockfile is not None
                 else None
             )
             if existing is not None:
-                update_lockfile_entry(lockfile, existing, ralph=is_ralph)
+                lockfile.update_entry(existing, ralph=is_ralph)
             elif result.status == SyncStatus.ERROR:
                 pass
             else:
                 handle = dep.to_parsed_handle(config.default_owner)
-                update_lockfile_entry(
-                    lockfile,
+                lockfile.update_entry(
                     LockedEntry(
                         handle=dep.handle,
                         source=dep.resolve_source_name(config.default_source),
