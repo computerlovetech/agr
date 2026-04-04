@@ -2,29 +2,21 @@
 
 from pathlib import Path, PurePosixPath
 
-from agr.skill import EXCLUDED_DIRS, _shallowest
+from agr.skill import _is_excluded_skill_path, _shallowest
 
 
 # Marker file for ralphs
 RALPH_MARKER = "RALPH.md"
 
-
-def _is_excluded_ralph_path(parts: tuple[str, ...]) -> bool:
-    """Check if a relative RALPH.md path should be excluded from discovery.
-
-    Same rules as skill discovery:
-    1. Root-level RALPH.md is a repo marker, not a ralph directory.
-    2. Any path component matching EXCLUDED_DIRS disqualifies the entry.
-    """
-    if len(parts) == 1:
-        return True
-    return any(part in EXCLUDED_DIRS for part in parts)
+# Reuse skill exclusion logic — same rules apply to ralphs:
+# root-level marker is a repo marker, and EXCLUDED_DIRS are skipped.
+_is_excluded_marker_path = _is_excluded_skill_path
 
 
 def _is_excluded_path(path: Path, repo_dir: Path) -> bool:
     """Check if a path should be excluded from ralph discovery."""
     rel = path.relative_to(repo_dir)
-    return _is_excluded_ralph_path(rel.parts)
+    return _is_excluded_marker_path(rel.parts)
 
 
 def is_valid_ralph_dir(path: Path) -> bool:
@@ -63,7 +55,7 @@ def _find_ralph_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
         rel_path = PurePosixPath(rel)
         if rel_path.name != RALPH_MARKER:
             continue
-        if _is_excluded_ralph_path(rel_path.parts):
+        if _is_excluded_marker_path(rel_path.parts):
             continue
         results.append(rel_path.parent)
     return results

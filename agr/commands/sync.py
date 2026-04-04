@@ -431,6 +431,13 @@ def _run_global_sync() -> None:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
+            if dep.type == DEPENDENCY_TYPE_RALPH:
+                # Ralphs are project-level only; skip in global mode.
+                console.print(
+                    f"[yellow]Skipped:[/yellow] {dep.identifier} "
+                    "(ralphs are not supported in global installs)"
+                )
+                continue
             result = _sync_one_dependency(
                 handle,
                 source_name,

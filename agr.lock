@@ -16,6 +16,6 @@ installed-name = "code-review"
 [[skill]]
 handle = "microsoft/playwright-cli/playwright-cli"
 source = "github"
-commit = "4e37405ffe6b40db68bb6a787cd1dadbe999e4a0"
-content-hash = "sha256:50aa57a0172e6ed2544ac7c161a1c61f424dbdd57511ef0e0a6a3f35c509ed65"
+commit = "a0d5bfd4d9658073029d33f979ac5a027568caec"
+content-hash = "sha256:75e47183c30bc8651e76286680eddac88a3024a7ee5a7f1bc486d4d3fdee34ce"
 installed-name = "playwright-cli"

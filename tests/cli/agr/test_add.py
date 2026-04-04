@@ -120,3 +120,14 @@ class TestAgrAddRalph:
         agr("add", "./ralphs/test-ralph")
         tool_dir = cli_project / ".claude" / "skills" / "test-ralph"
         assert not tool_dir.exists()
+
+    def test_add_both_markers_fails(self, agr, cli_project):
+        """agr add fails when directory has both SKILL.md and RALPH.md."""
+        both_dir = cli_project / "both-type"
+        both_dir.mkdir()
+        (both_dir / "SKILL.md").write_text("# Skill")
+        (both_dir / "RALPH.md").write_text("# Ralph")
+
+        result = agr("add", "./both-type")
+
+        assert_cli(result).failed().stdout_contains("both SKILL.md and RALPH.md")

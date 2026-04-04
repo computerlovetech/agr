@@ -40,3 +40,30 @@ class TestAgrRemove:
         result = agr("remove", "./skills/test-skill")
 
         assert_cli(result).failed()
+
+
+class TestAgrRemoveRalph:
+    """Tests for agr remove with ralph type."""
+
+    def test_remove_ralph_succeeds(self, agr, cli_ralph):
+        """agr remove removes installed ralph."""
+        agr("add", "./ralphs/test-ralph")
+        result = agr("remove", "./ralphs/test-ralph")
+        assert_cli(result).succeeded().stdout_contains("Removed:")
+
+    def test_remove_ralph_cleans_directory(self, agr, cli_project, cli_ralph):
+        """agr remove deletes installed ralph directory."""
+        agr("add", "./ralphs/test-ralph")
+        installed = cli_project / ".agents" / "ralphs" / "test-ralph"
+        assert installed.exists()
+
+        agr("remove", "./ralphs/test-ralph")
+        assert not installed.exists()
+
+    def test_remove_ralph_updates_config(self, agr, cli_project, cli_ralph):
+        """agr remove updates agr.toml."""
+        agr("add", "./ralphs/test-ralph")
+        agr("remove", "./ralphs/test-ralph")
+
+        config = (cli_project / "agr.toml").read_text()
+        assert "ralphs/test-ralph" not in config

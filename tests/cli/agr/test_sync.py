@@ -86,3 +86,28 @@ dependencies = []
         assert_cli(result).succeeded()
         assert (cli_project / "AGENTS.md").exists()
         assert (cli_project / "AGENTS.md").read_text() == "Claude instructions\n"
+
+
+class TestAgrSyncRalph:
+    """Tests for agr sync with ralph dependencies."""
+
+    def test_sync_ralph_installs_from_config(
+        self, agr, cli_project, cli_ralph, cli_config
+    ):
+        """agr sync installs ralph from agr.toml config."""
+        cli_config('dependencies = [{path = "./ralphs/test-ralph", type = "ralph"}]')
+
+        result = agr("sync")
+
+        assert_cli(result).succeeded().stdout_contains("Installed:")
+        installed = cli_project / ".agents" / "ralphs" / "test-ralph"
+        assert installed.exists()
+        assert (installed / "RALPH.md").exists()
+
+    def test_sync_ralph_reports_up_to_date(self, agr, cli_project, cli_ralph):
+        """agr sync reports already installed ralph as up to date."""
+        agr("add", "./ralphs/test-ralph")
+
+        result = agr("sync")
+
+        assert_cli(result).succeeded().stdout_contains("up to date")
