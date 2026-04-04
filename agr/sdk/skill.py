@@ -259,7 +259,7 @@ class Skill:
             FileNotFoundError: If file does not exist
         """
         # Security: prevent path traversal
-        if ".." in relative_path:
+        if ".." in Path(relative_path).parts:
             raise ValueError("Path cannot contain '..'")
 
         file_path = self.path / relative_path

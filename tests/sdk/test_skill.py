@@ -175,6 +175,27 @@ class TestSkillReadFile:
         with pytest.raises(ValueError, match="cannot contain"):
             skill.read_file("../skill_other/secret.txt")
 
+    def test_read_file_double_dots_in_filename(self, tmp_path: Path):
+        """Test that filenames containing '..' as a substring are readable.
+
+        The path traversal check should reject '..' as a path component
+        (e.g. '../escape') but allow filenames like 'my..file.txt' where
+        '..' is part of the name, not a directory traversal.
+        """
+        skill_dir = tmp_path / "skill"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("# Test Skill\nTest content.")
+
+        # Create a file with '..' in its name (legitimate filename)
+        dotdot_file = skill_dir / "my..config.txt"
+        dotdot_file.write_text("config data")
+
+        skill = Skill.from_local(skill_dir)
+
+        # Should succeed — '..' in a filename is not a path traversal
+        content = skill.read_file("my..config.txt")
+        assert content == "config data"
+
 
 class TestSkillMetadata:
     """Tests for metadata property."""
