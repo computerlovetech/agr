@@ -46,7 +46,7 @@ class TestResourceType:
         import pytest
 
         with pytest.raises(AttributeError):
-            SKILL_RESOURCE.marker = "OTHER.md"  # type: ignore[misc]
+            SKILL_RESOURCE.marker = "OTHER.md"  # type: ignore[misc]  # ty: ignore[invalid-assignment]
 
     def test_custom_resource_type(self):
         custom = ResourceType(marker="CUSTOM.md", name="custom", has_tool_field=False)

@@ -130,4 +130,4 @@ class TestAgrAddRalph:
 
         result = agr("add", "./both-type")
 
-        assert_cli(result).failed().stdout_contains("both SKILL.md and RALPH.md")
+        assert_cli(result).failed().stdout_contains("SKILL.md and RALPH.md")
