@@ -16,15 +16,18 @@ keywords:
   - OpenCode agr setup
   - GitHub Copilot agr config
   - Antigravity agr setup
+  - agr ralph configuration
+  - ralph dependencies agr.toml
 ---
 
 # Configure agr.toml — Tools, Sources, and Syncing
 
 !!! tldr
-    `agr.toml` is your skill manifest. Key settings: **tools** (which AI tools
-    to sync to), **sources** (where to fetch skills from), **sync_instructions**
-    (keep `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` aligned). Use `agr config` to
-    manage everything from the CLI. Add `-g` for global config at `~/.agr/agr.toml`.
+    `agr.toml` is your resource manifest. Key settings: **tools** (which AI tools
+    to sync skills to), **sources** (where to fetch remote resources from),
+    **sync_instructions** (keep `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` aligned).
+    Use `agr config` to manage everything from the CLI. Add `-g` for global
+    config at `~/.agr/agr.toml`.
 
 **Prerequisites:** [agr installed](tutorial.md#step-1-install-agr) and an
 `agr.toml` file (created by [`agr init`](reference.md#agr-init) or
@@ -126,10 +129,10 @@ per tool. Override detection with `--tools`:
 agr init --tools claude,codex,opencode
 ```
 
-## Fetch Skills from Custom Git Servers { #sources }
+## Fetch Resources from Custom Git Servers { #sources }
 
-Sources define where agr fetches remote skills from. The default source is
-GitHub:
+Sources define where agr fetches remote resources (skills and ralphs) from.
+The default source is GitHub:
 
 ```toml
 [[source]]
@@ -140,7 +143,7 @@ url = "https://github.com/{owner}/{repo}.git"
 
 ### Adding a Custom Source
 
-To fetch skills from a self-hosted Git server:
+To fetch resources from a self-hosted Git server:
 
 ```bash
 agr config add sources my-server --url "https://git.example.com/{owner}/{repo}.git"
@@ -243,7 +246,7 @@ agr checks `GITHUB_TOKEN` first, then falls back to `GH_TOKEN`.
 
 ### Token Permissions
 
-The token needs **read access** to the repositories containing your skills:
+The token needs **read access** to the repositories containing your resources:
 
 - **Fine-grained tokens** (recommended): Grant `Contents: Read-only` on the
   specific repositories
