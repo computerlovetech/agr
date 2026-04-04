@@ -2,46 +2,52 @@
 
 ## Overview
 
-Agent Resources (`agr`) is the package manager for AI agents. It installs agent resources (markdown prompts with optional supporting files) from GitHub repositories into the configuration directories of various AI coding tools (Claude Code, Cursor, Codex, etc.).
+Agent Resources (`agr`) is the package manager for AI agents. It manages two resource types — **skills** (context and instructions for AI tools) and **ralphs** (autonomous agent loop specifications) — installing them from GitHub repositories or local paths into the appropriate directories.
 
 ## Project structure
 
 ```
-agr/                  # Core library
-  main.py             # CLI entry point (Typer app)
-  handle.py           # Handle parsing (ParsedHandle)
-  config.py           # agr.toml management (AgrConfig, Dependency)
-  tool.py             # Tool definitions (ToolConfig: claude, cursor, codex, etc.)
-  source.py           # Git source resolution (SourceConfig, SourceResolver)
-  fetcher.py          # Install/uninstall orchestration
-  git.py              # Git clone, sparse checkout, token injection
-  skill.py            # SKILL.md discovery and validation
-  metadata.py         # .agr.json read/write in installed skill dirs
-  detect.py           # Auto-detect tools present in a repo
-  instructions.py     # Sync CLAUDE.md/AGENTS.md/GEMINI.md
-  console.py          # Rich console output with --quiet
-  exceptions.py       # AgrError hierarchy
-  commands/            # CLI command implementations
-    add.py             # agr add
-    remove.py          # agr remove
-    sync.py            # agr sync
-    list.py            # agr list
-    init.py            # agr init
-    config_cmd.py      # agr config {show,path,edit,get,set,unset,add,remove}
-    migrations.py      # Legacy skill migration utilities
-    _tool_helpers.py   # Shared helpers for tool-related commands
-  sdk/                 # Programmatic Python API
-    __init__.py        # Public exports: Skill, cache, list_skills, skill_info
-    skill.py           # Skill class for loading and running skills
-    cache.py           # Disk cache for downloaded skills (file locking, atomic writes)
-    hub.py             # Hub operations (search, list from GitHub API)
-    types.py           # SkillInfo type definition
+agr/                     # Core library
+  main.py                # CLI entry point (Typer app)
+  handle.py              # Handle parsing (ParsedHandle)
+  config.py              # agr.toml management (AgrConfig, Dependency)
+  tool.py                # Tool definitions (ToolConfig: claude, cursor, codex, etc.)
+  source.py              # Git source resolution (SourceConfig, SourceResolver)
+  resource_type.py       # ResourceType dataclass (SKILL_RESOURCE, RALPH_RESOURCE)
+  fetcher.py             # Install/uninstall orchestration
+  _install_common.py     # Shared infrastructure for skill and ralph installation
+  skill_installer.py     # Skill-specific installation, destination resolution
+  ralph_installer.py     # Ralph-specific installation (project-scoped, no tool fan-out)
+  git.py                 # Git clone, sparse checkout, token injection
+  skill.py               # Resource discovery and validation (SKILL.md / RALPH.md)
+  ralph.py               # Ralph-specific wrappers around generic resource discovery
+  metadata.py            # .agr.json read/write in installed resource dirs
+  lockfile.py            # agr.lock management for reproducible installs
+  detect.py              # Auto-detect tools present in a repo
+  instructions.py        # Sync CLAUDE.md/AGENTS.md/GEMINI.md
+  console.py             # Rich console output with --quiet
+  exceptions.py          # AgrError hierarchy
+  commands/              # CLI command implementations
+    add.py               # agr add
+    remove.py            # agr remove
+    sync.py              # agr sync
+    list.py              # agr list
+    init.py              # agr init
+    config_cmd.py        # agr config {show,path,edit,get,set,unset,add,remove}
+    migrations.py        # Legacy skill migration utilities
+    _tool_helpers.py     # Shared helpers for tool-related commands
+  sdk/                   # Programmatic Python API
+    __init__.py          # Public exports: Skill, cache, list_skills, skill_info
+    skill.py             # Skill class for loading and running skills
+    cache.py             # Disk cache for downloaded skills (file locking, atomic writes)
+    hub.py               # Hub operations (search, list from GitHub API)
+    types.py             # SkillInfo type definition
 
-agrx/                 # Ephemeral skill runner CLI
-  main.py             # agrx CLI: download, run, discard
+agrx/                    # Ephemeral skill runner CLI
+  main.py                # agrx CLI: download, run, discard
 
-tests/                # Pytest test suite
-docs/                 # MkDocs site source
+tests/                   # Pytest test suite
+docs/                    # MkDocs site source
 ```
 
 ## Key types
@@ -133,7 +139,7 @@ A single entry in the dependencies array:
 
 - `handle` — remote reference (e.g., `"user/skill"`)
 - `path` — local path (e.g., `"./my-skill"`)
-- `type` — always `"skill"` currently
+- `type` — `"skill"` or `"ralph"`
 - `source` — optional explicit source name
 - `to_parsed_handle()` → converts to `ParsedHandle`
 
@@ -145,6 +151,10 @@ A git source with URL template: `name`, `type` (always `"git"`), `url` (e.g., `"
 
 ### Install (`agr add user/skill`)
 
+The install flow is shared between skills and ralphs via `_install_common.py`. The `add` command auto-detects the resource type (skill vs ralph) and dispatches to the appropriate installer.
+
+**Skill install** — installs into each configured tool's skills directory:
+
 ```
 parse_handle("user/skill")
   → ParsedHandle(username="user", name="skill")
@@ -153,30 +163,45 @@ AgrConfig.load("agr.toml")
   → config with tools=["claude"], sources=[github]
 
 For each tool in config.tools:
-  fetch_and_install(handle, repo_root, tool)
-    → _locate_remote_skill(handle, resolver)
+  fetch_and_install_skill(handle, repo_root, tool)
+    → _locate_remote_dep(handle, resolver, resource_type=SKILL_RESOURCE)
       → iter_repo_candidates(handle.repo)  # ["skills", "agent-resources"]
         → For each repo candidate + source:
           → downloaded_repo(source, owner, repo_name)
-            → git clone --depth 1 --filter=blob:none
-          → prepare_repo_for_skill(repo_dir, skill_name)
-            → git ls-tree → find SKILL.md → sparse checkout
+          → prepare_repo_for_deps(repo_dir, skill_name, SKILL_RESOURCE)
     → install_skill_from_repo(repo_dir, skill_name, handle, skills_dir, tool)
-      → _resolve_skill_destination()  # where to put it
-      → _copy_skill_to_destination()  # shutil.copytree + metadata
+      → _resolve_flat_destination()  # where to put it
+      → copy + write .agr.json metadata
 
 config.add_dependency(Dependency(handle="user/skill", type="skill"))
 config.save()
 ```
 
-### Skill discovery algorithm (`skill.py`)
+**Ralph install** — installs once into `.agents/ralphs/<name>/` (no per-tool fan-out):
 
-Skills are found by **recursive search**, not by checking hardcoded paths. The algorithm:
+```
+fetch_and_install_ralph(handle, repo_root)
+  → _locate_remote_dep(handle, resolver, resource_type=RALPH_RESOURCE)
+  → install_ralph_from_repo(repo_dir, ralph_name, handle, ralphs_dir)
+    → _resolve_flat_destination()
+    → copy + write .agr.json metadata
 
-1. List all files via `git ls-tree` (fast path) or `rglob("SKILL.md")` (fallback)
-2. Find entries where the filename is `SKILL.md`
-3. Exclude: root-level `SKILL.md`, paths within `.git`, `node_modules`, `__pycache__`, `.venv`, `vendor`, `build`, `dist`, etc.
-4. Match: directory name must equal the requested skill name
+config.add_dependency(Dependency(handle="user/repo/my-ralph", type="ralph"))
+config.save()
+```
+
+**Auto-detection**: For local paths, the `add` command checks for `RALPH.md` or `SKILL.md` to determine the type. For remote handles, it tries skill first, then falls back to ralph.
+
+### Resource discovery algorithm (`skill.py`)
+
+Resources (both skills and ralphs) are found by **recursive search**, not by checking hardcoded paths. The functions in `skill.py` are generic — they accept a marker filename (`SKILL.md` or `RALPH.md`) as a parameter. `ralph.py` provides thin wrappers that pass `RALPH.md`.
+
+The algorithm:
+
+1. List all files via `git ls-tree` (fast path) or `rglob(marker)` (fallback)
+2. Find entries where the filename matches the marker
+3. Exclude: root-level markers, paths within `.git`, `node_modules`, `__pycache__`, `.venv`, `vendor`, `build`, `dist`, etc.
+4. Match: directory name must equal the requested resource name
 5. When multiple matches exist, the **shallowest** path wins (fewest path components)
 
 This means `skills/my-skill/SKILL.md`, `src/tools/my-skill/SKILL.md`, and `my-skill/SKILL.md` would all match — with the shallowest returned.
@@ -202,38 +227,52 @@ The sync command is the most complex workflow, with four stages:
    migrate_legacy_directories() # Colon separator → double-hyphen (user:skill → user--skill)
    migrate_flat_installed_names()  # Full names → plain names when safe (user--repo--skill → skill)
 
-3. Dependency install (three categories for efficiency)
-   For each dependency in agr.toml:
+3. Dependency install
+   Dependencies are split by type: skills install per-tool, ralphs install once.
+
+   For each skill dependency:
      Check is_skill_installed() on all configured tools
      → UP_TO_DATE (skip) or classify as local / remote-default / remote-specific
 
-   a) Local skills           → copy from local path (no download)
-   b) Default-repo remotes   → "user/skill" handles where repo is unknown;
-                                each downloads individually (tries "skills", "agent-resources")
-   c) Specific-repo remotes  → "user/repo/skill" handles grouped by (source, owner, repo);
-                                each group shares a single git clone
+     a) Local skills           → copy from local path (no download)
+     b) Default-repo remotes   → "user/skill" handles where repo is unknown;
+                                  each downloads individually (tries "skills", "agent-resources")
+     c) Specific-repo remotes  → "user/repo/skill" handles grouped by (source, owner, repo);
+                                  each group shares a single git clone
 
-4. Report
+   For each ralph dependency:
+     Check is_ralph_installed() in .agents/ralphs/
+     → UP_TO_DATE (skip) or install to .agents/ralphs/<name>/
+
+   Ralph dependencies with -g (global) are skipped — ralphs are project-scoped only.
+
+4. Lockfile update
+   Write agr.lock with commit SHAs and content hashes for all resolved dependencies.
+
+5. Report
    Print per-dependency status (installed / up-to-date / error) + summary
 ```
 
 Key optimization: step 3c groups multiple skills from the same repository into a single download via `_sync_batched_repo_entries()`, avoiding redundant git clones.
 
-### Skill destination resolution (`_resolve_skill_destination`)
+### Destination resolution (`_install_common.py`)
 
-For flat tools, the install path is determined by this priority:
-1. **Already installed** — if the skill is found (by metadata ID) at any path, reuse it
-2. **Plain name free** — install as `<skills-dir>/<skill-name>/`
-3. **Name collision** — another skill owns the plain name, so fall back to `<skills-dir>/<user>--<repo>--<skill>/`
+Both skills and ralphs use a shared flat destination resolution (`_resolve_flat_destination`). The install path is determined by this priority:
 
-Finding existing installs (`_find_existing_skill_dir`) checks:
+1. **Already installed** — if the resource is found (by metadata ID) at any path, reuse it
+2. **Plain name free** — install as `<dir>/<name>/`
+3. **Name collision** — another resource owns the plain name, so fall back to `<dir>/<user>--<repo>--<name>/`
+
+Finding existing installs (`_find_existing_flat_dir`) checks:
 1. Plain name path, matched by `.agr.json` metadata ID
 2. Full qualified name path, matched by metadata ID
 3. Full qualified name path without metadata (legacy fallback)
 
+For skills, `<dir>` is the tool's skills dir (e.g. `.claude/skills/`). For ralphs, `<dir>` is `.agents/ralphs/`.
+
 ### Local install (`agr add ./my-skill`)
 
-Copies the local directory to the tool's skills dir. Validates `SKILL.md` exists. Checks for name conflicts with other local skills.
+Copies the local directory to the appropriate destination. Validates that the marker file (`SKILL.md` or `RALPH.md`) exists. Checks for name conflicts with other local resources.
 
 Special case: if the source path is already the install destination (e.g. `agr add ./skills/my-skill` when `.claude/skills/` points to `skills/`), the copy is skipped and only metadata is stamped.
 
@@ -253,7 +292,7 @@ Skills preserve the full handle path:
 
 ## Metadata (`.agr.json`)
 
-Each installed skill directory contains `.agr.json` with:
+Each installed resource directory contains `.agr.json` with:
 
 ```json
 {
@@ -267,7 +306,9 @@ Each installed skill directory contains `.agr.json` with:
 }
 ```
 
-Used for: matching skills to handles during uninstall/sync, detecting name conflicts, content change detection.
+For ralphs, the `tool` field is omitted (ralphs are not tool-specific).
+
+Used for: matching resources to handles during uninstall/sync, detecting name conflicts, content change detection.
 
 ## Migrations (`commands/migrations.py`)
 
@@ -325,9 +366,10 @@ All errors inherit from `AgrError` (`exceptions.py`):
 - `RepoNotFoundError` — remote repo doesn't exist
 - `AuthenticationError` — git auth failure (private repo, no token)
 - `SkillNotFoundError` — skill directory not found in repo
+- `RalphNotFoundError` — ralph directory not found in repo
 - `ConfigError` — invalid agr.toml
 - `InvalidHandleError` — unparseable handle string
-- `InvalidLocalPathError` — local skill path is invalid (missing SKILL.md, path doesn't exist)
+- `InvalidLocalPathError` — local resource path is invalid (missing marker file, path doesn't exist)
 - `CacheError` — SDK cache failures
 - `RateLimitError` — GitHub API rate limit
 
@@ -417,6 +459,11 @@ tests/
 ├── test_config.py                 # agr/config.py tests
 ├── test_handle.py                 # agr/handle.py tests
 ├── test_skill.py                  # agr/skill.py tests
+├── test_ralph.py                  # agr/ralph.py tests
+├── test_skill_installer.py        # agr/skill_installer.py tests
+├── test_ralph_installer.py        # agr/ralph_installer.py tests
+├── test_install_common.py         # agr/_install_common.py tests
+├── test_resource_type.py          # agr/resource_type.py tests
 ├── test_metadata.py               # agr/metadata.py tests
 ├── test_tool.py                   # agr/tool.py tests
 ├── test_copilot.py                # Copilot-specific tests
@@ -424,7 +471,6 @@ tests/
 ├── test_commands.py               # CLI command integration tests
 ├── test_agrx_command_building.py  # agrx CLI command building
 ├── test_docs.py                   # Documentation accuracy tests
-├── test_gh_issue_phase.py         # Regression tests for GitHub issues
 ├── cli/                           # CLI end-to-end tests
 │   ├── conftest.py                # CLI test fixtures (mock git, subprocess)
 │   ├── runner.py                  # Test runner helpers for CLI invocation
@@ -435,6 +481,7 @@ tests/
 │   │   ├── test_sync.py           # agr sync end-to-end
 │   │   ├── test_list.py           # agr list end-to-end
 │   │   ├── test_init.py           # agr init end-to-end
+│   │   ├── test_lockfile.py       # agr.lock end-to-end
 │   │   ├── test_config_commands.py # agr config subcommands
 │   │   ├── test_sources.py        # Source-related CLI tests
 │   │   ├── test_global_flags.py   # --global flag tests
@@ -453,7 +500,17 @@ tests/
 │   ├── conftest.py                # SDK test fixtures
 │   ├── test_skill.py              # Skill class tests
 │   ├── test_cache.py              # Cache management tests
-│   └── test_hub.py                # Hub discovery tests
+│   ├── test_hub.py                # Hub discovery tests
+│   └── test_hub_helpers.py        # Hub helper function tests
 └── unit/                          # Isolated unit tests
-    └── test_detect.py             # Tool detection tests
+    ├── test_console.py            # Console output tests
+    ├── test_detect.py             # Tool detection tests
+    ├── test_exceptions.py         # Error formatting tests
+    ├── test_git.py                # Git operation tests
+    ├── test_instructions.py       # Instruction sync tests
+    ├── test_lockfile.py           # Lockfile management tests
+    ├── test_migrations.py         # Migration tests
+    ├── test_remove.py             # Remove logic tests
+    ├── test_source.py             # Source resolution tests
+    └── test_tool_helpers.py       # Tool helper tests
 ```
