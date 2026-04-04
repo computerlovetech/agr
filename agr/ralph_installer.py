@@ -15,6 +15,7 @@ from agr._install_common import (
     RALPHS_CONFIG_DIR,
     RALPHS_SUBDIR,
     _RemoteDepLocation,
+    _copy_resource_to_destination,
     _dep_not_found_message,
     _find_existing_flat_dir,
     _locate_remote_dep,
@@ -100,20 +101,15 @@ def _copy_ralph_to_destination(
     install_source: str | None = None,
 ) -> Path:
     """Copy ralph source to destination with overwrite handling."""
-    if dest.exists() and not overwrite:
-        raise FileExistsError(
-            f"Ralph already exists at {dest}. Use --overwrite to replace."
-        )
-
-    if dest.exists():
-        shutil.rmtree(dest)
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, dest)
-
-    stamp_resource_metadata(dest, handle, repo_root, dest.name, source=install_source)
-
-    return dest
+    return _copy_resource_to_destination(
+        source,
+        dest,
+        handle,
+        overwrite,
+        repo_root,
+        kind="Ralph",
+        install_source=install_source,
+    )
 
 
 def ralph_not_found_message(name: str) -> str:

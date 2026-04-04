@@ -13,6 +13,7 @@ from collections.abc import Generator
 from agr._install_common import (
     InstallResult,
     _RemoteDepLocation,
+    _copy_resource_to_destination,
     _dep_not_found_message,
     _find_existing_flat_dir,
     _locate_remote_dep,
@@ -184,38 +185,18 @@ def _copy_skill_to_destination(
     repo_root: Path | None,
     install_source: str | None = None,
 ) -> Path:
-    """Copy skill source to destination with overwrite handling.
-
-    Args:
-        source: Source skill directory
-        dest: Destination path
-        handle: Parsed handle for naming
-        tool: Tool configuration
-        overwrite: Whether to overwrite existing
-        repo_root: Repository root for metadata resolution (optional)
-        install_source: Source name to record in metadata (optional)
-
-    Returns:
-        Path to installed skill
-
-    Raises:
-        FileExistsError: If skill exists and not overwriting
-    """
-    if dest.exists() and not overwrite:
-        raise FileExistsError(
-            f"Skill already exists at {dest}. Use --overwrite to replace."
-        )
-
-    if dest.exists():
-        shutil.rmtree(dest)
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, dest)
-
-    update_skill_md_name(dest, dest.name)
-    stamp_resource_metadata(dest, handle, repo_root, dest.name, tool_name=tool.name, source=install_source)
-
-    return dest
+    """Copy skill source to destination with overwrite handling."""
+    return _copy_resource_to_destination(
+        source,
+        dest,
+        handle,
+        overwrite,
+        repo_root,
+        kind="Skill",
+        tool_name=tool.name,
+        install_source=install_source,
+        post_copy=lambda d: update_skill_md_name(d, d.name),
+    )
 
 
 def skill_not_found_message(name: str) -> str:

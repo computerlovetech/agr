@@ -28,6 +28,7 @@ from agr.metadata import (
     build_handle_id,
     build_handle_ids,
     read_resource_metadata,
+    stamp_resource_metadata,
 )
 from agr.source import SourceConfig, SourceResolver
 from agr.tool import ToolConfig
@@ -56,6 +57,58 @@ class _RemoteDepLocation(NamedTuple):
     source_config: SourceConfig
     is_legacy: bool
     commit: str | None = None
+
+
+def _copy_resource_to_destination(
+    source: Path,
+    dest: Path,
+    handle: ParsedHandle,
+    overwrite: bool,
+    repo_root: Path | None,
+    kind: str,
+    *,
+    tool_name: str | None = None,
+    install_source: str | None = None,
+    post_copy: Callable[[Path], None] | None = None,
+) -> Path:
+    """Copy a resource (skill or ralph) to its destination with overwrite handling.
+
+    Args:
+        source: Source resource directory.
+        dest: Destination path.
+        handle: Parsed handle for naming.
+        overwrite: Whether to overwrite existing.
+        repo_root: Repository root for metadata resolution.
+        kind: Human-readable resource type for error messages (e.g. "Skill").
+        tool_name: Tool name to record in metadata (skills only).
+        install_source: Source name to record in metadata.
+        post_copy: Optional callback invoked after copying, before metadata stamp.
+
+    Returns:
+        Path to installed resource.
+
+    Raises:
+        FileExistsError: If resource exists and not overwriting.
+    """
+    if dest.exists() and not overwrite:
+        raise FileExistsError(
+            f"{kind} already exists at {dest}. Use --overwrite to replace."
+        )
+
+    if dest.exists():
+        shutil.rmtree(dest)
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, dest)
+
+    if post_copy:
+        post_copy(dest)
+
+    stamp_resource_metadata(
+        dest, handle, repo_root, dest.name, tool_name=tool_name, source=install_source
+    )
+
+    return dest
 
 
 def _dir_matches_handle(dep_dir: Path, handle_ids: list[str]) -> bool:
