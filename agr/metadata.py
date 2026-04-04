@@ -103,24 +103,36 @@ def compute_content_hash(skill_dir: Path) -> str:
     return f"sha256:{hasher.hexdigest()}"
 
 
-def write_skill_metadata(
-    skill_dir: Path,
+def write_resource_metadata(
+    resource_dir: Path,
     handle: ParsedHandle,
     repo_root: Path | None,
-    tool_name: str,
     installed_name: str,
+    tool_name: str | None = None,
     source: str | None = None,
     content_hash: str | None = None,
 ) -> None:
-    """Write metadata for an installed skill."""
+    """Write metadata for an installed resource (skill or ralph).
+
+    Args:
+        resource_dir: Directory where the resource is installed.
+        handle: Parsed dependency handle.
+        repo_root: Repository root for resolving local paths.
+        installed_name: Name the resource was installed as.
+        tool_name: Tool name (set for skills, ``None`` for ralphs).
+        source: Optional source name for remote handles.
+        content_hash: Optional pre-computed content hash.
+    """
     resolved_local = (
         handle.resolve_local_path(repo_root) if handle.local_path is not None else None
     )
     data: dict[str, Any] = {
         METADATA_KEY_ID: build_handle_id(handle, repo_root, source),
-        METADATA_KEY_TOOL: tool_name,
         METADATA_KEY_INSTALLED_NAME: installed_name,
     }
+    if tool_name is not None:
+        data[METADATA_KEY_TOOL] = tool_name
+
     if handle.is_local:
         data[METADATA_KEY_TYPE] = METADATA_TYPE_LOCAL
         data[METADATA_KEY_LOCAL_PATH] = str(resolved_local) if resolved_local else None
@@ -132,8 +144,55 @@ def write_skill_metadata(
     if content_hash is not None:
         data[METADATA_KEY_CONTENT_HASH] = content_hash
 
-    metadata_path = skill_dir / METADATA_FILENAME
+    metadata_path = resource_dir / METADATA_FILENAME
     metadata_path.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n")
+
+
+def stamp_resource_metadata(
+    resource_dir: Path,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    installed_name: str,
+    tool_name: str | None = None,
+    source: str | None = None,
+) -> None:
+    """Compute content hash and write metadata in one step."""
+    content_hash = compute_content_hash(resource_dir)
+    write_resource_metadata(
+        resource_dir,
+        handle,
+        repo_root,
+        installed_name,
+        tool_name=tool_name,
+        source=source,
+        content_hash=content_hash,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible wrappers
+# ---------------------------------------------------------------------------
+
+
+def write_skill_metadata(
+    skill_dir: Path,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    tool_name: str,
+    installed_name: str,
+    source: str | None = None,
+    content_hash: str | None = None,
+) -> None:
+    """Write metadata for an installed skill."""
+    write_resource_metadata(
+        skill_dir,
+        handle,
+        repo_root,
+        installed_name,
+        tool_name=tool_name,
+        source=source,
+        content_hash=content_hash,
+    )
 
 
 def write_ralph_metadata(
@@ -145,26 +204,14 @@ def write_ralph_metadata(
     content_hash: str | None = None,
 ) -> None:
     """Write metadata for an installed ralph (tool-agnostic, no tool field)."""
-    resolved_local = (
-        handle.resolve_local_path(repo_root) if handle.local_path is not None else None
+    write_resource_metadata(
+        ralph_dir,
+        handle,
+        repo_root,
+        installed_name,
+        source=source,
+        content_hash=content_hash,
     )
-    data: dict[str, Any] = {
-        METADATA_KEY_ID: build_handle_id(handle, repo_root, source),
-        METADATA_KEY_INSTALLED_NAME: installed_name,
-    }
-    if handle.is_local:
-        data[METADATA_KEY_TYPE] = METADATA_TYPE_LOCAL
-        data[METADATA_KEY_LOCAL_PATH] = str(resolved_local) if resolved_local else None
-    else:
-        data[METADATA_KEY_TYPE] = METADATA_TYPE_REMOTE
-        data[METADATA_KEY_HANDLE] = handle.to_toml_handle()
-        data[METADATA_KEY_SOURCE] = source or DEFAULT_SOURCE_NAME
-
-    if content_hash is not None:
-        data[METADATA_KEY_CONTENT_HASH] = content_hash
-
-    metadata_path = ralph_dir / METADATA_FILENAME
-    metadata_path.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n")
 
 
 def stamp_skill_metadata(
@@ -175,21 +222,14 @@ def stamp_skill_metadata(
     installed_name: str,
     source: str | None = None,
 ) -> None:
-    """Compute content hash and write metadata for a skill in one step.
-
-    This is a convenience wrapper around compute_content_hash +
-    write_skill_metadata, used whenever a skill directory needs its
-    metadata stamped (initial install, self-install, migration).
-    """
-    content_hash = compute_content_hash(skill_dir)
-    write_skill_metadata(
+    """Compute content hash and write metadata for a skill in one step."""
+    stamp_resource_metadata(
         skill_dir,
         handle,
         repo_root,
-        tool_name,
         installed_name,
-        source,
-        content_hash,
+        tool_name=tool_name,
+        source=source,
     )
 
 
@@ -201,12 +241,10 @@ def stamp_ralph_metadata(
     source: str | None = None,
 ) -> None:
     """Compute content hash and write metadata for a ralph in one step."""
-    content_hash = compute_content_hash(ralph_dir)
-    write_ralph_metadata(
+    stamp_resource_metadata(
         ralph_dir,
         handle,
         repo_root,
         installed_name,
-        source,
-        content_hash,
+        source=source,
     )

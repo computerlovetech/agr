@@ -750,7 +750,7 @@ class TestFetchAndInstallToTools:
         assert not claude_path.exists()
 
     def test_empty_tools_list_raises(self, tmp_path, skill_fixture):
-        """Empty tools list raises ValueError."""
+        """Empty tools list raises AgrError."""
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         (repo_root / ".git").mkdir()
@@ -759,7 +759,7 @@ class TestFetchAndInstallToTools:
             is_local=True, name=skill_fixture.name, local_path=skill_fixture
         )
 
-        with pytest.raises(ValueError, match="No tools provided"):
+        with pytest.raises(AgrError, match="No tools provided"):
             fetch_and_install_to_tools(handle, repo_root, [], overwrite=False)
 
 

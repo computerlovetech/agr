@@ -22,6 +22,7 @@ from agr._install_common import (
 )
 from agr.exceptions import (
     AgrError,
+    InvalidLocalPathError,
     RalphNotFoundError,
 )
 from agr.git import (
@@ -376,13 +377,13 @@ def fetch_and_install_ralph(
         Tuple of (installed path, InstallResult with lockfile metadata).
     """
     if repo_root is None:
-        raise ValueError("repo_root is required for ralph installation")
+        raise AgrError("repo_root is required for ralph installation")
 
     ralphs_dir = get_ralphs_dir(repo_root)
 
     if handle.is_local:
         if handle.local_path is None:
-            raise ValueError("Local handle missing path")
+            raise InvalidLocalPathError("Local handle missing path")
         source_path = handle.resolve_local_path(repo_root)
         resolved_handle = ParsedHandle(
             is_local=True, name=handle.name, local_path=source_path

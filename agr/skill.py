@@ -1,4 +1,8 @@
-"""Skill validation and SKILL.md handling."""
+"""Skill validation and SKILL.md handling.
+
+Also provides generic resource-discovery functions that work for any
+resource type (skills, ralphs, etc.) parameterised by a marker filename.
+"""
 
 import re
 from pathlib import Path, PurePosixPath
@@ -70,96 +74,53 @@ def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
 
 
 def _is_excluded_path(path: Path, repo_dir: Path) -> bool:
-    """Check if a path should be excluded from skill discovery.
-
-    Args:
-        path: Path to check (absolute, within repo_dir)
-        repo_dir: Root of the repository (to detect root-level SKILL.md)
-
-    Returns:
-        True if the path should be excluded
-    """
-    # Only check path components relative to repo_dir, so that
-    # parent directories outside the repo (e.g. /home/user/build/project)
-    # don't trigger false exclusions.
+    """Check if a path should be excluded from skill discovery."""
     rel = path.relative_to(repo_dir)
     return _is_excluded_skill_path(rel.parts)
 
 
-def is_valid_skill_dir(path: Path) -> bool:
-    """Check if a directory is a valid skill (contains SKILL.md).
+# ---------------------------------------------------------------------------
+# Generic resource discovery functions
+# ---------------------------------------------------------------------------
+# The functions below accept a *marker* parameter (e.g. ``"SKILL.md"`` or
+# ``"RALPH.md"``) and implement the discovery logic once.  The skill- and
+# ralph-specific public APIs delegate to these.
 
-    Args:
-        path: Path to check
 
-    Returns:
-        True if the path is a directory containing SKILL.md
-    """
+def is_valid_resource_dir(path: Path, marker: str) -> bool:
+    """Check if a directory contains the given marker file."""
     if not path.is_dir():
         return False
-    return (path / SKILL_MARKER).exists()
+    return (path / marker).exists()
 
 
-def _find_skill_dirs(repo_dir: Path) -> list[Path]:
-    """Find all valid skill directories in a repo.
-
-    Recursively scans for SKILL.md files, excluding root-level markers
-    and common non-skill directories (.git, node_modules, etc.).
-
-    Args:
-        repo_dir: Path to repository root
-
-    Returns:
-        List of skill directory paths (unsorted)
-    """
+def _find_resource_dirs(repo_dir: Path, marker: str) -> list[Path]:
+    """Find all directories containing *marker* in a repo."""
     dirs: list[Path] = []
-    for skill_md in repo_dir.rglob(SKILL_MARKER):
-        if _is_excluded_path(skill_md, repo_dir):
+    for marker_path in repo_dir.rglob(marker):
+        rel = marker_path.relative_to(repo_dir)
+        if _is_excluded_skill_path(rel.parts):
             continue
-        dirs.append(skill_md.parent)
+        dirs.append(marker_path.parent)
     return dirs
 
 
-def find_skill_in_repo(repo_dir: Path, skill_name: str) -> Path | None:
-    """Find a skill directory in a downloaded repo.
-
-    Searches recursively for any directory containing SKILL.md where the
-    directory name matches the skill name. Excludes common non-skill
-    directories (.git, node_modules, __pycache__, etc.).
-
-    Results are sorted by path depth (shallowest first) for deterministic
-    behavior when multiple matches exist.
-
-    Args:
-        repo_dir: Path to extracted repository
-        skill_name: Name of the skill to find
-
-    Returns:
-        Path to skill directory if found, None otherwise
-    """
-    matches = [d for d in _find_skill_dirs(repo_dir) if d.name == skill_name]
+def find_resource_in_repo(repo_dir: Path, name: str, marker: str) -> Path | None:
+    """Find a resource directory by name in a downloaded repo."""
+    matches = [d for d in _find_resource_dirs(repo_dir, marker) if d.name == name]
     if not matches:
         return None
-
     return _shallowest(matches)
 
 
-def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
-    """Return valid skill directories from a git file listing.
-
-    Filters SKILL.md entries, excluding root-level markers and paths
-    within excluded directories (.git, node_modules, etc.).
-
-    Args:
-        paths: List of file paths from git (posix-style).
-
-    Returns:
-        List of skill directory paths (parent of each valid SKILL.md).
-    """
+def _find_resource_dirs_in_listing(
+    paths: list[str], marker: str
+) -> list[PurePosixPath]:
+    """Return valid resource directories from a git file listing."""
     results: list[PurePosixPath] = []
     for rel in paths:
         rel_path = PurePosixPath(rel)
-        if rel_path.name != SKILL_MARKER:
+        if rel_path.name != marker:
             continue
         if _is_excluded_skill_path(rel_path.parts):
             continue
@@ -167,60 +128,77 @@ def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
     return results
 
 
-def find_skill_in_repo_listing(
-    paths: list[str], skill_name: str
+def find_resource_in_repo_listing(
+    paths: list[str], name: str, marker: str
 ) -> PurePosixPath | None:
-    """Find a skill directory from a git file listing.
-
-    Args:
-        paths: List of file paths from git (posix-style).
-        skill_name: Name of the skill to find.
-
-    Returns:
-        Path to skill directory (posix-style, relative), or None if not found.
-    """
-    matches = [d for d in _find_skill_dirs_in_listing(paths) if d.name == skill_name]
+    """Find a resource directory from a git file listing."""
+    matches = [
+        d for d in _find_resource_dirs_in_listing(paths, marker) if d.name == name
+    ]
     if not matches:
         return None
     return _shallowest(matches)
 
 
-def find_skills_in_repo_listing(
-    paths: list[str], skill_names: list[str]
+def find_resources_in_repo_listing(
+    paths: list[str], names: list[str], marker: str
 ) -> dict[str, PurePosixPath]:
-    """Find multiple skill directories from a git file listing in a single pass.
-
-    More efficient than calling ``find_skill_in_repo_listing`` in a loop,
-    because the file listing is scanned only once.
-
-    Args:
-        paths: List of file paths from git (posix-style).
-        skill_names: Names of the skills to find.
-
-    Returns:
-        Mapping of skill name to directory path for each found skill.
-        Missing skills are omitted from the result.
-    """
-    name_set = set(skill_names)
+    """Find multiple resource directories from a git file listing in one pass."""
+    name_set = set(names)
     matches: dict[str, list[PurePosixPath]] = {}
-    for d in _find_skill_dirs_in_listing(paths):
+    for d in _find_resource_dirs_in_listing(paths, marker):
         if d.name in name_set:
             matches.setdefault(d.name, []).append(d)
     return {name: _shallowest(dirs) for name, dirs in matches.items()}
 
 
+def discover_resources_in_repo_listing(paths: list[str], marker: str) -> list[str]:
+    """Discover all resource names from a git file listing."""
+    return sorted({d.name for d in _find_resource_dirs_in_listing(paths, marker)})
+
+
+# ---------------------------------------------------------------------------
+# Skill-specific wrappers (preserve existing public API)
+# ---------------------------------------------------------------------------
+
+
+def is_valid_skill_dir(path: Path) -> bool:
+    """Check if a directory is a valid skill (contains SKILL.md)."""
+    return is_valid_resource_dir(path, SKILL_MARKER)
+
+
+def _find_skill_dirs(repo_dir: Path) -> list[Path]:
+    """Find all valid skill directories in a repo."""
+    return _find_resource_dirs(repo_dir, SKILL_MARKER)
+
+
+def find_skill_in_repo(repo_dir: Path, skill_name: str) -> Path | None:
+    """Find a skill directory in a downloaded repo."""
+    return find_resource_in_repo(repo_dir, skill_name, SKILL_MARKER)
+
+
+def _find_skill_dirs_in_listing(paths: list[str]) -> list[PurePosixPath]:
+    """Return valid skill directories from a git file listing."""
+    return _find_resource_dirs_in_listing(paths, SKILL_MARKER)
+
+
+def find_skill_in_repo_listing(
+    paths: list[str], skill_name: str
+) -> PurePosixPath | None:
+    """Find a skill directory from a git file listing."""
+    return find_resource_in_repo_listing(paths, skill_name, SKILL_MARKER)
+
+
+def find_skills_in_repo_listing(
+    paths: list[str], skill_names: list[str]
+) -> dict[str, PurePosixPath]:
+    """Find multiple skill directories from a git file listing in a single pass."""
+    return find_resources_in_repo_listing(paths, skill_names, SKILL_MARKER)
+
+
 def discover_skills_in_repo_listing(paths: list[str]) -> list[str]:
-    """Discover all skill names from a git file listing.
-
-    Returns all unique skill names found. Results are sorted alphabetically.
-
-    Args:
-        paths: List of file paths from git (posix-style).
-
-    Returns:
-        Sorted list of unique skill names found in the listing.
-    """
-    return sorted({d.name for d in _find_skill_dirs_in_listing(paths)})
+    """Discover all skill names from a git file listing."""
+    return discover_resources_in_repo_listing(paths, SKILL_MARKER)
 
 
 def parse_frontmatter(content: str) -> tuple[str, str] | None:

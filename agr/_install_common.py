@@ -79,12 +79,12 @@ def _resolve_skills_dir(
         Resolved skills directory path.
 
     Raises:
-        ValueError: If both skills_dir and repo_root are None.
+        AgrError: If both skills_dir and repo_root are None.
     """
     if skills_dir is not None:
         return skills_dir
     if repo_root is None:
-        raise ValueError("repo_root is required when skills_dir is not provided")
+        raise AgrError("repo_root is required when skills_dir is not provided")
     return tool.get_skills_dir(repo_root)
 
 

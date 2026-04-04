@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from agr.exceptions import (
@@ -19,6 +20,21 @@ from agr.sdk.hub import (
     list_skills,
     skill_info,
 )
+
+
+def _mock_httpx_response(
+    status_code: int = 200,
+    json_data: dict | None = None,
+    headers: dict | None = None,
+) -> httpx.Response:
+    """Build a fake httpx.Response for testing."""
+    resp = httpx.Response(
+        status_code=status_code,
+        headers=headers or {},
+        json=json_data or {},
+        request=httpx.Request("GET", "https://api.github.com/test"),
+    )
+    return resp
 
 
 class TestExtractDescription:
@@ -131,85 +147,62 @@ Body paragraph description here.
 class TestGitHubApiRequest:
     """Tests for _github_api_request()."""
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_success_response(self, mock_urlopen: MagicMock):
+    @patch("agr.sdk.hub.httpx.get")
+    def test_success_response(self, mock_get: MagicMock):
         """Test successful API request."""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'{"key": "value"}'
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
+        mock_get.return_value = _mock_httpx_response(
+            json_data={"key": "value"},
+        )
 
         result = _github_api_request("https://api.github.com/test")
         assert result == {"key": "value"}
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_auth_failure_401(self, mock_urlopen: MagicMock):
+    @patch("agr.sdk.hub.httpx.get")
+    def test_auth_failure_401(self, mock_get: MagicMock):
         """Test 401 raises AuthenticationError."""
-        from urllib.error import HTTPError
-
-        mock_headers = MagicMock()
-        mock_urlopen.side_effect = HTTPError(
-            "url", 401, "Unauthorized", mock_headers, None
-        )
+        mock_get.return_value = _mock_httpx_response(status_code=401)
 
         with pytest.raises(AuthenticationError):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_not_found_404(self, mock_urlopen: MagicMock):
+    @patch("agr.sdk.hub.httpx.get")
+    def test_not_found_404(self, mock_get: MagicMock):
         """Test 404 raises RepoNotFoundError."""
-        from urllib.error import HTTPError
-
-        mock_headers = MagicMock()
-        mock_urlopen.side_effect = HTTPError(
-            "url", 404, "Not Found", mock_headers, None
-        )
+        mock_get.return_value = _mock_httpx_response(status_code=404)
 
         with pytest.raises(RepoNotFoundError):
             _github_api_request("https://api.github.com/test")
 
     @patch("agr.sdk.hub.get_github_token")
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_includes_auth_header(
-        self, mock_urlopen: MagicMock, mock_get_token: MagicMock
-    ):
+    @patch("agr.sdk.hub.httpx.get")
+    def test_includes_auth_header(self, mock_get: MagicMock, mock_get_token: MagicMock):
         """Test auth header is included when token available."""
         mock_get_token.return_value = "test-token"
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"{}"
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
+        mock_get.return_value = _mock_httpx_response(json_data={})
 
         _github_api_request("https://api.github.com/test")
 
-        # Check the request object passed to urlopen
-        call_args = mock_urlopen.call_args
-        request = call_args[0][0]
-        assert request.get_header("Authorization") == "Bearer test-token"
+        call_args = mock_get.call_args
+        headers = call_args[1]["headers"]
+        assert headers["Authorization"] == "Bearer test-token"
 
 
 class TestNetworkErrorHandling:
     """Tests for network error handling in _github_api_request()."""
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_url_error_raises_agr_error(self, mock_urlopen: MagicMock):
-        """Test that URLError raises AgrError, not built-in ConnectionError."""
-        from urllib.error import URLError
-
-        mock_urlopen.side_effect = URLError("Connection refused")
+    @patch("agr.sdk.hub.httpx.get")
+    def test_connect_error_raises_agr_error(self, mock_get: MagicMock):
+        """Test that ConnectError raises AgrError."""
+        mock_get.side_effect = httpx.ConnectError("Connection refused")
 
         with pytest.raises(AgrError, match="Failed to connect to GitHub API"):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_url_error_preserves_cause(self, mock_urlopen: MagicMock):
-        """Test that URLError is chained as the cause of AgrError."""
-        from urllib.error import URLError
-
-        original = URLError("DNS lookup failed")
-        mock_urlopen.side_effect = original
+    @patch("agr.sdk.hub.httpx.get")
+    def test_connect_error_preserves_cause(self, mock_get: MagicMock):
+        """Test that ConnectError is chained as the cause of AgrError."""
+        original = httpx.ConnectError("DNS lookup failed")
+        mock_get.side_effect = original
 
         with pytest.raises(AgrError) as exc_info:
             _github_api_request("https://api.github.com/test")
@@ -220,62 +213,46 @@ class TestNetworkErrorHandling:
 class TestRateLimitHandling:
     """Tests for rate limit handling in _github_api_request()."""
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
-    def test_http_429_raises_rate_limit_error(self, mock_urlopen: MagicMock):
+    @patch("agr.sdk.hub.httpx.get")
+    def test_http_429_raises_rate_limit_error(self, mock_get: MagicMock):
         """Test that HTTP 429 raises RateLimitError."""
-        from urllib.error import HTTPError
-
-        mock_headers = MagicMock()
-        mock_urlopen.side_effect = HTTPError(
-            "url", 429, "Too Many Requests", mock_headers, None
-        )
+        mock_get.return_value = _mock_httpx_response(status_code=429)
 
         with pytest.raises(RateLimitError, match="rate limit exceeded"):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
+    @patch("agr.sdk.hub.httpx.get")
     def test_http_403_with_rate_limit_header_raises_rate_limit_error(
-        self, mock_urlopen: MagicMock
+        self, mock_get: MagicMock
     ):
         """Test that HTTP 403 with X-RateLimit-Remaining: 0 raises RateLimitError."""
-        from urllib.error import HTTPError
-
-        mock_headers = MagicMock()
-        mock_headers.get.return_value = "0"
-        error = HTTPError("url", 403, "Forbidden", mock_headers, None)
-        mock_urlopen.side_effect = error
+        mock_get.return_value = _mock_httpx_response(
+            status_code=403,
+            headers={"X-RateLimit-Remaining": "0"},
+        )
 
         with pytest.raises(RateLimitError, match="rate limit exceeded"):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
+    @patch("agr.sdk.hub.httpx.get")
     def test_http_403_without_rate_limit_header_raises_auth_error(
-        self, mock_urlopen: MagicMock
+        self, mock_get: MagicMock
     ):
         """Test that HTTP 403 without rate limit header raises AuthenticationError."""
-        from urllib.error import HTTPError
-
-        # No X-RateLimit-Remaining header or non-zero value
-        mock_headers = MagicMock()
-        mock_headers.get.return_value = ""  # Empty string, not "0"
-        mock_urlopen.side_effect = HTTPError(
-            "url", 403, "Forbidden", mock_headers, None
-        )
+        mock_get.return_value = _mock_httpx_response(status_code=403)
 
         with pytest.raises(AuthenticationError):
             _github_api_request("https://api.github.com/test")
 
-    @patch("agr.sdk.hub.urllib.request.urlopen")
+    @patch("agr.sdk.hub.httpx.get")
     def test_http_403_with_nonzero_rate_limit_raises_auth_error(
-        self, mock_urlopen: MagicMock
+        self, mock_get: MagicMock
     ):
         """Test that HTTP 403 with remaining rate limit raises AuthenticationError."""
-        from urllib.error import HTTPError
-
-        mock_headers = MagicMock()
-        mock_headers.get.return_value = "42"
-        error = HTTPError("url", 403, "Forbidden", mock_headers, None)
-        mock_urlopen.side_effect = error
+        mock_get.return_value = _mock_httpx_response(
+            status_code=403,
+            headers={"X-RateLimit-Remaining": "42"},
+        )
 
         with pytest.raises(AuthenticationError):
             _github_api_request("https://api.github.com/test")

@@ -1,11 +1,10 @@
 """Hub functions for discovering skills on GitHub."""
 
 import base64
-import json
-import urllib.request
 from dataclasses import dataclass
 from typing import Any
-from urllib.error import HTTPError, URLError
+
+import httpx
 
 from agr.exceptions import (
     AgrError,
@@ -108,6 +107,7 @@ def _github_api_request(url: str) -> dict[str, Any]:
     Raises:
         AuthenticationError: If authentication fails
         RepoNotFoundError: If repository not found
+        RateLimitError: If rate limit is exceeded
     """
     headers = {
         "Accept": "application/vnd.github.v3+json",
@@ -118,31 +118,31 @@ def _github_api_request(url: str) -> dict[str, Any]:
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    request = urllib.request.Request(url, headers=headers)
-
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode())
-    except HTTPError as e:
+        response = httpx.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
         # Handle rate limiting (HTTP 429)
-        if e.code == 429:
+        if code == 429:
             raise RateLimitError("GitHub API rate limit exceeded") from e
         # Handle 403 with rate limit header (secondary rate limit)
-        if e.code == 403:
-            rate_limit_remaining = e.headers.get("X-RateLimit-Remaining", "")
+        if code == 403:
+            rate_limit_remaining = e.response.headers.get("X-RateLimit-Remaining", "")
             if rate_limit_remaining == "0":
                 raise RateLimitError("GitHub API rate limit exceeded") from e
             raise AuthenticationError(
-                f"GitHub API authentication failed (HTTP {e.code})"
+                f"GitHub API authentication failed (HTTP {code})"
             ) from e
-        if e.code == 401:
+        if code == 401:
             raise AuthenticationError(
-                f"GitHub API authentication failed (HTTP {e.code})"
+                f"GitHub API authentication failed (HTTP {code})"
             ) from e
-        if e.code == 404:
+        if code == 404:
             raise RepoNotFoundError(f"Repository not found: {url}") from e
         raise
-    except URLError as e:
+    except httpx.ConnectError as e:
         raise AgrError(f"Failed to connect to GitHub API: {e}") from e
 
 

@@ -22,6 +22,8 @@ from agr._install_common import (
 )
 from agr.exceptions import (
     AgrError,
+    InvalidHandleError,
+    InvalidLocalPathError,
     SkillNotFoundError,
 )
 from agr.git import (
@@ -383,7 +385,7 @@ def install_skill_from_repo_to_tools(
     On partial failure, already installed tools are rolled back.
     """
     if not tools:
-        raise ValueError("No tools provided for installation")
+        raise AgrError("No tools provided for installation")
 
     with _rollback_on_failure() as installed:
         for tool in tools:
@@ -523,7 +525,7 @@ def install_remote_skill(
 ) -> Path:
     """Install a remote skill to a specific tool directory."""
     if handle.is_local:
-        raise ValueError("install_remote_skill requires a remote handle")
+        raise InvalidHandleError("install_remote_skill requires a remote handle")
 
     with _locate_remote_skill(handle, resolver, source) as loc:
         install_handle = (
@@ -578,7 +580,7 @@ def fetch_and_install(
     if handle.is_local:
         # Local skill installation
         if handle.local_path is None:
-            raise ValueError("Local handle missing path")
+            raise InvalidLocalPathError("Local handle missing path")
 
         source_path = handle.resolve_local_path(repo_root)
         resolved_handle = ParsedHandle(
@@ -633,7 +635,7 @@ def fetch_and_install_to_tools(
         tools are rolled back (removed).
     """
     if not tools:
-        raise ValueError("No tools provided for installation")
+        raise AgrError("No tools provided for installation")
 
     if handle.is_local:
         # Local: no download needed, just iterate with rollback
