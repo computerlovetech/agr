@@ -33,6 +33,12 @@ keywords:
 Skills are folders of instructions that give AI agents new capabilities. This
 guide helps you create, test, and share a skill with minimal ceremony.
 
+!!! note "Looking to create a ralph?"
+    This page covers **skills** — context and instructions consumed by AI tools.
+    To create an autonomous agent loop (a **ralph**), see
+    [Ralph Directory — Publishing a ralph](ralphs.md#publishing-a-ralph) for the
+    `RALPH.md` format, testing workflow, and publishing guide.
+
 **Prerequisites:** [agr installed](tutorial.md#step-1-install-agr), a project
 with at least one [supported AI tool](tools.md)
 
@@ -477,6 +483,7 @@ Avoid these mistakes that make skills produce poor or inconsistent results:
 
 ## Next Steps
 
+- [**Ralph Directory**](ralphs.md) — Create and publish autonomous agent loops with `RALPH.md`
 - [**Skill Directory**](skills.md) — Browse official and community skills for inspiration
 - [**Python SDK**](sdk.md) — Load and inspect skills programmatically
 - [**Core Concepts**](concepts.md) — Understand handles, sources, and the sync lifecycle

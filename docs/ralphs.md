@@ -11,6 +11,11 @@ keywords:
   - agr install ralph
   - AI agent loop
   - .agents/ralphs
+  - create a ralph
+  - write RALPH.md
+  - publish ralph to GitHub
+  - RALPH.md format
+  - RALPH.md frontmatter
 ---
 
 # Ralph Directory
