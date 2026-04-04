@@ -129,7 +129,7 @@ nav:
     - "agrx — Try Without Installing": agrx.md
   - Building Resources:
     - Creating Skills: creating.md
-    - Ralph Directory: ralphs.md
+    - Creating Ralphs: ralphs.md
     - Python SDK: sdk.md
   - Contributing:
     - contributing/index.md
