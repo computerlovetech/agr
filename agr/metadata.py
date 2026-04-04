@@ -76,10 +76,6 @@ def read_resource_metadata(resource_dir: Path) -> dict[str, Any] | None:
     return data
 
 
-# Backward-compatible alias
-read_skill_metadata = read_resource_metadata
-
-
 def compute_content_hash(skill_dir: Path) -> str:
     """Compute a deterministic SHA-256 content hash for a skill directory.
 
@@ -170,85 +166,4 @@ def stamp_resource_metadata(
         tool_name=tool_name,
         source=source,
         content_hash=content_hash,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Backward-compatible wrappers
-# ---------------------------------------------------------------------------
-
-
-def write_skill_metadata(
-    skill_dir: Path,
-    handle: ParsedHandle,
-    repo_root: Path | None,
-    tool_name: str,
-    installed_name: str,
-    source: str | None = None,
-    content_hash: str | None = None,
-) -> None:
-    """Write metadata for an installed skill."""
-    write_resource_metadata(
-        skill_dir,
-        handle,
-        repo_root,
-        installed_name,
-        tool_name=tool_name,
-        source=source,
-        content_hash=content_hash,
-    )
-
-
-def write_ralph_metadata(
-    ralph_dir: Path,
-    handle: ParsedHandle,
-    repo_root: Path | None,
-    installed_name: str,
-    source: str | None = None,
-    content_hash: str | None = None,
-) -> None:
-    """Write metadata for an installed ralph (tool-agnostic, no tool field)."""
-    write_resource_metadata(
-        ralph_dir,
-        handle,
-        repo_root,
-        installed_name,
-        source=source,
-        content_hash=content_hash,
-    )
-
-
-def stamp_skill_metadata(
-    skill_dir: Path,
-    handle: ParsedHandle,
-    repo_root: Path | None,
-    tool_name: str,
-    installed_name: str,
-    source: str | None = None,
-) -> None:
-    """Compute content hash and write metadata for a skill in one step."""
-    stamp_resource_metadata(
-        skill_dir,
-        handle,
-        repo_root,
-        installed_name,
-        tool_name=tool_name,
-        source=source,
-    )
-
-
-def stamp_ralph_metadata(
-    ralph_dir: Path,
-    handle: ParsedHandle,
-    repo_root: Path | None,
-    installed_name: str,
-    source: str | None = None,
-) -> None:
-    """Compute content hash and write metadata for a ralph in one step."""
-    stamp_resource_metadata(
-        ralph_dir,
-        handle,
-        repo_root,
-        installed_name,
-        source=source,
     )

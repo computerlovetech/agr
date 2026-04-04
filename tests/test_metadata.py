@@ -19,8 +19,8 @@ from agr.metadata import (
     build_handle_ids,
     compute_content_hash,
     read_resource_metadata,
-    stamp_skill_metadata,
-    write_skill_metadata,
+    stamp_resource_metadata,
+    write_resource_metadata,
 )
 from agr.source import DEFAULT_SOURCE_NAME
 
@@ -129,8 +129,8 @@ class TestComputeContentHash:
         assert re.fullmatch(r"sha256:[0-9a-f]{64}", result)
 
 
-class TestWriteSkillMetadataContentHash:
-    """Tests for content_hash parameter in write_skill_metadata."""
+class TestWriteResourceMetadataContentHash:
+    """Tests for content_hash parameter in write_resource_metadata."""
 
     def test_includes_content_hash(self, tmp_path: Path):
         """content_hash is written when provided."""
@@ -138,12 +138,12 @@ class TestWriteSkillMetadataContentHash:
         skill_dir.mkdir()
 
         handle = ParsedHandle(is_local=True, name="test", local_path=skill_dir)
-        write_skill_metadata(
+        write_resource_metadata(
             skill_dir,
             handle,
             tmp_path,
-            "claude",
             "test",
+            tool_name="claude",
             content_hash="sha256:abc123",
         )
 
@@ -157,7 +157,7 @@ class TestWriteSkillMetadataContentHash:
         skill_dir.mkdir()
 
         handle = ParsedHandle(is_local=True, name="test", local_path=skill_dir)
-        write_skill_metadata(skill_dir, handle, tmp_path, "claude", "test")
+        write_resource_metadata(skill_dir, handle, tmp_path, "test", tool_name="claude")
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -339,17 +339,17 @@ class TestBuildHandleIds:
         assert ids[1] == "remote:user/myrepo/skill"
 
 
-class TestStampSkillMetadata:
-    """Tests for stamp_skill_metadata function."""
+class TestStampResourceMetadata:
+    """Tests for stamp_resource_metadata function."""
 
     def test_writes_metadata_with_content_hash(self, tmp_path: Path):
-        """stamp_skill_metadata computes a hash and writes it to metadata."""
+        """stamp_resource_metadata computes a hash and writes it to metadata."""
         skill_dir = tmp_path / "my-skill"
         skill_dir.mkdir()
         (skill_dir / "SKILL.md").write_text("# My Skill\nInstructions here.")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
+        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -363,7 +363,7 @@ class TestStampSkillMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
+        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -378,8 +378,8 @@ class TestStampSkillMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(username="owner", repo="repo", name="my-skill")
-        stamp_skill_metadata(
-            skill_dir, handle, tmp_path, "cursor", "my-skill", source="github"
+        stamp_resource_metadata(
+            skill_dir, handle, tmp_path, "my-skill", tool_name="cursor", source="github"
         )
 
         meta = read_resource_metadata(skill_dir)
@@ -397,7 +397,7 @@ class TestStampSkillMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
-        stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
+        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -411,7 +411,7 @@ class TestStampSkillMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_skill_metadata(skill_dir, handle, tmp_path, "claude", "my-skill")
+        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None

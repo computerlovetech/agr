@@ -40,7 +40,7 @@ from agr.metadata import (
     build_handle_id,
     compute_content_hash,
     read_resource_metadata,
-    stamp_ralph_metadata,
+    stamp_resource_metadata,
 )
 from agr.ralph import (
     RALPH_MARKER,
@@ -114,7 +114,7 @@ def _copy_ralph_to_destination(
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, dest)
 
-    stamp_ralph_metadata(dest, handle, repo_root, dest.name, install_source)
+    stamp_resource_metadata(dest, handle, repo_root, dest.name, source=install_source)
 
     return dest
 
@@ -259,7 +259,7 @@ def install_local_ralph(
         default_dest
     ):
         if read_resource_metadata(default_dest) is None:
-            stamp_ralph_metadata(default_dest, handle, repo_root, default_dest.name)
+            stamp_resource_metadata(default_dest, handle, repo_root, default_dest.name)
         return default_dest
 
     conflicts, has_unknown = _find_local_ralph_name_conflicts(

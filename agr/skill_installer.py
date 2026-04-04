@@ -41,7 +41,7 @@ from agr.metadata import (
     build_handle_id,
     compute_content_hash,
     read_resource_metadata,
-    stamp_skill_metadata,
+    stamp_resource_metadata,
 )
 from agr.skill import (
     SKILL_MARKER,
@@ -86,7 +86,7 @@ def _find_local_name_conflicts(
 
     for path in candidates:
         # Skip the path we'd install to (it's not a conflict with itself).
-        if tool.supports_nested and path == default_dest:
+        if path.resolve() == default_dest.resolve():
             continue
         if not is_valid_skill_dir(path):
             continue
@@ -239,7 +239,7 @@ def _copy_skill_to_destination(
     shutil.copytree(source, dest)
 
     update_skill_md_name(dest, dest.name)
-    stamp_skill_metadata(dest, handle, repo_root, tool.name, dest.name, install_source)
+    stamp_resource_metadata(dest, handle, repo_root, dest.name, tool_name=tool.name, source=install_source)
 
     return dest
 
@@ -392,8 +392,8 @@ def install_local_skill(
         default_dest
     ):
         if read_resource_metadata(default_dest) is None:
-            stamp_skill_metadata(
-                default_dest, handle, repo_root, tool.name, default_dest.name
+            stamp_resource_metadata(
+                default_dest, handle, repo_root, default_dest.name, tool_name=tool.name
             )
         return default_dest
 

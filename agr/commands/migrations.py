@@ -20,7 +20,7 @@ from agr.metadata import (
     build_handle_id,
     build_handle_ids,
     read_resource_metadata,
-    stamp_skill_metadata,
+    stamp_resource_metadata,
 )
 from agr.skill import SKILL_MARKER, is_valid_skill_dir, update_skill_md_name
 from agr.tool import ANTIGRAVITY, CODEX, CURSOR, OPENCODE, ToolConfig
@@ -301,8 +301,8 @@ def _update_dir_metadata(
 ) -> None:
     """Update SKILL.md name and write metadata for a skill directory."""
     update_skill_md_name(skill_dir, skill_dir.name)
-    stamp_skill_metadata(
-        skill_dir, handle, repo_root, tool_name, skill_dir.name, source_name
+    stamp_resource_metadata(
+        skill_dir, handle, repo_root, skill_dir.name, tool_name=tool_name, source=source_name
     )
 
 
