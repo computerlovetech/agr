@@ -17,9 +17,11 @@ from agr.commands._tool_helpers import (
     print_tool_remove_result,
     remove_tools_from_config,
     save_and_summarize_results,
+    sync_dependencies_to_tools,
     validate_tool_names,
 )
-from agr.config import AgrConfig
+from agr.config import AgrConfig, DEPENDENCY_TYPE_RALPH, Dependency
+from agr.ralph import RALPH_MARKER
 
 
 class TestNormalizeToolNames:
@@ -475,3 +477,35 @@ class TestPrintToolRemoveResult:
         captured = capsys.readouterr()
         assert "Not configured" in captured.out
         assert "codex" in captured.out
+
+
+class TestSyncDependenciesToTools:
+    """Tests for sync_dependencies_to_tools()."""
+
+    def test_ralph_deps_are_skipped(self, tmp_path, monkeypatch):
+        """Ralph dependencies should be skipped when syncing to tools.
+
+        Ralphs are tool-agnostic (installed to .agents/ralphs/), so
+        sync_dependencies_to_tools should not attempt to install them
+        as skills into tool-specific skill directories.
+        """
+        # Create a git repo so find_repo_root succeeds
+        (tmp_path / ".git").mkdir()
+        monkeypatch.chdir(tmp_path)
+
+        # Create a local ralph directory with RALPH.md
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / RALPH_MARKER).write_text("# My Ralph")
+
+        # Config with only a ralph dependency
+        config = AgrConfig(
+            tools=["claude"],
+            dependencies=[
+                Dependency(type=DEPENDENCY_TYPE_RALPH, path="./my-ralph"),
+            ],
+        )
+
+        # Syncing ralphs to tools should produce zero errors
+        errors = sync_dependencies_to_tools(config, ["claude"])
+        assert errors == 0

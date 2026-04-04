@@ -13,6 +13,7 @@ from typing import Literal, overload
 from agr.commands import CommandResult
 from agr.config import (
     CONFIG_FILENAME,
+    DEPENDENCY_TYPE_RALPH,
     AgrConfig,
     find_config,
     find_repo_root,
@@ -332,6 +333,11 @@ def sync_dependencies_to_tools(config: AgrConfig, tool_names: list[str]) -> int:
     sync_errors = 0
 
     for dep in config.dependencies:
+        # Ralphs are tool-agnostic (installed to .agents/ralphs/), so
+        # they don't need to be synced when new tools are added.
+        if dep.type == DEPENDENCY_TYPE_RALPH:
+            continue
+
         try:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
