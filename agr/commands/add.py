@@ -206,10 +206,10 @@ def run_add(
     def _print_add_result(result: CommandResult) -> None:
         if result.success:
             console.print(f"[green]Added:[/green] {result.ref}")
-            console.print(f"  [dim]Installed to {result.message}[/dim]")
+            console.print(f"  [dim]Installed to {result.message}[/dim]", soft_wrap=True)
         else:
             console.print(f"[red]Failed:[/red] {result.ref}")
-            console.print(f"  [dim]{result.message}[/dim]")
+            console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
 
     save_and_summarize_results(
         results,

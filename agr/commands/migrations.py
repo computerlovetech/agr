@@ -35,14 +35,14 @@ def _print_migrate_failed(label: str, name: str, error: Exception) -> None:
     """Print a failed migration message with the error detail."""
     console = get_console()
     console.print(f"[red]Failed to {label.lower()}:[/red] {name}")
-    console.print(f"  [dim]{error}[/dim]")
+    console.print(f"  [dim]{error}[/dim]", soft_wrap=True)
 
 
 def _print_migrate_skipped(label: str, name: str, reason: str) -> None:
     """Print a skipped migration message with the reason."""
     console = get_console()
     console.print(f"[yellow]Cannot {label.lower()}:[/yellow] {name}")
-    console.print(f"  [dim]{reason}[/dim]")
+    console.print(f"  [dim]{reason}[/dim]", soft_wrap=True)
 
 
 def _migrate_skills_directory(

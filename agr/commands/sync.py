@@ -150,7 +150,7 @@ def _print_results_and_summary(
         else:
             print_error(identifier)
             if result.error:
-                console.print(f"  [dim]{result.error}[/dim]")
+                console.print(f"  [dim]{result.error}[/dim]", soft_wrap=True)
             errors += 1
 
     console.print()
