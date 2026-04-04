@@ -24,6 +24,7 @@ from agr._install_common import (
     find_local_name_conflicts,
     list_remote_repo_deps,
     prepare_repo_for_deps,
+    raise_on_local_name_conflict,
 )
 from agr.exceptions import (
     AgrError,
@@ -355,21 +356,7 @@ def install_local_skill(
     conflicts, has_unknown = _find_local_name_conflicts(
         handle, dest_dir, tool, repo_root
     )
-    if conflicts:
-        locations = ", ".join(str(path) for path in conflicts)
-        hint = ""
-        if has_unknown:
-            hint = (
-                " If this is a remote skill, run "
-                "`agr sync` or reinstall it to "
-                "add metadata."
-            )
-        raise AgrError(
-            f"Local skill name '{handle.name}' is already installed at {locations}. "
-            "agr allows only one local skill with a given name. "
-            "Rename the skill or remove the existing one."
-            f"{hint}"
-        )
+    raise_on_local_name_conflict(conflicts, has_unknown, handle, "skill")
 
     skill_dest = _resolve_skill_destination(handle, dest_dir, tool, repo_root)
 

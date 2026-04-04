@@ -200,6 +200,38 @@ def find_local_name_conflicts(
     return conflicts, has_unknown
 
 
+def raise_on_local_name_conflict(
+    conflicts: list[Path],
+    has_unknown: bool,
+    handle: ParsedHandle,
+    kind: str,
+) -> None:
+    """Raise AgrError if there are conflicting local installs with the same name.
+
+    Args:
+        conflicts: Paths where conflicting installs were found.
+        has_unknown: Whether any conflict lacked metadata (ownership unknown).
+        handle: Parsed handle for the dependency being installed.
+        kind: Human-readable resource type (e.g. "skill", "ralph").
+    """
+    if not conflicts:
+        return
+    locations = ", ".join(str(path) for path in conflicts)
+    hint = ""
+    if has_unknown:
+        hint = (
+            f" If this is a remote {kind}, run "
+            "`agr sync` or reinstall it to "
+            "add metadata."
+        )
+    raise AgrError(
+        f"Local {kind} name '{handle.name}' is already installed at {locations}. "
+        f"agr allows only one local {kind} with a given name. "
+        f"Rename the {kind} or remove the existing one."
+        f"{hint}"
+    )
+
+
 def _resolve_flat_destination(
     handle: ParsedHandle,
     parent_dir: Path,
