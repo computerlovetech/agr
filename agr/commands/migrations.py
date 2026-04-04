@@ -7,7 +7,7 @@ updates needed when upgrading from older naming conventions.
 import shutil
 from pathlib import Path
 
-from agr.config import AgrConfig
+from agr.config import DEPENDENCY_TYPE_RALPH, AgrConfig
 from agr.console import get_console
 from agr.exceptions import AgrError
 from agr.handle import (
@@ -302,7 +302,12 @@ def _update_dir_metadata(
     """Update SKILL.md name and write metadata for a skill directory."""
     update_skill_md_name(skill_dir, skill_dir.name)
     stamp_resource_metadata(
-        skill_dir, handle, repo_root, skill_dir.name, tool_name=tool_name, source=source_name
+        skill_dir,
+        handle,
+        repo_root,
+        skill_dir.name,
+        tool_name=tool_name,
+        source=source_name,
     )
 
 
@@ -338,11 +343,15 @@ def migrate_flat_installed_names(
     if not skills_dir.exists():
         return
 
-    # Index agr.toml dependencies by skill name so we can look up which
-    # handles claim each name. A name with >1 handle is ambiguous.
+    # Index agr.toml skill dependencies by skill name so we can look up
+    # which handles claim each name. A name with >1 handle is ambiguous.
+    # Ralph deps are excluded because they install to .agents/ralphs/,
+    # not the skills directory, so they cannot cause name collisions.
     handles_by_name: dict[str, list[tuple[ParsedHandle, str | None]]] = {}
     for dep in config.dependencies:
         if not (dep.path or dep.handle):
+            continue
+        if dep.type == DEPENDENCY_TYPE_RALPH:
             continue
         try:
             handle, source_name = dep.resolve(

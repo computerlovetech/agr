@@ -289,6 +289,33 @@ class TestMigrateFlatInstalledNames:
         assert (skills_dir / full1 / METADATA_FILENAME).exists()
         assert (skills_dir / full2 / METADATA_FILENAME).exists()
 
+    def test_ralph_dep_does_not_block_skill_rename(self, tmp_path):
+        """A ralph dep with the same name should not prevent skill rename.
+
+        Ralph dependencies install to .agents/ralphs/, not the skills
+        directory, so they must not count as ambiguous names during skill
+        migration.
+        """
+        skills_dir = tmp_path / "skills"
+        full_name = (
+            f"user{INSTALLED_NAME_SEPARATOR}repo{INSTALLED_NAME_SEPARATOR}helper"
+        )
+        _make_skill(skills_dir / full_name)
+
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="skill", handle="user/repo/helper"),
+                Dependency(type="ralph", handle="bob/ralphs/helper"),
+            ]
+        )
+
+        migrate_flat_installed_names(skills_dir, CLAUDE, config, tmp_path)
+
+        # The skill should be renamed to the plain name because it's the
+        # only *skill* dep with that name (the ralph is irrelevant).
+        assert not (skills_dir / full_name).exists()
+        assert (skills_dir / "helper" / SKILL_MARKER).exists()
+
 
 class TestFlattenNestedSkills:
     """Tests for _flatten_nested_skills."""
