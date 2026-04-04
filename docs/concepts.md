@@ -128,8 +128,9 @@ into each tool's skills folder. For the same reason, global installs (`-g`)
 skip ralph dependencies — a ralph's commands (like `uv run pytest`) only
 make sense inside a specific project.
 
-See the [Ralph Directory](ralphs.md) for the full `RALPH.md` format,
-installation details, and publishing guide.
+See the [Ralph Directory](ralphs.md) for installation details, or
+[Creating Ralphs](creating-ralphs.md) for the `RALPH.md` format and
+publishing guide.
 
 ---
 

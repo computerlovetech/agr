@@ -960,7 +960,7 @@ Error: './my-ralph' is not a valid ralph (missing RALPH.md)
 
 The path doesn't contain the expected marker file. For skills, create a
 `SKILL.md` with the required frontmatter — see [Creating Skills](creating.md).
-For ralphs, create a `RALPH.md` — see [Ralph Directory](ralphs.md#the-ralphmd-format).
+For ralphs, create a `RALPH.md` — see [Creating Ralphs](creating-ralphs.md#ralphmd-format).
 
 ### Why is my skill not showing up in my tool?
 

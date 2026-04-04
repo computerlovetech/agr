@@ -1,6 +1,6 @@
 ---
 title: "Ralph Directory — Browse and Install Autonomous Ralph Loops for Ralph Runtimes"
-description: What a ralph is, the RALPH.md format, and how to install autonomous ralph loops with agr. Ralphs package autonomous agent loops that run with ralph runtimes such as ralphify.
+description: What a ralph is and how to install and run autonomous agent loops with agr. Ralphs package autonomous agent loops that run with ralph runtimes such as ralphify.
 keywords:
   - agr ralph
   - RALPH.md
@@ -11,11 +11,6 @@ keywords:
   - agr install ralph
   - AI agent loop
   - .agents/ralphs
-  - create a ralph
-  - write RALPH.md
-  - publish ralph to GitHub
-  - RALPH.md format
-  - RALPH.md frontmatter
 ---
 
 # Ralph Directory
@@ -56,71 +51,6 @@ understands the `RALPH.md` format will work.
 | `agr.toml` `type` | `"skill"` | `"ralph"` |
 | `agr -g` (global) | Yes | No — ralphs are project-only |
 | [`agrx`](agrx.md) support | Yes | No — install locally, then run with the runtime |
-
-## The RALPH.md format
-
-The frontmatter is YAML. The body is a markdown prompt template with
-placeholders that the runtime substitutes each iteration.
-
-**Frontmatter fields:**
-
-| Field | Required | What it does |
-|---|---|---|
-| `agent` | Yes | Shell command that launches the agent (e.g. `claude -p --dangerously-skip-permissions`) |
-| `commands` | No | List of `{name, run, timeout?}` entries. Each command's stdout/stderr is captured and available as `{{ commands.<name> }}` in the body. |
-| `args` | No | List of argument names the user can pass at runtime. Values are substituted into `{{ args.<name> }}`. |
-
-**Minimal example** (adapted from the
-[bug-hunter example in ralphify](https://github.com/kasperjunge/ralphify/blob/main/examples/bug-hunter/RALPH.md)):
-
-```markdown
----
-agent: claude -p --dangerously-skip-permissions
-commands:
-  - name: tests
-    run: uv run pytest -x
-  - name: lint
-    run: uv run ruff check .
-args:
-  - focus
----
-
-# Bug Hunter
-
-You are an autonomous bug-hunting agent running in a loop. Each iteration
-starts with a fresh context — progress lives in the code and in git.
-
-## Test results
-
-{{ commands.tests }}
-
-## Lint
-
-{{ commands.lint }}
-
-## Task
-
-Find and fix a real bug in this codebase.
-{{ args.focus }}
-```
-
-See the [ralphify frontmatter reference](https://github.com/kasperjunge/ralphify/blob/main/src/ralphify/_frontmatter.py)
-for the full list of supported fields and the [examples directory](https://github.com/kasperjunge/ralphify/tree/main/examples)
-for more complete ralphs.
-
-## Directory layout
-
-A ralph is just a directory with a `RALPH.md` file. Supporting files are
-optional:
-
-```text
-my-ralph/
-├── RALPH.md         # Required — frontmatter + prompt body
-├── scripts/         # Optional — helper scripts referenced from commands
-│   └── precheck.sh
-└── references/      # Optional — reference docs
-    └── style-guide.md
-```
 
 ## Installing a ralph
 
@@ -170,56 +100,15 @@ Any other runtime that implements the `RALPH.md` format works too. See the
 [ralphify docs](https://github.com/kasperjunge/ralphify) for full usage,
 flags, and behavior.
 
-## Publishing a ralph
+## Creating a ralph
 
-### 1. Create the ralph directory
-
-```text
-my-ralph/
-└── RALPH.md
-```
-
-Author `RALPH.md` using the [format above](#the-ralphmd-format). Test
-locally before publishing:
-
-```bash
-agr add ./my-ralph
-uvx ralphify run .agents/ralphs/my-ralph --max-iterations 1
-```
-
-### 2. Push to GitHub
-
-The recommended layout is one directory per ralph inside a repository — the
-same shape as a skills repo. A single repository can mix skills and ralphs;
-agr picks the right type per directory.
-
-```text
-your-username/agent-resources/
-├── bug-hunter/
-│   └── RALPH.md
-└── code-review/
-    └── SKILL.md
-```
-
-### 3. Share the install command
-
-Others can install with:
-
-```bash
-agr add your-username/agent-resources/bug-hunter
-```
-
-agr will find the `RALPH.md`, detect the type automatically, and install it
-into `.agents/ralphs/bug-hunter/`.
-
-!!! tip "Community Ralphs"
-    A curated community directory for ralphs is coming soon. Until then,
-    point users to your repo directly, or open an issue at
-    [github.com/computerlovetech/agr](https://github.com/computerlovetech/agr/issues)
-    to discuss listing options.
+See [Creating Ralphs](creating-ralphs.md) for the full guide — the
+`RALPH.md` format, directory layout, testing workflow, and publishing to
+GitHub.
 
 ## Next Steps
 
+- [Creating Ralphs](creating-ralphs.md) — Write, test, and publish your own ralphs
 - [Core Concepts](concepts.md) — How skills, ralphs, tools, sources, and scopes fit together
 - [Configuration](configuration.md) — `agr.toml` settings, including `type = "ralph"`
 - [CLI Reference](reference.md) — Every command and flag

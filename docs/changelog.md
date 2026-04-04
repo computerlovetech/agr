@@ -55,8 +55,9 @@ dependencies = [
 The lockfile (`agr.lock`) tracks ralphs with `[[ralph]]` entries, pinning
 commit SHAs and content hashes just like skills.
 
-See the [Ralph Directory](ralphs.md) for the `RALPH.md` format, installation
-details, and publishing guide.
+See the [Ralph Directory](ralphs.md) for installation details, or
+[Creating Ralphs](creating-ralphs.md) for the `RALPH.md` format and
+publishing guide.
 
 ### 1-part handles with `default_owner`
 
