@@ -20,6 +20,44 @@ details, see [CHANGELOG.md on GitHub](https://github.com/computerlovetech/agr/bl
 
 ## Unreleased
 
+### Ralph support — autonomous agent loops as a dependency type
+
+agr now manages **ralphs** alongside skills. A ralph is a directory with a
+`RALPH.md` file that defines an autonomous agent loop — an agent command, shell
+commands whose output fills the prompt, and args supplied at runtime. agr
+packages and distributes ralphs; a ralph runtime such as
+[ralphify](https://github.com/kasperjunge/ralphify) executes them.
+
+The same commands work for both resource types — no new flags:
+
+```bash
+agr add user/repo/bug-hunter       # Auto-detected as ralph via RALPH.md
+agr add ./my-ralph                 # Local ralph
+agr list                           # Shows both skills and ralphs
+agr remove bug-hunter              # Works for either type
+agr sync                           # Installs all dependencies from agr.toml
+```
+
+Ralphs install once per project into `.agents/ralphs/<name>/` — no per-tool
+fan-out. Global installs (`-g`) skip ralph dependencies because a ralph's
+commands only make sense inside a specific project. `agrx` is skill-only.
+
+Each dependency in `agr.toml` now carries a `type` field (`"skill"` or
+`"ralph"`), set automatically by `agr add`:
+
+```toml
+dependencies = [
+    {handle = "anthropics/skills/pdf", type = "skill"},
+    {handle = "user/agent-resources/bug-hunter", type = "ralph"},
+]
+```
+
+The lockfile (`agr.lock`) tracks ralphs with `[[ralph]]` entries, pinning
+commit SHAs and content hashes just like skills.
+
+See the [Ralph Directory](ralphs.md) for the `RALPH.md` format, installation
+details, and publishing guide.
+
 ### 1-part handles with `default_owner`
 
 You can now install skills with just their name — no owner prefix needed:
