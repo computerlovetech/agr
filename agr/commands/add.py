@@ -97,64 +97,8 @@ def run_add(
             else:
                 dep_type = DEPENDENCY_TYPE_SKILL  # default, may change below
 
-            if dep_type == DEPENDENCY_TYPE_RALPH or (
-                not handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL
-            ):
-                # For remote handles, try skill first; if not found, try ralph
-                if handle.is_local:
-                    # Local ralph
-                    installed_path, install_result = fetch_and_install_ralph(
-                        handle,
-                        repo_root,
-                        overwrite,
-                        resolver=resolver,
-                        source=source,
-                        default_repo=config.default_repo,
-                    )
-                    installed_paths = [str(installed_path)]
-                    dep_type = DEPENDENCY_TYPE_RALPH
-                else:
-                    # Remote: try as skill first
-                    try:
-                        installed_paths_dict, install_result = (
-                            fetch_and_install_to_tools(
-                                handle,
-                                repo_root,
-                                tools,
-                                overwrite,
-                                resolver=resolver,
-                                source=source,
-                                skills_dirs=skills_dirs,
-                                default_repo=config.default_repo,
-                            )
-                        )
-                        installed_paths = [
-                            f"{name}: {path}"
-                            for name, path in installed_paths_dict.items()
-                        ]
-                        dep_type = DEPENDENCY_TYPE_SKILL
-                    except SkillNotFoundError:
-                        # Skill not found — try as ralph
-                        try:
-                            installed_path, install_result = fetch_and_install_ralph(
-                                handle,
-                                repo_root,
-                                overwrite,
-                                resolver=resolver,
-                                source=source,
-                                default_repo=config.default_repo,
-                            )
-                            installed_paths = [str(installed_path)]
-                            dep_type = DEPENDENCY_TYPE_RALPH
-                        except RalphNotFoundError:
-                            # Neither skill nor ralph found — re-raise as skill error
-                            # for backwards-compatible error messages
-                            raise SkillNotFoundError(
-                                f"'{handle.name}' not found as a skill or ralph "
-                                f"in any configured source."
-                            ) from None
-            else:
-                # Local skill (already detected)
+            if handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL:
+                # Local skill — install directly to tools
                 installed_paths_dict, install_result = fetch_and_install_to_tools(
                     handle,
                     repo_root,
@@ -168,6 +112,55 @@ def run_add(
                 installed_paths = [
                     f"{name}: {path}" for name, path in installed_paths_dict.items()
                 ]
+            elif handle.is_local:
+                # Local ralph — install to project ralphs directory
+                installed_path, install_result = fetch_and_install_ralph(
+                    handle,
+                    repo_root,
+                    overwrite,
+                    resolver=resolver,
+                    source=source,
+                    default_repo=config.default_repo,
+                )
+                installed_paths = [str(installed_path)]
+            else:
+                # Remote — try as skill first, fall back to ralph
+                try:
+                    installed_paths_dict, install_result = (
+                        fetch_and_install_to_tools(
+                            handle,
+                            repo_root,
+                            tools,
+                            overwrite,
+                            resolver=resolver,
+                            source=source,
+                            skills_dirs=skills_dirs,
+                            default_repo=config.default_repo,
+                        )
+                    )
+                    installed_paths = [
+                        f"{name}: {path}"
+                        for name, path in installed_paths_dict.items()
+                    ]
+                    dep_type = DEPENDENCY_TYPE_SKILL
+                except SkillNotFoundError:
+                    try:
+                        installed_path, install_result = fetch_and_install_ralph(
+                            handle,
+                            repo_root,
+                            overwrite,
+                            resolver=resolver,
+                            source=source,
+                            default_repo=config.default_repo,
+                        )
+                        installed_paths = [str(installed_path)]
+                        dep_type = DEPENDENCY_TYPE_RALPH
+                    except RalphNotFoundError:
+                        # Neither skill nor ralph found
+                        raise SkillNotFoundError(
+                            f"'{handle.name}' not found as a skill or ralph "
+                            f"in any configured source."
+                        ) from None
 
             # Add to config
             if handle.is_local:
