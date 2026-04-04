@@ -9,11 +9,17 @@ import shutil
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
 from agr.exceptions import AgrError, RepoNotFoundError
-from agr.git import downloaded_repo, get_head_commit_full
+from agr.git import (
+    checkout_full,
+    checkout_sparse_paths,
+    downloaded_repo,
+    get_head_commit_full,
+    git_list_files,
+)
 from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
     METADATA_KEY_ID,
@@ -171,6 +177,91 @@ def _locate_remote_dep(
         f"{dep_kind} '{handle.name}' not found in sources: "
         f"{', '.join(s.name for s in resolver.ordered(source))}"
     )
+
+
+def prepare_repo_for_deps(
+    repo_dir: Path,
+    dep_names: list[str],
+    find_in_listing: Callable[[list[str], list[str]], dict[str, PurePosixPath]],
+    find_in_repo: Callable[[Path, str], Path | None],
+    dep_kind: str,
+) -> dict[str, Path]:
+    """Prepare a repo so multiple dependency paths are checked out.
+
+    Generic implementation shared by skill and ralph installers.
+
+    Args:
+        repo_dir: Path to the downloaded repository.
+        dep_names: Names of dependencies to locate.
+        find_in_listing: Callable(file_paths, names) -> {name: rel_dir}.
+        find_in_repo: Callable(repo_dir, name) -> Path | None (filesystem fallback).
+        dep_kind: Human-readable label for error messages (e.g. "skill").
+
+    Returns:
+        Mapping of dependency name to resolved path for those found.
+    """
+    unique_names = list(dict.fromkeys(dep_names))
+    if not unique_names:
+        return {}
+
+    try:
+        paths = git_list_files(repo_dir)
+        rel_paths = {
+            name: Path(d)
+            for name, d in find_in_listing(paths, unique_names).items()
+        }
+
+        if rel_paths:
+            checkout_sparse_paths(repo_dir, list(rel_paths.values()))
+            resolved = {
+                name: repo_dir / rel_path for name, rel_path in rel_paths.items()
+            }
+            for path in resolved.values():
+                if not path.exists():
+                    raise AgrError(f"Failed to checkout {dep_kind} path.")
+            return resolved
+
+        return {}
+    except AgrError:
+        checkout_full(repo_dir)
+        resolved_dict: dict[str, Path] = {}
+        for name in unique_names:
+            dep_path = find_in_repo(repo_dir, name)
+            if dep_path is not None:
+                resolved_dict[name] = dep_path
+        return resolved_dict
+
+
+def list_remote_repo_deps(
+    owner: str,
+    repo_name: str,
+    discover_in_listing: Callable[[list[str]], list[str]],
+    resolver: SourceResolver | None = None,
+    source: str | None = None,
+) -> list[str]:
+    """List all dependency names of a given kind in a remote repository.
+
+    Generic implementation shared by skill and ralph installers.
+
+    Args:
+        owner: Repository owner/username.
+        repo_name: Repository name.
+        discover_in_listing: Callable(file_paths) -> sorted list of names.
+        resolver: Source resolver for finding the repo.
+        source: Explicit source name.
+
+    Returns:
+        Sorted list of names found, or empty list on any error.
+    """
+    resolver = resolver or SourceResolver.default()
+    for source_config in resolver.ordered(source):
+        try:
+            with downloaded_repo(source_config, owner, repo_name) as repo_dir:
+                paths = git_list_files(repo_dir)
+                return discover_in_listing(paths)
+        except AgrError:
+            continue
+    return []
 
 
 def cleanup_empty_parents(path: Path, stop_at: Path) -> None:

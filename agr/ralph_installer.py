@@ -18,18 +18,14 @@ from agr._install_common import (
     _dep_not_found_message,
     _dir_matches_handle,
     _locate_remote_dep,
+    list_remote_repo_deps,
+    prepare_repo_for_deps,
     _rollback_on_failure,
 )
 from agr.exceptions import (
     AgrError,
     InvalidLocalPathError,
     RalphNotFoundError,
-)
-from agr.git import (
-    checkout_full,
-    checkout_sparse_paths,
-    downloaded_repo,
-    git_list_files,
 )
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
@@ -159,36 +155,9 @@ def prepare_repo_for_ralph(repo_dir: Path, ralph_name: str) -> Path | None:
 
 def prepare_repo_for_ralphs(repo_dir: Path, ralph_names: list[str]) -> dict[str, Path]:
     """Prepare a repo so multiple ralph paths are checked out."""
-    unique_names = list(dict.fromkeys(ralph_names))
-    if not unique_names:
-        return {}
-
-    try:
-        paths = git_list_files(repo_dir)
-        rel_paths = {
-            name: Path(d)
-            for name, d in find_ralphs_in_repo_listing(paths, unique_names).items()
-        }
-
-        if rel_paths:
-            checkout_sparse_paths(repo_dir, list(rel_paths.values()))
-            resolved = {
-                name: repo_dir / rel_path for name, rel_path in rel_paths.items()
-            }
-            for path in resolved.values():
-                if not path.exists():
-                    raise AgrError("Failed to checkout ralph path.")
-            return resolved
-
-        return {}
-    except AgrError:
-        checkout_full(repo_dir)
-        resolved_dict: dict[str, Path] = {}
-        for name in unique_names:
-            ralph_path = find_ralph_in_repo(repo_dir, name)
-            if ralph_path is not None:
-                resolved_dict[name] = ralph_path
-        return resolved_dict
+    return prepare_repo_for_deps(
+        repo_dir, ralph_names, find_ralphs_in_repo_listing, find_ralph_in_repo, "ralph"
+    )
 
 
 def list_remote_repo_ralphs(
@@ -205,15 +174,9 @@ def list_remote_repo_ralphs(
     Returns:
         Sorted list of ralph names found, or empty list on any error.
     """
-    resolver = resolver or SourceResolver.default()
-    for source_config in resolver.ordered(source):
-        try:
-            with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-                paths = git_list_files(repo_dir)
-                return discover_ralphs_in_repo_listing(paths)
-        except AgrError:
-            continue
-    return []
+    return list_remote_repo_deps(
+        owner, repo_name, discover_ralphs_in_repo_listing, resolver, source
+    )
 
 
 # ---------------------------------------------------------------------------

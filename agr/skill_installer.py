@@ -17,6 +17,8 @@ from agr._install_common import (
     cleanup_empty_parents,
     _dep_not_found_message,
     _dir_matches_handle,
+    list_remote_repo_deps,
+    prepare_repo_for_deps,
     _resolve_skills_dir,
     _rollback_on_failure,
 )
@@ -25,12 +27,6 @@ from agr.exceptions import (
     InvalidHandleError,
     InvalidLocalPathError,
     SkillNotFoundError,
-)
-from agr.git import (
-    checkout_full,
-    checkout_sparse_paths,
-    downloaded_repo,
-    git_list_files,
 )
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
@@ -197,41 +193,9 @@ def prepare_repo_for_skills(repo_dir: Path, skill_names: list[str]) -> dict[str,
     Returns a mapping of skill name to resolved path for those found.
     Missing skills are omitted from the mapping.
     """
-    unique_names = list(dict.fromkeys(skill_names))
-    if not unique_names:
-        return {}
-
-    try:
-        # Fast path: use git ls-tree to find SKILL.md locations without
-        # checking out the full repo, then sparse-checkout only the
-        # directories we need.
-        paths = git_list_files(repo_dir)
-        rel_paths = {
-            name: Path(d)
-            for name, d in find_skills_in_repo_listing(paths, unique_names).items()
-        }
-
-        if rel_paths:
-            checkout_sparse_paths(repo_dir, list(rel_paths.values()))
-            resolved = {
-                name: repo_dir / rel_path for name, rel_path in rel_paths.items()
-            }
-            for path in resolved.values():
-                if not path.exists():
-                    raise AgrError("Failed to checkout skill path.")
-            return resolved
-
-        return {}
-    except AgrError:
-        # Slow fallback: if sparse checkout fails (e.g. older git or
-        # unusual repo layout), do a full checkout and scan the filesystem.
-        checkout_full(repo_dir)
-        resolved: dict[str, Path] = {}
-        for name in unique_names:
-            skill_path = find_skill_in_repo(repo_dir, name)
-            if skill_path is not None:
-                resolved[name] = skill_path
-        return resolved
+    return prepare_repo_for_deps(
+        repo_dir, skill_names, find_skills_in_repo_listing, find_skill_in_repo, "skill"
+    )
 
 
 def list_remote_repo_skills(
@@ -254,15 +218,9 @@ def list_remote_repo_skills(
     Returns:
         Sorted list of skill names found, or empty list on any error.
     """
-    resolver = resolver or SourceResolver.default()
-    for source_config in resolver.ordered(source):
-        try:
-            with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-                paths = git_list_files(repo_dir)
-                return discover_skills_in_repo_listing(paths)
-        except AgrError:
-            continue
-    return []
+    return list_remote_repo_deps(
+        owner, repo_name, discover_skills_in_repo_listing, resolver, source
+    )
 
 
 # ---------------------------------------------------------------------------
