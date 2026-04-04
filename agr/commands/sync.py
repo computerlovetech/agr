@@ -518,22 +518,14 @@ def run_sync(
     lockfile_path = build_lockfile_path(config_path)
     existing_lockfile = load_lockfile(lockfile_path)
 
-    if frozen:
+    if frozen or locked:
         if existing_lockfile is None:
+            mode = "--frozen" if frozen else "--locked"
             error_exit(
-                "No agr.lock found. Cannot use --frozen without a lockfile.",
+                f"No agr.lock found. Cannot use {mode} without a lockfile.",
                 hint="Run 'agr sync' first to generate a lockfile.",
             )
-        _sync_from_lockfile(existing_lockfile, config, repo_root, tools, resolver)
-        return
-
-    if locked:
-        if existing_lockfile is None:
-            error_exit(
-                "No agr.lock found. Cannot use --locked without a lockfile.",
-                hint="Run 'agr sync' first to generate a lockfile.",
-            )
-        if not is_lockfile_current(existing_lockfile, config.dependencies):
+        if locked and not is_lockfile_current(existing_lockfile, config.dependencies):
             error_exit(
                 "agr.lock is out of date with agr.toml.",
                 hint="Run 'agr sync' to update the lockfile.",

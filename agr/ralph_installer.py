@@ -4,7 +4,6 @@ Handles local and remote ralph installation, repo preparation,
 destination resolution, and ralph lifecycle management.
 """
 
-import logging
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
@@ -49,8 +48,6 @@ from agr.ralph import (
     is_valid_ralph_dir,
 )
 from agr.source import SourceResolver
-
-logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------

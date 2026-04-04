@@ -4,7 +4,6 @@ Handles local and remote skill installation, repo preparation,
 destination resolution, and skill lifecycle management.
 """
 
-import logging
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
@@ -52,8 +51,6 @@ from agr.skill import (
 )
 from agr.source import SourceResolver
 from agr.tool import DEFAULT_TOOL, ToolConfig, lookup_skills_dir
-
-logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
