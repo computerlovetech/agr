@@ -146,7 +146,7 @@ def run_tool_migrations(
     if CODEX.name in tool_by_name:
         _migrate_skills_directory(
             base / ".codex" / "skills",
-            base / ".agents" / "skills",
+            CODEX.get_skills_dir(base),
             cleanup_parent=True,
         )
 
@@ -161,7 +161,7 @@ def run_tool_migrations(
         )
         _migrate_skills_directory(
             base / opencode_dir / "skill",
-            base / opencode_dir / "skills",
+            base / opencode_dir / tool.skills_subdir,
             cleanup_parent=False,
         )
 
@@ -170,7 +170,7 @@ def run_tool_migrations(
     if ANTIGRAVITY.name in tool_by_name:
         _migrate_skills_directory(
             base / ".agent" / "skills",
-            base / ".gemini" / "skills",
+            ANTIGRAVITY.get_skills_dir(base),
             cleanup_parent=True,
         )
 
@@ -179,7 +179,7 @@ def run_tool_migrations(
     if ANTIGRAVITY.name in tool_by_name and global_install:
         _migrate_skills_directory(
             base / ".gemini" / "antigravity" / "skills",
-            base / ".gemini" / "skills",
+            ANTIGRAVITY.get_skills_dir(base),
             cleanup_parent=True,
         )
 
@@ -188,8 +188,7 @@ def run_tool_migrations(
     # .cursor/skills/. Cursor expects flat naming where each skill is a
     # direct child of the skills directory.
     if CURSOR.name in tool_by_name:
-        cursor_skills = base / ".cursor" / "skills"
-        _flatten_nested_skills(cursor_skills)
+        _flatten_nested_skills(CURSOR.get_skills_dir(base))
 
 
 def _flatten_nested_skills(skills_dir: Path) -> None:
