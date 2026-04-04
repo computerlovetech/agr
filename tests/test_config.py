@@ -31,18 +31,18 @@ class TestDependency:
 
     def test_both_handle_and_path_raises(self):
         """Cannot have both handle and path."""
-        with pytest.raises(ValueError, match="cannot have both"):
+        with pytest.raises(ConfigError, match="cannot have both"):
             Dependency(type="skill", handle="user/skill", path="./local")
 
     def test_neither_handle_nor_path_raises(self):
         """Must have either handle or path."""
-        with pytest.raises(ValueError, match="must have either"):
+        with pytest.raises(ConfigError, match="must have either"):
             Dependency(type="skill")
 
     def test_local_with_source_raises(self):
         """Local dependency cannot specify a source."""
         with pytest.raises(
-            ValueError, match="Local dependency cannot specify a source"
+            ConfigError, match="Local dependency cannot specify a source"
         ):
             Dependency(type="skill", path="./my-skill", source="github")
 

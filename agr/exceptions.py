@@ -42,9 +42,11 @@ class RateLimitError(AgrError):
 
 
 # Exception types commonly caught during install/sync operations.
-# FileExistsError (subclass of OSError) must be listed so that
-# format_install_error can distinguish it from unexpected OS errors.
-INSTALL_ERROR_TYPES = (FileExistsError, AgrError, OSError, ValueError)
+# FileExistsError must be listed explicitly so that format_install_error
+# can distinguish it from other OS-level errors.
+# PermissionError and FileNotFoundError (both OSError subclasses) cover
+# expected filesystem failure modes during copy/write operations.
+INSTALL_ERROR_TYPES = (FileExistsError, AgrError, PermissionError, FileNotFoundError)
 
 
 def format_install_error(exc: Exception) -> str:

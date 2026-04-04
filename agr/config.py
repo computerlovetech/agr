@@ -188,11 +188,11 @@ class Dependency:
     def __post_init__(self) -> None:
         """Validate dependency has exactly one source."""
         if self.handle and self.path:
-            raise ValueError("Dependency cannot have both handle and path")
+            raise ConfigError("Dependency cannot have both handle and path")
         if not self.handle and not self.path:
-            raise ValueError("Dependency must have either handle or path")
+            raise ConfigError("Dependency must have either handle or path")
         if self.path and self.source:
-            raise ValueError("Local dependency cannot specify a source")
+            raise ConfigError("Local dependency cannot specify a source")
 
     @property
     def is_local(self) -> bool:
@@ -409,11 +409,11 @@ class AgrConfig:
             path: Path to save to (uses original path if not specified)
 
         Raises:
-            ValueError: If no path specified and no original path
+            ConfigError: If no path specified and no original path
         """
         save_path = path or self._path
         if save_path is None:
-            raise ValueError("No path specified for saving config")
+            raise ConfigError("No path specified for saving config")
 
         doc: TOMLDocument = tomlkit.document()
 
@@ -445,7 +445,7 @@ class AgrConfig:
         )
         if self.default_tool:
             if self.default_tool not in self.tools:
-                raise ValueError("default_tool must be listed in tools")
+                raise ConfigError("default_tool must be listed in tools")
             doc["default_tool"] = self.default_tool
         else:
             doc.add(tomlkit.comment('default_tool = "claude"'))
