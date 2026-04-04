@@ -23,6 +23,9 @@ from agr.git import (
 from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
     METADATA_KEY_ID,
+    METADATA_KEY_TYPE,
+    METADATA_TYPE_LOCAL,
+    build_handle_id,
     build_handle_ids,
     read_resource_metadata,
 )
@@ -98,6 +101,56 @@ def _find_existing_flat_dir(
         return full_path
 
     return None
+
+
+def find_local_name_conflicts(
+    candidates: list[Path],
+    default_dest: Path,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    is_valid_dir: Callable[[Path], bool],
+) -> tuple[list[Path], bool]:
+    """Find conflicting local installs among candidate paths.
+
+    Scans *candidates* for directories that are valid dependencies with
+    the same name but a different local identity than *handle*.
+
+    Args:
+        candidates: Paths to check for conflicts.
+        default_dest: The path we'd install to (skipped — not a conflict
+            with itself).
+        handle: Parsed handle for the dependency being installed.
+        repo_root: Repository root for metadata resolution.
+        is_valid_dir: Callable to check if a directory is a valid dependency.
+
+    Returns:
+        Tuple of (conflict_paths, has_unknown_metadata).
+    """
+    handle_id = build_handle_id(handle, repo_root)
+    conflicts: list[Path] = []
+    has_unknown = False
+
+    for path in candidates:
+        # Skip the path we'd install to (it's not a conflict with itself).
+        if path.resolve() == default_dest.resolve():
+            continue
+        if not is_valid_dir(path):
+            continue
+        meta = read_resource_metadata(path)
+        if meta:
+            # Remote deps at this path are not local conflicts.
+            if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
+                continue
+            # Same local handle — this is us, not a conflict.
+            if meta.get(METADATA_KEY_ID) == handle_id:
+                continue
+            conflicts.append(path)
+            continue
+        # No metadata means we can't determine ownership — flag it.
+        has_unknown = True
+        conflicts.append(path)
+
+    return conflicts, has_unknown
 
 
 def _resolve_flat_destination(

@@ -20,6 +20,7 @@ from agr._install_common import (
     _locate_remote_dep,
     _resolve_flat_destination,
     _rollback_on_failure,
+    find_local_name_conflicts,
     list_remote_repo_deps,
     prepare_repo_for_deps,
 )
@@ -34,10 +35,6 @@ from agr.handle import (
     warn_legacy_repo,
 )
 from agr.metadata import (
-    METADATA_KEY_ID,
-    METADATA_KEY_TYPE,
-    METADATA_TYPE_LOCAL,
-    build_handle_id,
     compute_content_hash,
     read_resource_metadata,
     stamp_resource_metadata,
@@ -201,29 +198,11 @@ def _find_local_ralph_name_conflicts(
 
     Returns a tuple of (conflict_paths, has_unknown_metadata).
     """
-    handle_id = build_handle_id(handle, repo_root)
-    conflicts: list[Path] = []
-    has_unknown = False
-
     candidates = [ralphs_dir / handle.name, ralphs_dir / handle.to_installed_name()]
 
-    for path in candidates:
-        if path.resolve() == default_dest.resolve():
-            continue
-        if not is_valid_ralph_dir(path):
-            continue
-        meta = read_resource_metadata(path)
-        if meta:
-            if meta.get(METADATA_KEY_TYPE) != METADATA_TYPE_LOCAL:
-                continue
-            if meta.get(METADATA_KEY_ID) == handle_id:
-                continue
-            conflicts.append(path)
-            continue
-        has_unknown = True
-        conflicts.append(path)
-
-    return conflicts, has_unknown
+    return find_local_name_conflicts(
+        candidates, default_dest, handle, repo_root, is_valid_ralph_dir
+    )
 
 
 def install_local_ralph(
