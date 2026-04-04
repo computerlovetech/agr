@@ -1,12 +1,15 @@
 ---
-title: "How agr Works — Skills, Handles, Sources, Scopes, and the Sync Lifecycle"
-description: How agr manages AI agent resources — SKILL.md format, handle resolution, multi-tool sync across Claude Code, Cursor, Codex, and more. Understand skills, handles, sources, scopes, and agr.toml.
+title: "How agr Works — Skills, Ralphs, Handles, Sources, Scopes, and the Sync Lifecycle"
+description: How agr manages AI agent resources — skills (SKILL.md) and ralphs (RALPH.md autonomous loops). Handle resolution, multi-tool sync, agr.toml manifest, lockfile pinning, and the full install flow.
 keywords:
   - how agr works
   - agr skills explained
+  - agr ralphs explained
   - skill handles resolution
   - SKILL.md format
+  - RALPH.md format
   - agr.toml manifest
+  - agr.lock lockfile
   - local vs global skills
   - agr sync lifecycle
   - agr instruction syncing
@@ -22,6 +25,9 @@ keywords:
   - AI agent resource directory structure
   - multi-tool AI resource management
   - keep AI agent instructions in sync
+  - ralph autonomous agent loop
+  - ralphify ralph runtime
+  - skill vs ralph comparison
   - Agentic Engineering
 ---
 
