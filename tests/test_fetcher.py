@@ -13,7 +13,7 @@ from agr.exceptions import (
     SkillNotFoundError,
 )
 from agr.fetcher import (
-    _cleanup_empty_parents,
+    cleanup_empty_parents,
     fetch_and_install_to_tools,
     install_local_skill,
     install_skill_from_repo,
@@ -550,7 +550,7 @@ class TestDownloadedRepo:
 
 
 class TestCleanupEmptyParents:
-    """Tests for _cleanup_empty_parents function."""
+    """Tests for cleanup_empty_parents function."""
 
     def test_stops_at_boundary(self, tmp_path):
         """Doesn't delete beyond stop_at."""
@@ -560,7 +560,7 @@ class TestCleanupEmptyParents:
         nested.mkdir(parents=True)
 
         # Clean up nested empty dirs
-        _cleanup_empty_parents(nested, stop_at)
+        cleanup_empty_parents(nested, stop_at)
 
         # All empty dirs within stop_at should be removed
         assert not (stop_at / "a").exists()
@@ -576,7 +576,7 @@ class TestCleanupEmptyParents:
         # Put a file in "a"
         (stop_at / "a" / "file.txt").write_text("content")
 
-        _cleanup_empty_parents(nested, stop_at)
+        cleanup_empty_parents(nested, stop_at)
 
         # "b" should be removed but "a" should remain (has file)
         assert not (stop_at / "a" / "b").exists()
@@ -597,7 +597,7 @@ class TestCleanupEmptyParents:
         # Use symlink path
         nested_via_link = symlink / "a" / "b"
 
-        _cleanup_empty_parents(nested_via_link, symlink)
+        cleanup_empty_parents(nested_via_link, symlink)
 
         # Should still clean up properly
         assert not (stop_at / "a").exists()

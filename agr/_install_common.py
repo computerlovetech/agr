@@ -6,17 +6,20 @@ skill_installer and ralph_installer.
 
 import logging
 import shutil
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from collections.abc import Generator
 from typing import NamedTuple
 
+from agr.exceptions import AgrError, RepoNotFoundError
+from agr.git import downloaded_repo, get_head_commit_full
+from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
     METADATA_KEY_ID,
     read_skill_metadata,
 )
-from agr.source import SourceConfig
+from agr.source import SourceConfig, SourceResolver
 from agr.tool import ToolConfig
 
 # Ralph installation directory constants
@@ -35,19 +38,19 @@ class InstallResult:
     source_name: str | None = None
 
 
-class _RemoteSkillLocation(NamedTuple):
-    """Result of locating a remote skill/ralph across sources."""
+class _RemoteDepLocation(NamedTuple):
+    """Result of locating a remote dependency across sources."""
 
     repo_dir: Path
-    skill_source: Path
+    source_path: Path
     source_config: SourceConfig
     is_legacy: bool
     commit: str | None = None
 
 
-def _skill_dir_matches_handle(skill_dir: Path, handle_ids: list[str]) -> bool:
-    """Check whether a skill directory matches a handle via metadata."""
-    meta = read_skill_metadata(skill_dir)
+def _dir_matches_handle(dep_dir: Path, handle_ids: list[str]) -> bool:
+    """Check whether an installed dependency directory matches a handle via metadata."""
+    meta = read_skill_metadata(dep_dir)
     if not meta:
         return False
     return meta.get(METADATA_KEY_ID) in handle_ids
@@ -109,7 +112,68 @@ def _rollback_on_failure() -> Generator[dict[str, Path], None, None]:
         raise
 
 
-def _cleanup_empty_parents(path: Path, stop_at: Path) -> None:
+@contextmanager
+def _locate_remote_dep(
+    handle: ParsedHandle,
+    prepare_fn: Callable[[Path, str], Path | None],
+    not_found_error_cls: type[Exception],
+    dep_kind: str,
+    resolver: SourceResolver | None = None,
+    source: str | None = None,
+    default_repo: str | None = None,
+) -> Generator[_RemoteDepLocation, None, None]:
+    """Search for a remote dependency across sources and repo candidates.
+
+    Downloads the repository and prepares the dependency, keeping the temp
+    directory alive while the caller processes the result.
+
+    Args:
+        handle: Parsed handle identifying the dependency.
+        prepare_fn: Callable(repo_dir, name) -> Path | None to locate the
+            dependency inside a checked-out repo.
+        not_found_error_cls: Exception class to raise when not found.
+        dep_kind: Human-readable label for error messages (e.g. "Skill").
+        resolver: Source resolver for finding the repo.
+        source: Explicit source name.
+        default_repo: Default repo name fallback.
+
+    Yields:
+        _RemoteDepLocation with repo_dir, source_path, source_config, is_legacy.
+    """
+    resolver = resolver or SourceResolver.default()
+    owner = handle.username or ""
+
+    for repo_name, is_legacy in iter_repo_candidates(handle.repo, default_repo):
+        for source_config in resolver.ordered(source):
+            try:
+                with downloaded_repo(source_config, owner, repo_name) as repo_dir:
+                    dep_source = prepare_fn(repo_dir, handle.name)
+                    if dep_source is None:
+                        continue
+                    try:
+                        commit = get_head_commit_full(repo_dir)
+                    except AgrError:
+                        commit = None
+                    yield _RemoteDepLocation(
+                        repo_dir=repo_dir,
+                        source_path=dep_source,
+                        source_config=source_config,
+                        is_legacy=is_legacy,
+                        commit=commit,
+                    )
+                    return
+            except RepoNotFoundError:
+                if source is not None:
+                    raise
+                continue
+
+    raise not_found_error_cls(
+        f"{dep_kind} '{handle.name}' not found in sources: "
+        f"{', '.join(s.name for s in resolver.ordered(source))}"
+    )
+
+
+def cleanup_empty_parents(path: Path, stop_at: Path) -> None:
     """Remove empty parent directories up to stop_at.
 
     Args:

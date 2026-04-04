@@ -7,7 +7,7 @@ agr.skill_installer, agr.ralph_installer, or agr._install_common.
 
 from agr._install_common import (  # noqa: F401
     InstallResult,
-    _cleanup_empty_parents,
+    cleanup_empty_parents,
 )
 from agr.skill_installer import (  # noqa: F401
     fetch_and_install,
@@ -30,6 +30,7 @@ from agr.ralph_installer import (  # noqa: F401
     install_local_ralph,
     install_ralph_from_repo,
     is_ralph_installed,
+    list_remote_repo_ralphs,
     prepare_repo_for_ralph,
     prepare_repo_for_ralphs,
     ralph_not_found_message,
@@ -51,6 +52,7 @@ __all__ = [
     "install_skill_from_repo_to_tools",
     "is_ralph_installed",
     "is_skill_installed",
+    "list_remote_repo_ralphs",
     "list_remote_repo_skills",
     "prepare_repo_for_skill",
     "prepare_repo_for_skills",
@@ -58,5 +60,5 @@ __all__ = [
     "skill_not_found_message",
     "uninstall_ralph",
     "uninstall_skill",
-    "_cleanup_empty_parents",
+    "cleanup_empty_parents",
 ]

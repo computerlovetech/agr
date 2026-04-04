@@ -12,29 +12,27 @@ from collections.abc import Generator
 
 from agr._install_common import (
     InstallResult,
-    _RemoteSkillLocation,
-    _cleanup_empty_parents,
+    _RemoteDepLocation,
+    _locate_remote_dep,
+    cleanup_empty_parents,
     _dep_not_found_message,
+    _dir_matches_handle,
     _resolve_skills_dir,
     _rollback_on_failure,
-    _skill_dir_matches_handle,
 )
 from agr.exceptions import (
     AgrError,
-    RepoNotFoundError,
     SkillNotFoundError,
 )
 from agr.git import (
     checkout_full,
     checkout_sparse_paths,
     downloaded_repo,
-    get_head_commit_full,
     git_list_files,
 )
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
-    iter_repo_candidates,
     warn_legacy_repo,
 )
 from agr.metadata import (
@@ -137,9 +135,7 @@ def _find_existing_skill_dir(
     full_path = skills_dir / handle.to_installed_name()
 
     # Prefer the plain-name path if metadata confirms it's ours.
-    if is_valid_skill_dir(name_path) and _skill_dir_matches_handle(
-        name_path, handle_ids
-    ):
+    if is_valid_skill_dir(name_path) and _dir_matches_handle(name_path, handle_ids):
         return name_path
 
     # Fall back to the full (qualified) name path without requiring a
@@ -500,55 +496,18 @@ def _locate_remote_skill(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     default_repo: str | None = None,
-) -> Generator[_RemoteSkillLocation, None, None]:
-    """Search for a remote skill across sources and repo candidates.
-
-    Downloads the repository and prepares the skill, keeping the temp
-    directory alive while the caller processes the result.
-
-    Yields:
-        _RemoteSkillLocation with repo_dir, skill_source, source_config, is_legacy.
-
-    Raises:
-        SkillNotFoundError: If skill not found in any source.
-    """
-    resolver = resolver or SourceResolver.default()
-    owner = handle.username or ""
-
-    # Two-level search: try each repo candidate (e.g. "skills" then
-    # "agent-resources") against each configured source (e.g. "github").
-    # First match wins. The outer loop is repo candidates so we prefer
-    # the primary repo name across all sources before trying fallbacks.
-    for repo_name, is_legacy in iter_repo_candidates(handle.repo, default_repo):
-        for source_config in resolver.ordered(source):
-            try:
-                with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-                    skill_source = prepare_repo_for_skill(repo_dir, handle.name)
-                    if skill_source is None:
-                        continue
-                    try:
-                        commit = get_head_commit_full(repo_dir)
-                    except AgrError:
-                        commit = None
-                    yield _RemoteSkillLocation(
-                        repo_dir=repo_dir,
-                        skill_source=skill_source,
-                        source_config=source_config,
-                        is_legacy=is_legacy,
-                        commit=commit,
-                    )
-                    return
-            except RepoNotFoundError:
-                # When a specific source was requested, don't silently
-                # fall back to other sources — surface the error.
-                if source is not None:
-                    raise
-                continue
-
-    raise SkillNotFoundError(
-        f"Skill '{handle.name}' not found in sources: "
-        f"{', '.join(s.name for s in resolver.ordered(source))}"
-    )
+) -> Generator[_RemoteDepLocation, None, None]:
+    """Search for a remote skill across sources and repo candidates."""
+    with _locate_remote_dep(
+        handle,
+        prepare_repo_for_skill,
+        SkillNotFoundError,
+        "Skill",
+        resolver,
+        source,
+        default_repo,
+    ) as loc:
+        yield loc
 
 
 def install_remote_skill(
@@ -587,7 +546,7 @@ def install_remote_skill(
             repo_root,
             overwrite,
             install_source=loc.source_config.name,
-            skill_source=loc.skill_source,
+            skill_source=loc.source_path,
         )
 
 
@@ -712,7 +671,7 @@ def fetch_and_install_to_tools(
                 repo_root,
                 overwrite,
                 install_source=loc.source_config.name,
-                skill_source=loc.skill_source,
+                skill_source=loc.source_path,
             )
             installed[tool.name] = path
         # Warn after successful install so the user sees it once,
@@ -766,7 +725,7 @@ def uninstall_skill(
 
     # Clean up empty parent directories for nested structures
     if tool.supports_nested:
-        _cleanup_empty_parents(skill_path.parent, resolved_dir)
+        cleanup_empty_parents(skill_path.parent, resolved_dir)
 
     return True
 

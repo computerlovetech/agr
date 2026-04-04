@@ -14,26 +14,25 @@ from agr._install_common import (
     InstallResult,
     RALPHS_CONFIG_DIR,
     RALPHS_SUBDIR,
-    _RemoteSkillLocation,
+    _RemoteDepLocation,
     _dep_not_found_message,
-    _skill_dir_matches_handle,
+    _dir_matches_handle,
+    _locate_remote_dep,
+    _rollback_on_failure,
 )
 from agr.exceptions import (
     AgrError,
     RalphNotFoundError,
-    RepoNotFoundError,
 )
 from agr.git import (
     checkout_full,
     checkout_sparse_paths,
     downloaded_repo,
-    get_head_commit_full,
     git_list_files,
 )
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
-    iter_repo_candidates,
     warn_legacy_repo,
 )
 from agr.metadata import (
@@ -48,6 +47,7 @@ from agr.metadata import (
 )
 from agr.ralph import (
     RALPH_MARKER,
+    discover_ralphs_in_repo_listing,
     find_ralph_in_repo,
     find_ralphs_in_repo_listing,
     is_valid_ralph_dir,
@@ -83,9 +83,7 @@ def _find_existing_ralph_dir(
     name_path = ralphs_dir / handle.name
     full_path = ralphs_dir / handle.to_installed_name()
 
-    if is_valid_ralph_dir(name_path) and _skill_dir_matches_handle(
-        name_path, handle_ids
-    ):
+    if is_valid_ralph_dir(name_path) and _dir_matches_handle(name_path, handle_ids):
         return name_path
 
     if is_valid_ralph_dir(full_path):
@@ -192,6 +190,31 @@ def prepare_repo_for_ralphs(repo_dir: Path, ralph_names: list[str]) -> dict[str,
         return resolved_dict
 
 
+def list_remote_repo_ralphs(
+    owner: str,
+    repo_name: str,
+    resolver: SourceResolver | None = None,
+    source: str | None = None,
+) -> list[str]:
+    """List all ralph names in a remote repository.
+
+    Clones the repo and scans for RALPH.md files. Used to provide
+    helpful suggestions when a handle fails to resolve.
+
+    Returns:
+        Sorted list of ralph names found, or empty list on any error.
+    """
+    resolver = resolver or SourceResolver.default()
+    for source_config in resolver.ordered(source):
+        try:
+            with downloaded_repo(source_config, owner, repo_name) as repo_dir:
+                paths = git_list_files(repo_dir)
+                return discover_ralphs_in_repo_listing(paths)
+        except AgrError:
+            continue
+    return []
+
+
 # ---------------------------------------------------------------------------
 # Install orchestration
 # ---------------------------------------------------------------------------
@@ -282,7 +305,9 @@ def install_local_ralph(
     if repo_root is None:
         repo_root = Path.cwd()
 
-    # Self-install case
+    # Self-install case: ralphs always install by name (no tool-specific
+    # path nesting), so handle.name is the correct destination, unlike
+    # skills which use handle.to_skill_path(tool).
     default_dest = ralphs_dir / handle.name
     if source_path.resolve() == default_dest.resolve() and is_valid_ralph_dir(
         default_dest
@@ -323,42 +348,18 @@ def _locate_remote_ralph(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     default_repo: str | None = None,
-) -> Generator[_RemoteSkillLocation, None, None]:
-    """Search for a remote ralph across sources and repo candidates.
-
-    Reuses _RemoteSkillLocation since the fields are identical.
-    """
-    resolver = resolver or SourceResolver.default()
-    owner = handle.username or ""
-
-    for repo_name, is_legacy in iter_repo_candidates(handle.repo, default_repo):
-        for source_config in resolver.ordered(source):
-            try:
-                with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-                    ralph_source = prepare_repo_for_ralph(repo_dir, handle.name)
-                    if ralph_source is None:
-                        continue
-                    try:
-                        commit = get_head_commit_full(repo_dir)
-                    except AgrError:
-                        commit = None
-                    yield _RemoteSkillLocation(
-                        repo_dir=repo_dir,
-                        skill_source=ralph_source,
-                        source_config=source_config,
-                        is_legacy=is_legacy,
-                        commit=commit,
-                    )
-                    return
-            except RepoNotFoundError:
-                if source is not None:
-                    raise
-                continue
-
-    raise RalphNotFoundError(
-        f"Ralph '{handle.name}' not found in sources: "
-        f"{', '.join(s.name for s in resolver.ordered(source))}"
-    )
+) -> Generator[_RemoteDepLocation, None, None]:
+    """Search for a remote ralph across sources and repo candidates."""
+    with _locate_remote_dep(
+        handle,
+        prepare_repo_for_ralph,
+        RalphNotFoundError,
+        "Ralph",
+        resolver,
+        source,
+        default_repo,
+    ) as loc:
+        yield loc
 
 
 def fetch_and_install_ralph(
@@ -391,7 +392,11 @@ def fetch_and_install_ralph(
         )
         return path, InstallResult()
 
-    with _locate_remote_ralph(handle, resolver, source, default_repo) as loc:
+    install_result = InstallResult()
+    with (
+        _rollback_on_failure() as installed,
+        _locate_remote_ralph(handle, resolver, source, default_repo) as loc,
+    ):
         if loc.is_legacy:
             warn_legacy_repo()
         path = install_ralph_from_repo(
@@ -402,8 +407,9 @@ def fetch_and_install_ralph(
             repo_root,
             overwrite,
             install_source=loc.source_config.name,
-            ralph_source=loc.skill_source,
+            ralph_source=loc.source_path,
         )
+        installed["ralph"] = path
         content_hash = compute_content_hash(path)
         install_result = InstallResult(
             commit=loc.commit,
