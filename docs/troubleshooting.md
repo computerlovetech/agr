@@ -1,6 +1,6 @@
 ---
-title: "Fix agr Errors — Troubleshooting Installs, Auth, Sync, Handles, and Skills"
-description: Fix common agr problems — installation errors, GitHub auth, sync failures, handle formats, skill conflicts, and configuration issues.
+title: "Fix agr Errors — Troubleshooting Installs, Auth, Sync, Handles, Skills, and Ralphs"
+description: Fix common agr problems — installation errors, GitHub auth, sync failures, handle formats, skill and ralph conflicts, and configuration issues.
 keywords:
   - agr troubleshooting
   - agr error messages
@@ -8,6 +8,7 @@ keywords:
   - GitHub authentication failed agr
   - agr sync not working
   - skill not found agr
+  - ralph not found agr
   - agr.toml errors
   - agr handle format
   - agr repository not found
@@ -16,6 +17,7 @@ keywords:
   - agrx tool CLI not found
   - agr skill not found in sources
   - agr skill already exists
+  - agr ralph already exists
   - agr invalid handle format
   - agr git not found
   - agr unknown config key
@@ -25,6 +27,8 @@ keywords:
   - agr cannot unset sources
   - agr expects exactly one value
   - agr at least one tool name required
+  - agr ralph troubleshooting
+  - RALPH.md missing
 ---
 
 # Fix Common agr Errors
@@ -34,15 +38,15 @@ keywords:
     missing `GITHUB_TOKEN` for private repos, or stale installs (fix with
     `agr add --overwrite`). Error messages include hints — read them first.
 
-**Key terms:** A **skill** is a directory containing a `SKILL.md` file with
-YAML frontmatter (`name`, `description`) and markdown instructions for an AI
-coding agent. A **handle** identifies a skill on GitHub: `user/skill` (from
-user's `skills` repo), `user/repo/skill` (from a specific repo), or
-`./path/to/skill` (local). A **tool** is a supported AI coding agent (Claude
+**Key terms:** A **resource** is either a **skill** (directory with a
+`SKILL.md`, consumed by AI tools) or a **ralph** (directory with a `RALPH.md`,
+an autonomous loop run by a [ralph runtime](ralphs.md)). A **handle** like
+`user/skill` identifies a resource on GitHub; `user/repo/skill` specifies a
+repo; `./path` is local. A **tool** is a supported AI coding agent (Claude
 Code, Cursor, Codex, OpenCode, Copilot, or Antigravity). A **source** is a Git
-server URL template where agr fetches remote skills from (default: GitHub).
+server URL template where agr fetches remote resources from (default: GitHub).
 
-Quick links: [Installation](#installation) · [Handle Format](#handle-format) · [Configuration](#configuration) · [Syncing](#syncing) · [Sources](#sources) · [Creating Skills](#creating-skills) · [Global Installs](#global-installs) · [agrx](#agrx)
+Quick links: [Installation](#installation) · [Handle Format](#handle-format) · [Configuration](#configuration) · [Syncing](#syncing) · [Sources](#sources) · [Creating Skills](#creating-skills) · [Ralphs](#ralphs) · [Global Installs](#global-installs) · [agrx](#agrx)
 
 ## Installation
 
@@ -105,7 +109,7 @@ Your GitHub token is missing, expired, or lacks permissions.
 - **Token expired?** Generate a new one at [github.com/settings/tokens](https://github.com/settings/tokens).
 - **Wrong permissions?** The token needs **Contents: Read-only** access on the target repository. Fine-grained tokens are recommended.
 
-### How do I fix "Skill not found in repository"?
+### How do I fix "not found in repository"?
 
 ```text
 Error: Skill 'myskill' not found in repository.
@@ -113,9 +117,16 @@ No directory named 'myskill' containing SKILL.md was found.
 Hint: Create a skill at 'skills/myskill/SKILL.md' or 'myskill/SKILL.md'
 ```
 
-The repo exists but doesn't contain a skill with that name. agr searches recursively for a directory matching the skill name that contains a `SKILL.md` file.
+The repo exists but doesn't contain a resource with that name. agr searches
+recursively for a directory matching the name that contains a `SKILL.md` (or
+`RALPH.md` for ralphs) file. You may also see the ralph variant:
 
-**Fix:** Follow the hint to create the skill, or check the repo on GitHub to see what skills are available. If you used a two-part handle, agr may suggest corrections:
+```text
+Error: Ralph 'myralph' not found in repository.
+No directory named 'myralph' containing RALPH.md was found.
+```
+
+**Fix:** Follow the hint to create the resource, or check the repo on GitHub to see what's available. If you used a two-part handle, agr may suggest corrections:
 
 ```text
 Skill 'myskill' not found. However, 'user/myskill' exists as a repository with 3 skill(s):
@@ -124,13 +135,22 @@ Skill 'myskill' not found. However, 'user/myskill' exists as a repository with 3
   agr add user/myskill/skill3
 ```
 
-### How do I fix "Skill not found in sources"?
+### How do I fix "not found in sources"?
 
 ```text
 Error: Skill 'myskill' not found in sources: github
 ```
 
-agr searched all configured sources and couldn't find a matching skill anywhere. This differs from "Skill not found in repository" — that one means the repo was found but the skill directory wasn't in it. This error means no source had a repo containing the skill.
+agr searched all configured sources and couldn't find a matching resource. This
+differs from "not found in repository" — that one means the repo was found but
+the directory wasn't in it. This error means no source had a matching repo.
+
+For remote handles, agr tries to find a skill first and falls back to a ralph.
+If neither matches, you'll see:
+
+```text
+Error: 'myresource' not found as a skill or ralph in any configured source.
+```
 
 **Fix:**
 
@@ -144,13 +164,17 @@ agr searched all configured sources and couldn't find a matching skill anywhere.
    agr config get sources
    ```
 
-### How do I fix "Skill already exists"?
+### How do I fix "already exists"?
 
 ```text
 Error: Skill already exists at /path/to/skill. Use --overwrite to replace.
 ```
 
-The skill is already installed. To update it:
+```text
+Error: Ralph already exists at /path/to/ralph. Use --overwrite to replace.
+```
+
+The resource is already installed. To update it:
 
 ```bash
 agr add user/skill --overwrite
@@ -930,7 +954,13 @@ agr init code-reviewer
 Error: './my-skill' is not a valid skill (missing SKILL.md)
 ```
 
-The path doesn't contain a `SKILL.md` file. Create one and add the required frontmatter — see [Creating Skills](creating.md).
+```text
+Error: './my-ralph' is not a valid ralph (missing RALPH.md)
+```
+
+The path doesn't contain the expected marker file. For skills, create a
+`SKILL.md` with the required frontmatter — see [Creating Skills](creating.md).
+For ralphs, create a `RALPH.md` — see [Ralph Directory](ralphs.md#the-ralphmd-format).
 
 ### Why is my skill not showing up in my tool?
 
@@ -946,6 +976,40 @@ After `agr add ./skills/my-skill`, verify:
    ```
 3. **Restart the tool** — some tools require a restart to pick up new skills.
 4. **Check `agr list`** to see if the skill is registered.
+
+---
+
+## Ralphs
+
+### How do I fix "contains both SKILL.md and RALPH.md"?
+
+```text
+Error: './my-resource' contains both SKILL.md and RALPH.md. Remove one to resolve the ambiguity.
+```
+
+A local directory has both marker files. A resource must be either a skill or a
+ralph, not both. Remove the one you don't need.
+
+### Why can't I install a ralph globally?
+
+Ralphs are project-scoped. `agr add -g` and `agr sync -g` skip ralph
+dependencies because a ralph's commands (like `uv run pytest`) only make sense
+inside a specific project. Install ralphs without `-g`:
+
+```bash
+agr add user/repo/my-ralph
+```
+
+### Why can't I use agrx with a ralph?
+
+`agrx` is skill-only — it runs a skill with your tool's CLI and cleans up.
+Ralphs need a ralph runtime to execute. Install the ralph with `agr add` and
+run it with a ralph runtime:
+
+```bash
+agr add user/repo/my-ralph
+uvx ralphify run .agents/ralphs/my-ralph --max-iterations 5
+```
 
 ---
 
