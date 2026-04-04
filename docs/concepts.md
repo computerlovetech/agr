@@ -135,7 +135,8 @@ installation details, and publishing guide.
 
 ## Handles
 
-A **handle** is how you refer to a skill. It tells agr where to find it.
+A **handle** is how you refer to a resource (skill or ralph). It tells agr
+where to find it.
 
 ### Remote handles
 
@@ -145,7 +146,7 @@ user/skill            →  github.com/user/skills  repo, "skill" directory
 user/repo/skill       →  github.com/user/repo    repo, "skill" directory
 ```
 
-The simplest form is just a skill name (e.g. `agr add setup`). This resolves
+The simplest form is just a name (e.g. `agr add setup`). This resolves
 using your `default_owner` setting (defaults to `computerlovetech`), so
 `setup` becomes `computerlovetech/skills/setup`. You can change the default
 owner in `agr.toml`:
@@ -166,20 +167,20 @@ The two-part form (`user/skill`) assumes the skill lives in a repo named
 ### Local handles
 
 ```text
-./path/to/skill       →  Local directory on disk
+./path/to/resource    →  Local directory on disk
 ```
 
-Local handles point to a skill directory on your filesystem. They're useful
-for testing skills before publishing or for project-specific skills that don't
-need a remote repo.
+Local handles point to a resource directory on your filesystem. They're useful
+for testing resources before publishing or for project-specific resources that
+don't need a remote repo.
 
 ### How agr resolves a handle to files on disk
 
 Every remote handle follows the same three-step flow — clone, search, copy:
 
 1. **Clone** — agr sparse-checkouts the repo from GitHub (fast, even for large repos)
-2. **Search** — it finds a directory named after the skill that contains `SKILL.md`
-3. **Copy** — it installs that directory into each configured tool's skills folder
+2. **Search** — it finds a directory with the given name that contains `SKILL.md` (or `RALPH.md`)
+3. **Copy** — it installs that directory into the appropriate location (each tool's skills folder for skills, `.agents/ralphs/` for ralphs)
 
 The handle format determines *which* repo gets cloned:
 
