@@ -64,7 +64,6 @@ def _find_local_name_conflicts(
     skills_dir: Path,
     tool: ToolConfig,
     repo_root: Path | None,
-    default_dest: Path,
 ) -> tuple[list[Path], bool]:
     """Find conflicting local installs with the same skill name.
 
@@ -78,7 +77,7 @@ def _find_local_name_conflicts(
         candidates = [skills_dir / handle.name, skills_dir / handle.to_installed_name()]
 
     return find_local_name_conflicts(
-        candidates, default_dest, handle, repo_root, is_valid_skill_dir
+        candidates, handle, repo_root, is_valid_skill_dir
     )
 
 
@@ -373,7 +372,7 @@ def install_local_skill(
         return default_dest
 
     conflicts, has_unknown = _find_local_name_conflicts(
-        handle, dest_dir, tool, repo_root, default_dest
+        handle, dest_dir, tool, repo_root
     )
     if conflicts:
         locations = ", ".join(str(path) for path in conflicts)

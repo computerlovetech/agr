@@ -67,14 +67,13 @@ class TestDirectImportSmoke:
 
 
 class TestFindLocalNameConflictsFlat:
-    """Regression: _find_local_name_conflicts must skip the default
-    destination for flat tools, not only nested ones."""
+    """Local name conflict detection for flat tools."""
 
-    def test_no_false_conflict_on_dest_without_metadata(self, tmp_path):
-        """A skill at the destination path without metadata is not a conflict.
+    def test_unknown_skill_at_dest_is_conflict(self, tmp_path):
+        """A skill at the destination path without metadata is a conflict.
 
-        The ralph installer correctly skips default_dest via .resolve();
-        the skill installer must do the same for flat tools.
+        Without metadata we cannot determine ownership, so it must be
+        flagged to avoid silently overwriting someone else's work.
         """
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
@@ -89,11 +88,9 @@ class TestFindLocalNameConflictsFlat:
             name="my-skill",
             local_path=tmp_path / "src" / "my-skill",
         )
-        default_dest = skills_dir / "my-skill"
 
         conflicts, has_unknown = _find_local_name_conflicts(
-            handle, skills_dir, CLAUDE, tmp_path, default_dest
+            handle, skills_dir, CLAUDE, tmp_path
         )
-        # The destination path itself must not be reported as a conflict
-        assert conflicts == []
-        assert has_unknown is False
+        assert conflicts == [existing]
+        assert has_unknown is True

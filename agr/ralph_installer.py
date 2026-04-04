@@ -192,7 +192,6 @@ def _find_local_ralph_name_conflicts(
     handle: ParsedHandle,
     ralphs_dir: Path,
     repo_root: Path | None,
-    default_dest: Path,
 ) -> tuple[list[Path], bool]:
     """Find conflicting local installs with the same ralph name.
 
@@ -201,7 +200,7 @@ def _find_local_ralph_name_conflicts(
     candidates = [ralphs_dir / handle.name, ralphs_dir / handle.to_installed_name()]
 
     return find_local_name_conflicts(
-        candidates, default_dest, handle, repo_root, is_valid_ralph_dir
+        candidates, handle, repo_root, is_valid_ralph_dir
     )
 
 
@@ -242,7 +241,7 @@ def install_local_ralph(
         return default_dest
 
     conflicts, has_unknown = _find_local_ralph_name_conflicts(
-        handle, ralphs_dir, repo_root, default_dest
+        handle, ralphs_dir, repo_root
     )
     if conflicts:
         locations = ", ".join(str(path) for path in conflicts)

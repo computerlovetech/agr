@@ -105,7 +105,6 @@ def _find_existing_flat_dir(
 
 def find_local_name_conflicts(
     candidates: list[Path],
-    default_dest: Path,
     handle: ParsedHandle,
     repo_root: Path | None,
     is_valid_dir: Callable[[Path], bool],
@@ -117,8 +116,6 @@ def find_local_name_conflicts(
 
     Args:
         candidates: Paths to check for conflicts.
-        default_dest: The path we'd install to (skipped — not a conflict
-            with itself).
         handle: Parsed handle for the dependency being installed.
         repo_root: Repository root for metadata resolution.
         is_valid_dir: Callable to check if a directory is a valid dependency.
@@ -131,9 +128,6 @@ def find_local_name_conflicts(
     has_unknown = False
 
     for path in candidates:
-        # Skip the path we'd install to (it's not a conflict with itself).
-        if path.resolve() == default_dest.resolve():
-            continue
         if not is_valid_dir(path):
             continue
         meta = read_resource_metadata(path)
