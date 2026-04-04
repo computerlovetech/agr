@@ -94,6 +94,23 @@ def run_add(
             if handle.is_local:
                 source_path = handle.resolve_local_path(repo_root)
                 dep_type = _detect_local_type(source_path)
+
+                # Reject a second local dependency with the same name but
+                # different path — they would collide in the installed dir.
+                for existing in config.dependencies:
+                    if (
+                        existing.is_local
+                        and existing.type == dep_type
+                        and existing.identifier != ref
+                        and Path(existing.identifier).name == handle.name
+                    ):
+                        raise AgrError(
+                            f"A local {dep_type} named '{handle.name}' is "
+                            f"already installed from '{existing.identifier}' — "
+                            f"only one local {dep_type} with the same name is "
+                            f"allowed. Remove the existing one first with: "
+                            f"agr remove {existing.identifier}"
+                        )
             else:
                 dep_type = DEPENDENCY_TYPE_SKILL  # default, may change below
 
@@ -126,21 +143,18 @@ def run_add(
             else:
                 # Remote — try as skill first, fall back to ralph
                 try:
-                    installed_paths_dict, install_result = (
-                        fetch_and_install_to_tools(
-                            handle,
-                            repo_root,
-                            tools,
-                            overwrite,
-                            resolver=resolver,
-                            source=source,
-                            skills_dirs=skills_dirs,
-                            default_repo=config.default_repo,
-                        )
+                    installed_paths_dict, install_result = fetch_and_install_to_tools(
+                        handle,
+                        repo_root,
+                        tools,
+                        overwrite,
+                        resolver=resolver,
+                        source=source,
+                        skills_dirs=skills_dirs,
+                        default_repo=config.default_repo,
                     )
                     installed_paths = [
-                        f"{name}: {path}"
-                        for name, path in installed_paths_dict.items()
+                        f"{name}: {path}" for name, path in installed_paths_dict.items()
                     ]
                     dep_type = DEPENDENCY_TYPE_SKILL
                 except SkillNotFoundError:
