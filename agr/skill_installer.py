@@ -13,14 +13,15 @@ from collections.abc import Generator
 from agr._install_common import (
     InstallResult,
     _RemoteDepLocation,
-    _locate_remote_dep,
-    cleanup_empty_parents,
     _dep_not_found_message,
-    _dir_matches_handle,
-    list_remote_repo_deps,
-    prepare_repo_for_deps,
+    _find_existing_flat_dir,
+    _locate_remote_dep,
+    _resolve_flat_destination,
     _resolve_skills_dir,
     _rollback_on_failure,
+    cleanup_empty_parents,
+    list_remote_repo_deps,
+    prepare_repo_for_deps,
 )
 from agr.exceptions import (
     AgrError,
@@ -38,7 +39,6 @@ from agr.metadata import (
     METADATA_KEY_TYPE,
     METADATA_TYPE_LOCAL,
     build_handle_id,
-    build_handle_ids,
     compute_content_hash,
     read_skill_metadata,
     stamp_skill_metadata,
@@ -117,33 +117,16 @@ def _find_existing_skill_dir(
     """Find an existing installed skill directory for this handle.
 
     For nested tools (Cursor), the path is deterministic from the handle.
-    For flat tools, we check two candidate paths in priority order:
-    1. Plain name (e.g. ``skill/``) — preferred, requires metadata ID match
-    2. Full name (e.g. ``user--repo--skill/``) — accepted without metadata
-       (covers both current installs and legacy installs without metadata)
+    For flat tools, delegates to the shared flat-layout lookup which checks
+    two candidate paths: plain name (with metadata match) then full name.
     """
     if tool.supports_nested:
         skill_path = skills_dir / handle.to_skill_path(tool)
         return skill_path if is_valid_skill_dir(skill_path) else None
 
-    # Build all possible metadata IDs for this handle, including legacy
-    # formats (with/without explicit source name).
-    handle_ids = build_handle_ids(handle, repo_root, source)
-    name_path = skills_dir / handle.name
-    full_path = skills_dir / handle.to_installed_name()
-
-    # Prefer the plain-name path if metadata confirms it's ours.
-    if is_valid_skill_dir(name_path) and _dir_matches_handle(name_path, handle_ids):
-        return name_path
-
-    # Fall back to the full (qualified) name path without requiring a
-    # metadata match.  Older versions always installed under the full
-    # name (user--repo--skill), potentially without metadata, so
-    # matching by directory name alone keeps those installs reachable.
-    if is_valid_skill_dir(full_path):
-        return full_path
-
-    return None
+    return _find_existing_flat_dir(
+        handle, skills_dir, repo_root, source, is_valid_skill_dir
+    )
 
 
 def _resolve_skill_destination(
@@ -155,25 +138,15 @@ def _resolve_skill_destination(
 ) -> Path:
     """Resolve the destination path for installing a skill.
 
-    For flat tools, the resolution order is:
-    1. If the skill is already installed (any name form), reuse that path.
-    2. If the plain name (e.g. ``skill/``) is free, use it.
-    3. If the plain name is taken by a *different* skill, fall back to the
-       fully qualified name (e.g. ``user--repo--skill/``).
+    For nested tools, the path is deterministic from the handle.
+    For flat tools, delegates to the shared flat-layout resolution.
     """
     if tool.supports_nested:
         return skills_dir / handle.to_skill_path(tool)
 
-    existing = _find_existing_skill_dir(handle, skills_dir, tool, repo_root, source)
-    if existing:
-        return existing
-
-    # Plain name is occupied by a different skill — use full name to avoid collision.
-    name_path = skills_dir / handle.name
-    if is_valid_skill_dir(name_path):
-        return skills_dir / handle.to_installed_name()
-
-    return name_path
+    return _resolve_flat_destination(
+        handle, skills_dir, repo_root, source, is_valid_skill_dir
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ from agr.git import (
 from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
     METADATA_KEY_ID,
+    build_handle_ids,
     read_skill_metadata,
 )
 from agr.source import SourceConfig, SourceResolver
@@ -60,6 +61,79 @@ def _dir_matches_handle(dep_dir: Path, handle_ids: list[str]) -> bool:
     if not meta:
         return False
     return meta.get(METADATA_KEY_ID) in handle_ids
+
+
+def _find_existing_flat_dir(
+    handle: ParsedHandle,
+    parent_dir: Path,
+    repo_root: Path | None,
+    source: str | None,
+    is_valid_dir: Callable[[Path], bool],
+) -> Path | None:
+    """Find an existing installed dependency directory (flat layout).
+
+    Checks two candidate paths in priority order:
+    1. Plain name (e.g. ``dep/``) — preferred, requires metadata ID match
+    2. Full name (e.g. ``user--repo--dep/``) — accepted without metadata
+       (covers both current installs and legacy installs without metadata)
+
+    Args:
+        handle: Parsed handle identifying the dependency.
+        parent_dir: Directory containing installed dependencies.
+        repo_root: Repository root for metadata resolution.
+        source: Source name for metadata matching.
+        is_valid_dir: Callable to check if a directory is a valid dependency.
+
+    Returns:
+        Path to existing directory, or None if not found.
+    """
+    handle_ids = build_handle_ids(handle, repo_root, source)
+    name_path = parent_dir / handle.name
+    full_path = parent_dir / handle.to_installed_name()
+
+    if is_valid_dir(name_path) and _dir_matches_handle(name_path, handle_ids):
+        return name_path
+
+    if is_valid_dir(full_path):
+        return full_path
+
+    return None
+
+
+def _resolve_flat_destination(
+    handle: ParsedHandle,
+    parent_dir: Path,
+    repo_root: Path | None,
+    source: str | None,
+    is_valid_dir: Callable[[Path], bool],
+) -> Path:
+    """Resolve the destination path for installing a dependency (flat layout).
+
+    Resolution order:
+    1. If the dependency is already installed (any name form), reuse that path.
+    2. If the plain name (e.g. ``dep/``) is free, use it.
+    3. If the plain name is taken by a *different* dependency, fall back to the
+       fully qualified name (e.g. ``user--repo--dep/``).
+
+    Args:
+        handle: Parsed handle identifying the dependency.
+        parent_dir: Directory containing installed dependencies.
+        repo_root: Repository root for metadata resolution.
+        source: Source name for metadata matching.
+        is_valid_dir: Callable to check if a directory is a valid dependency.
+
+    Returns:
+        Resolved destination path.
+    """
+    existing = _find_existing_flat_dir(handle, parent_dir, repo_root, source, is_valid_dir)
+    if existing:
+        return existing
+
+    name_path = parent_dir / handle.name
+    if is_valid_dir(name_path):
+        return parent_dir / handle.to_installed_name()
+
+    return name_path
 
 
 def _dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> str:

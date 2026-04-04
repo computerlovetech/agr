@@ -58,8 +58,11 @@ def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
 
     1. Root-level SKILL.md (single component, e.g. just ``SKILL.md``)
        is a repo marker, not a skill directory.
-    2. Any path component matching ``EXCLUDED_DIRS`` (.git, node_modules,
-       __pycache__, etc.) disqualifies the entry.
+    2. Any **ancestor** directory matching ``EXCLUDED_DIRS`` (.git,
+       node_modules, __pycache__, etc.) disqualifies the entry.
+       The skill directory itself (``parts[-2]``) is NOT checked —
+       a skill legitimately named ``build`` or ``dist`` should be
+       discoverable.
 
     Args:
         parts: Components of the path *relative to the repo root*
@@ -70,7 +73,10 @@ def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
     """
     if len(parts) == 1:
         return True
-    return any(part in EXCLUDED_DIRS for part in parts)
+    # parts[-1] is the marker file, parts[-2] is the skill directory.
+    # Only check ancestor directories above the skill directory.
+    ancestors = parts[:-2]
+    return any(part in EXCLUDED_DIRS for part in ancestors)
 
 
 # ---------------------------------------------------------------------------

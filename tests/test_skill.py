@@ -449,7 +449,7 @@ class TestIsExcludedSkillPath:
 
     def test_pycache_excluded(self):
         """Paths under __pycache__ are excluded."""
-        assert _is_excluded_skill_path(("src", "__pycache__", "SKILL.md")) is True
+        assert _is_excluded_skill_path(("__pycache__", "my-skill", "SKILL.md")) is True
 
     def test_venv_excluded(self):
         """Paths under .venv are excluded."""
@@ -464,6 +464,24 @@ class TestIsExcludedSkillPath:
         assert (
             _is_excluded_skill_path(("a", "b", "node_modules", "c", "SKILL.md")) is True
         )
+
+    def test_skill_named_as_excluded_dir_not_excluded(self):
+        """A skill whose own name matches EXCLUDED_DIRS should NOT be excluded.
+
+        Only ancestor directories should trigger exclusion, not the skill
+        directory itself.  A skill at ``skills/build/SKILL.md`` is a
+        legitimate skill named "build", not a build artifact.
+        """
+        # "build" is the skill directory (parts[-2]), "skills" is an ancestor
+        assert _is_excluded_skill_path(("skills", "build", "SKILL.md")) is False
+        # Same for other excluded names used as skill directories
+        assert _is_excluded_skill_path(("skills", "dist", "SKILL.md")) is False
+        assert _is_excluded_skill_path(("skills", "vendor", "SKILL.md")) is False
+
+    def test_skill_named_as_excluded_dir_at_top_level(self):
+        """A top-level skill named after an excluded dir should NOT be excluded."""
+        assert _is_excluded_skill_path(("build", "SKILL.md")) is False
+        assert _is_excluded_skill_path(("dist", "SKILL.md")) is False
 
     def test_empty_tuple_not_excluded(self):
         """Edge case: empty parts tuple is not excluded (no excluded dir check)."""

@@ -16,11 +16,12 @@ from agr._install_common import (
     RALPHS_SUBDIR,
     _RemoteDepLocation,
     _dep_not_found_message,
-    _dir_matches_handle,
+    _find_existing_flat_dir,
     _locate_remote_dep,
+    _resolve_flat_destination,
+    _rollback_on_failure,
     list_remote_repo_deps,
     prepare_repo_for_deps,
-    _rollback_on_failure,
 )
 from agr.exceptions import (
     AgrError,
@@ -37,7 +38,6 @@ from agr.metadata import (
     METADATA_KEY_TYPE,
     METADATA_TYPE_LOCAL,
     build_handle_id,
-    build_handle_ids,
     compute_content_hash,
     read_skill_metadata,
     stamp_ralph_metadata,
@@ -76,17 +76,7 @@ def _find_existing_ralph_dir(
     source: str | None = None,
 ) -> Path | None:
     """Find an existing installed ralph directory for this handle."""
-    handle_ids = build_handle_ids(handle, repo_root, source)
-    name_path = ralphs_dir / handle.name
-    full_path = ralphs_dir / handle.to_installed_name()
-
-    if is_valid_ralph_dir(name_path) and _dir_matches_handle(name_path, handle_ids):
-        return name_path
-
-    if is_valid_ralph_dir(full_path):
-        return full_path
-
-    return None
+    return _find_existing_flat_dir(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
 
 
 def _resolve_ralph_destination(
@@ -96,15 +86,7 @@ def _resolve_ralph_destination(
     source: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a ralph."""
-    existing = _find_existing_ralph_dir(handle, ralphs_dir, repo_root, source)
-    if existing:
-        return existing
-
-    name_path = ralphs_dir / handle.name
-    if is_valid_ralph_dir(name_path):
-        return ralphs_dir / handle.to_installed_name()
-
-    return name_path
+    return _resolve_flat_destination(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
 
 
 # ---------------------------------------------------------------------------
