@@ -765,6 +765,8 @@ def _build_lockfile_from_results(
         is_ralph = dep.type == DEPENDENCY_TYPE_RALPH
 
         if dep.is_local:
+            if result.status == SyncStatus.ERROR:
+                continue
             handle = dep.to_parsed_handle(config.default_owner)
             update_lockfile_entry(
                 lockfile,

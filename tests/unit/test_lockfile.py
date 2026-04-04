@@ -2,7 +2,8 @@
 
 import pytest
 
-from agr.config import Dependency
+from agr.commands.sync import SyncResult, SyncStatus, _build_lockfile_from_results
+from agr.config import AgrConfig, Dependency
 from agr.exceptions import ConfigError
 from agr.lockfile import (
     LOCKFILE_VERSION,
@@ -459,3 +460,32 @@ class TestLockfileConfigConsistency:
 
         assert find_locked_skill(lockfile_with_resolved_path, dep) is not None
         assert is_lockfile_current(lockfile_with_resolved_path, [dep]) is True
+
+
+class TestBuildLockfileFromResults:
+    """Tests for _build_lockfile_from_results."""
+
+    def test_errored_local_dep_excluded_from_lockfile(self):
+        """A local dependency that failed to sync must not appear in the lockfile.
+
+        Regression: the local-dep branch in _build_lockfile_from_results
+        unconditionally created a lockfile entry without checking the
+        sync result status, unlike the remote-dep branch which correctly
+        skips entries with SyncStatus.ERROR.
+        """
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="skill", path="./good-skill"),
+                Dependency(type="skill", path="./bad-skill"),
+            ]
+        )
+        results = [
+            SyncResult(SyncStatus.INSTALLED),
+            SyncResult(SyncStatus.ERROR, error="not a valid skill"),
+        ]
+
+        lockfile = _build_lockfile_from_results(config, results, None)
+
+        # Only the successfully installed local dep should be in the lockfile
+        assert len(lockfile.skills) == 1
+        assert lockfile.skills[0].path == "./good-skill"
