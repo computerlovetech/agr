@@ -4,7 +4,6 @@ from pathlib import Path
 
 from agr.instructions import (
     canonical_instruction_file,
-    detect_instruction_files,
     sync_instruction_files,
 )
 
@@ -32,46 +31,6 @@ class TestCanonicalInstructionFile:
 
     def test_unknown_tool_returns_agents_md(self) -> None:
         assert canonical_instruction_file("nonexistent") == "AGENTS.md"
-
-
-class TestDetectInstructionFiles:
-    """Tests for detect_instruction_files()."""
-
-    def test_no_files_present(self, tmp_path: Path) -> None:
-        assert detect_instruction_files(tmp_path) == []
-
-    def test_only_claude_md(self, tmp_path: Path) -> None:
-        (tmp_path / "CLAUDE.md").write_text("content")
-        assert detect_instruction_files(tmp_path) == ["CLAUDE.md"]
-
-    def test_only_agents_md(self, tmp_path: Path) -> None:
-        (tmp_path / "AGENTS.md").write_text("content")
-        assert detect_instruction_files(tmp_path) == ["AGENTS.md"]
-
-    def test_only_gemini_md(self, tmp_path: Path) -> None:
-        (tmp_path / "GEMINI.md").write_text("content")
-        assert detect_instruction_files(tmp_path) == ["GEMINI.md"]
-
-    def test_all_files_present(self, tmp_path: Path) -> None:
-        (tmp_path / "CLAUDE.md").write_text("a")
-        (tmp_path / "AGENTS.md").write_text("b")
-        (tmp_path / "GEMINI.md").write_text("c")
-        assert detect_instruction_files(tmp_path) == [
-            "AGENTS.md",
-            "CLAUDE.md",
-            "GEMINI.md",
-        ]
-
-    def test_preserves_order(self, tmp_path: Path) -> None:
-        (tmp_path / "GEMINI.md").write_text("g")
-        (tmp_path / "CLAUDE.md").write_text("c")
-        result = detect_instruction_files(tmp_path)
-        assert result == ["CLAUDE.md", "GEMINI.md"]
-
-    def test_ignores_unrelated_files(self, tmp_path: Path) -> None:
-        (tmp_path / "README.md").write_text("readme")
-        (tmp_path / "CLAUDE.md").write_text("claude")
-        assert detect_instruction_files(tmp_path) == ["CLAUDE.md"]
 
 
 class TestSyncInstructionFiles:

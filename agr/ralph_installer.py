@@ -19,7 +19,6 @@ from agr._install_common import (
     dep_not_found_message,
     find_existing_flat_dir,
     find_local_name_conflicts,
-    list_remote_repo_deps,
     locate_remote_dep,
     prepare_local_handle,
     prepare_repo_for_deps,
@@ -40,7 +39,6 @@ from agr.handle import (
 from agr.metadata import compute_content_hash
 from agr.ralph import (
     RALPH_MARKER,
-    discover_ralphs_in_repo_listing,
     find_ralph_in_repo,
     find_ralphs_in_repo_listing,
     is_valid_ralph_dir,
@@ -132,25 +130,6 @@ def prepare_repo_for_ralphs(repo_dir: Path, ralph_names: list[str]) -> dict[str,
     """Prepare a repo so multiple ralph paths are checked out."""
     return prepare_repo_for_deps(
         repo_dir, ralph_names, find_ralphs_in_repo_listing, find_ralph_in_repo, "ralph"
-    )
-
-
-def list_remote_repo_ralphs(
-    owner: str,
-    repo_name: str,
-    resolver: SourceResolver | None = None,
-    source: str | None = None,
-) -> list[str]:
-    """List all ralph names in a remote repository.
-
-    Clones the repo and scans for RALPH.md files. Used to provide
-    helpful suggestions when a handle fails to resolve.
-
-    Returns:
-        Sorted list of ralph names found, or empty list on any error.
-    """
-    return list_remote_repo_deps(
-        owner, repo_name, discover_ralphs_in_repo_listing, resolver, source
     )
 
 

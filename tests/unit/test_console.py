@@ -5,7 +5,6 @@ import pytest
 from agr.console import (
     error_exit,
     get_console,
-    print_deprecation,
     print_error,
     set_quiet,
 )
@@ -102,27 +101,3 @@ class TestErrorExit:
         assert "bad input" in output
 
 
-class TestPrintDeprecation:
-    """Tests for print_deprecation()."""
-
-    def setup_method(self):
-        set_quiet(False)
-
-    def teardown_method(self):
-        set_quiet(False)
-
-    def test_prints_old_and_new_commands(self, capsys):
-        print_deprecation("agr tools add", "agr config add tools")
-        output = capsys.readouterr().out
-        assert "agr tools add" in output
-        assert "agr config add tools" in output
-
-    def test_prints_warning_label(self, capsys):
-        print_deprecation("old-cmd", "new-cmd")
-        output = capsys.readouterr().out
-        assert "Warning" in output
-
-    def test_prints_deprecated_label(self, capsys):
-        print_deprecation("old-cmd", "new-cmd")
-        output = capsys.readouterr().out
-        assert "deprecated" in output

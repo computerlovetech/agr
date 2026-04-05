@@ -15,11 +15,6 @@ def canonical_instruction_file(tool_name: str) -> str:
     return "AGENTS.md"
 
 
-def detect_instruction_files(repo_root: Path) -> list[str]:
-    """Detect instruction files present in the repo root."""
-    return [name for name in INSTRUCTION_FILES if (repo_root / name).exists()]
-
-
 def sync_instruction_files(
     repo_root: Path, canonical_file: str, files: list[str]
 ) -> list[str]:

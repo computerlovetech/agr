@@ -40,9 +40,3 @@ def error_exit(message: str, *, hint: str | None = None) -> NoReturn:
     raise SystemExit(1)
 
 
-def print_deprecation(old_cmd: str, new_cmd: str) -> None:
-    """Print a styled deprecation warning to the console."""
-    get_console().print(
-        f"[yellow]Warning:[/yellow] '{old_cmd}' is deprecated. Use '{new_cmd}'.",
-        soft_wrap=True,
-    )
