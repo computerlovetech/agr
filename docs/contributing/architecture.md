@@ -380,7 +380,7 @@ All errors inherit from `AgrError` (`exceptions.py`):
 - `CacheError` — SDK cache failures
 - `RateLimitError` — GitHub API rate limit
 
-Multi-tool installs use `_rollback_on_failure()` context manager to clean up partial installs.
+Multi-tool installs use `rollback_on_failure()` context manager to clean up partial installs.
 
 ### Error formatting
 

@@ -13,17 +13,17 @@ from agr._install_common import (
     InstallResult,
     RALPHS_CONFIG_DIR,
     RALPHS_SUBDIR,
-    _RemoteDepLocation,
-    _copy_resource_to_destination,
-    _dep_not_found_message,
-    _find_existing_flat_dir,
-    _locate_remote_dep,
-    _resolve_flat_destination,
-    _rollback_on_failure,
+    RemoteDepLocation,
+    copy_resource_to_destination,
+    dep_not_found_message,
+    find_existing_flat_dir,
     find_local_name_conflicts,
     list_remote_repo_deps,
+    locate_remote_dep,
     prepare_repo_for_deps,
     raise_on_local_name_conflict,
+    resolve_flat_destination,
+    rollback_on_failure,
 )
 from agr.exceptions import (
     AgrError,
@@ -72,7 +72,7 @@ def _find_existing_ralph_dir(
     source: str | None = None,
 ) -> Path | None:
     """Find an existing installed ralph directory for this handle."""
-    return _find_existing_flat_dir(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
+    return find_existing_flat_dir(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
 
 
 def _resolve_ralph_destination(
@@ -82,7 +82,7 @@ def _resolve_ralph_destination(
     source: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a ralph."""
-    return _resolve_flat_destination(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
+    return resolve_flat_destination(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ def _copy_ralph_to_destination(
     install_source: str | None = None,
 ) -> Path:
     """Copy ralph source to destination with overwrite handling."""
-    return _copy_resource_to_destination(
+    return copy_resource_to_destination(
         source,
         dest,
         handle,
@@ -112,7 +112,7 @@ def _copy_ralph_to_destination(
 
 def ralph_not_found_message(name: str) -> str:
     """Build a user-friendly message for a missing ralph in a repository."""
-    return _dep_not_found_message("Ralph", name, RALPH_MARKER, "ralphs")
+    return dep_not_found_message("Ralph", name, RALPH_MARKER, "ralphs")
 
 
 # ---------------------------------------------------------------------------
@@ -252,9 +252,9 @@ def _locate_remote_ralph(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     default_repo: str | None = None,
-) -> Generator[_RemoteDepLocation, None, None]:
+) -> Generator[RemoteDepLocation, None, None]:
     """Search for a remote ralph across sources and repo candidates."""
-    with _locate_remote_dep(
+    with locate_remote_dep(
         handle,
         prepare_repo_for_ralph,
         RalphNotFoundError,
@@ -298,7 +298,7 @@ def fetch_and_install_ralph(
 
     install_result = InstallResult()
     with (
-        _rollback_on_failure() as installed,
+        rollback_on_failure() as installed,
         _locate_remote_ralph(handle, resolver, source, default_repo) as loc,
     ):
         if loc.is_legacy:

@@ -78,7 +78,7 @@ Save all skills in `skills/` (not `.claude/skills/` which is gitignored).
 ## Common patterns
 
 ### Context managers for temp resources
-`downloaded_repo()` and `_rollback_on_failure()` use `@contextmanager` to ensure cleanup:
+`downloaded_repo()` and `rollback_on_failure()` use `@contextmanager` to ensure cleanup:
 
 ```python
 with downloaded_repo(source, owner, repo) as repo_dir:
@@ -98,7 +98,7 @@ The path where a skill is installed depends on the tool:
 `SourceResolver.ordered(explicit_source)` returns sources in priority order. Default source comes first, others follow. If an explicit source is given, only that source is tried.
 
 ### Multi-tool install with rollback
-`fetch_and_install_to_tools()` downloads once, installs to all tools. If any tool fails, all already-installed copies are removed via `_rollback_on_failure()`.
+`fetch_and_install_to_tools()` downloads once, installs to all tools. If any tool fails, all already-installed copies are removed via `rollback_on_failure()`.
 
 ## Recipes
 

@@ -11,19 +11,19 @@ from collections.abc import Generator
 
 from agr._install_common import (
     InstallResult,
-    _RemoteDepLocation,
-    _copy_resource_to_destination,
-    _dep_not_found_message,
-    _find_existing_flat_dir,
-    _locate_remote_dep,
-    _resolve_flat_destination,
-    _resolve_skills_dir,
-    _rollback_on_failure,
+    RemoteDepLocation,
     cleanup_empty_parents,
+    copy_resource_to_destination,
+    dep_not_found_message,
+    find_existing_flat_dir,
     find_local_name_conflicts,
     list_remote_repo_deps,
+    locate_remote_dep,
     prepare_repo_for_deps,
     raise_on_local_name_conflict,
+    resolve_flat_destination,
+    resolve_skills_dir,
+    rollback_on_failure,
 )
 from agr.exceptions import (
     AgrError,
@@ -97,7 +97,7 @@ def _find_existing_skill_dir(
         skill_path = skills_dir / handle.to_skill_path(tool)
         return skill_path if is_valid_skill_dir(skill_path) else None
 
-    return _find_existing_flat_dir(
+    return find_existing_flat_dir(
         handle, skills_dir, repo_root, source, is_valid_skill_dir
     )
 
@@ -117,7 +117,7 @@ def _resolve_skill_destination(
     if tool.supports_nested:
         return skills_dir / handle.to_skill_path(tool)
 
-    return _resolve_flat_destination(
+    return resolve_flat_destination(
         handle, skills_dir, repo_root, source, is_valid_skill_dir
     )
 
@@ -184,7 +184,7 @@ def _copy_skill_to_destination(
     install_source: str | None = None,
 ) -> Path:
     """Copy skill source to destination with overwrite handling."""
-    return _copy_resource_to_destination(
+    return copy_resource_to_destination(
         source,
         dest,
         handle,
@@ -199,7 +199,7 @@ def _copy_skill_to_destination(
 
 def skill_not_found_message(name: str) -> str:
     """Build a user-friendly message for a missing skill in a repository."""
-    return _dep_not_found_message("Skill", name, SKILL_MARKER, "skills")
+    return dep_not_found_message("Skill", name, SKILL_MARKER, "skills")
 
 
 # ---------------------------------------------------------------------------
@@ -271,9 +271,9 @@ def install_skill_from_repo_to_tools(
     if not tools:
         raise AgrError("No tools provided for installation")
 
-    with _rollback_on_failure() as installed:
+    with rollback_on_failure() as installed:
         for tool in tools:
-            skills_dir = _resolve_skills_dir(None, repo_root, tool)
+            skills_dir = resolve_skills_dir(None, repo_root, tool)
             path = install_skill_from_repo(
                 repo_dir,
                 skill_name,
@@ -368,9 +368,9 @@ def _locate_remote_skill(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     default_repo: str | None = None,
-) -> Generator[_RemoteDepLocation, None, None]:
+) -> Generator[RemoteDepLocation, None, None]:
     """Search for a remote skill across sources and repo candidates."""
-    with _locate_remote_dep(
+    with locate_remote_dep(
         handle,
         prepare_repo_for_skill,
         SkillNotFoundError,
@@ -445,7 +445,7 @@ def fetch_and_install(
     Raises:
         Various exceptions on failure
     """
-    skills_dir = _resolve_skills_dir(skills_dir, repo_root, tool)
+    skills_dir = resolve_skills_dir(skills_dir, repo_root, tool)
 
     if handle.is_local:
         # Local skill installation
@@ -509,7 +509,7 @@ def fetch_and_install_to_tools(
 
     if handle.is_local:
         # Local: no download needed, just iterate with rollback
-        with _rollback_on_failure() as installed:
+        with rollback_on_failure() as installed:
             for tool in tools:
                 installed[tool.name] = fetch_and_install(
                     handle,
@@ -527,11 +527,11 @@ def fetch_and_install_to_tools(
     # repo directory alive until all tools are done.
     install_result = InstallResult()
     with (
-        _rollback_on_failure() as installed,
+        rollback_on_failure() as installed,
         _locate_remote_skill(handle, resolver, source, default_repo) as loc,
     ):
         for tool in tools:
-            skills_dir = _resolve_skills_dir(
+            skills_dir = resolve_skills_dir(
                 lookup_skills_dir(skills_dirs, tool), repo_root, tool
             )
             path = install_skill_from_repo(
@@ -587,7 +587,7 @@ def uninstall_skill(
     Returns:
         True if removed, False if not found
     """
-    resolved_dir = _resolve_skills_dir(skills_dir, repo_root, tool)
+    resolved_dir = resolve_skills_dir(skills_dir, repo_root, tool)
     skill_path = _find_existing_skill_dir(handle, resolved_dir, tool, repo_root, source)
 
     if not skill_path:
@@ -621,7 +621,7 @@ def is_skill_installed(
     Returns:
         True if installed
     """
-    resolved_dir = _resolve_skills_dir(skills_dir, repo_root, tool)
+    resolved_dir = resolve_skills_dir(skills_dir, repo_root, tool)
     # _find_existing_skill_dir already validates via is_valid_skill_dir
     # on every code path, so a non-None result is always valid.
     return (

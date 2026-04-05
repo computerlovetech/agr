@@ -49,7 +49,7 @@ class InstallResult:
     source_name: str | None = None
 
 
-class _RemoteDepLocation(NamedTuple):
+class RemoteDepLocation(NamedTuple):
     """Result of locating a remote dependency across sources."""
 
     repo_dir: Path
@@ -59,7 +59,7 @@ class _RemoteDepLocation(NamedTuple):
     commit: str | None = None
 
 
-def _copy_resource_to_destination(
+def copy_resource_to_destination(
     source: Path,
     dest: Path,
     handle: ParsedHandle,
@@ -119,7 +119,7 @@ def _dir_matches_handle(dep_dir: Path, handle_ids: list[str]) -> bool:
     return meta.get(METADATA_KEY_ID) in handle_ids
 
 
-def _find_existing_flat_dir(
+def find_existing_flat_dir(
     handle: ParsedHandle,
     parent_dir: Path,
     repo_root: Path | None,
@@ -232,7 +232,7 @@ def raise_on_local_name_conflict(
     )
 
 
-def _resolve_flat_destination(
+def resolve_flat_destination(
     handle: ParsedHandle,
     parent_dir: Path,
     repo_root: Path | None,
@@ -257,7 +257,7 @@ def _resolve_flat_destination(
     Returns:
         Resolved destination path.
     """
-    existing = _find_existing_flat_dir(handle, parent_dir, repo_root, source, is_valid_dir)
+    existing = find_existing_flat_dir(handle, parent_dir, repo_root, source, is_valid_dir)
     if existing:
         return existing
 
@@ -268,7 +268,7 @@ def _resolve_flat_destination(
     return name_path
 
 
-def _dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> str:
+def dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> str:
     """Build a user-friendly message for a missing dependency in a repository."""
     return (
         f"{kind} '{name}' not found in repository.\n"
@@ -277,7 +277,7 @@ def _dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> st
     )
 
 
-def _resolve_skills_dir(
+def resolve_skills_dir(
     skills_dir: Path | None, repo_root: Path | None, tool: ToolConfig
 ) -> Path:
     """Resolve skills directory from explicit path or repo_root + tool config.
@@ -310,7 +310,7 @@ def _rollback_installed(installed: dict[str, Path]) -> None:
 
 
 @contextmanager
-def _rollback_on_failure() -> Generator[dict[str, Path], None, None]:
+def rollback_on_failure() -> Generator[dict[str, Path], None, None]:
     """Track installed paths and roll back all on failure.
 
     Yields a dict that callers populate with {tool_name: path} entries.
@@ -325,7 +325,7 @@ def _rollback_on_failure() -> Generator[dict[str, Path], None, None]:
 
 
 @contextmanager
-def _locate_remote_dep(
+def locate_remote_dep(
     handle: ParsedHandle,
     prepare_fn: Callable[[Path, str], Path | None],
     not_found_error_cls: type[Exception],
@@ -333,7 +333,7 @@ def _locate_remote_dep(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     default_repo: str | None = None,
-) -> Generator[_RemoteDepLocation, None, None]:
+) -> Generator[RemoteDepLocation, None, None]:
     """Search for a remote dependency across sources and repo candidates.
 
     Downloads the repository and prepares the dependency, keeping the temp
@@ -350,7 +350,7 @@ def _locate_remote_dep(
         default_repo: Default repo name fallback.
 
     Yields:
-        _RemoteDepLocation with repo_dir, source_path, source_config, is_legacy.
+        RemoteDepLocation with repo_dir, source_path, source_config, is_legacy.
     """
     resolver = resolver or SourceResolver.default()
     owner = handle.username or ""
@@ -366,7 +366,7 @@ def _locate_remote_dep(
                         commit = get_head_commit_full(repo_dir)
                     except AgrError:
                         commit = None
-                    yield _RemoteDepLocation(
+                    yield RemoteDepLocation(
                         repo_dir=repo_dir,
                         source_path=dep_source,
                         source_config=source_config,
