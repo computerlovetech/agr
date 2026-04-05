@@ -310,6 +310,89 @@ def _update_dir_metadata(
     )
 
 
+def _build_handles_by_name(
+    config: AgrConfig,
+) -> dict[str, list[tuple[ParsedHandle, str | None]]]:
+    """Index skill dependencies by their plain name.
+
+    Ralph deps are excluded because they install to ``.agents/ralphs/``,
+    not the skills directory, so they cannot cause name collisions.
+    A name with more than one handle is ambiguous.
+    """
+    handles_by_name: dict[str, list[tuple[ParsedHandle, str | None]]] = {}
+    for dep in config.dependencies:
+        if not (dep.path or dep.handle):
+            continue
+        if dep.is_ralph:
+            continue
+        try:
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
+        except (AgrError, ValueError):
+            continue
+        handles_by_name.setdefault(handle.name, []).append((handle, source_name))
+    return handles_by_name
+
+
+def _migrate_unique_name(
+    skills_dir: Path,
+    name_dir: Path,
+    name_dir_is_skill: bool,
+    name_dir_meta: dict[str, object] | None,
+    handle: ParsedHandle,
+    source_name: str | None,
+    repo_root: Path,
+    tool_name: str,
+) -> None:
+    """Migrate a skill with a unique name to the plain directory name.
+
+    When the plain-name dir already exists as a valid skill, ensures
+    metadata is up to date.  Otherwise, renames the full flat name
+    (``user--repo--skill``) to the plain name if possible.
+    """
+    handle_id = build_handle_id(handle, repo_root, source_name)
+
+    if name_dir_is_skill:
+        if not name_dir_meta or name_dir_meta.get(METADATA_KEY_ID) != handle_id:
+            _update_dir_metadata(name_dir, handle, repo_root, tool_name, source_name)
+        return
+
+    # Plain-name dir doesn't exist — try renaming from the full flat name.
+    full_dir = skills_dir / handle.to_installed_name()
+    if is_valid_skill_dir(full_dir) and not name_dir.exists():
+        try:
+            full_dir.rename(name_dir)
+            _update_dir_metadata(name_dir, handle, repo_root, tool_name, source_name)
+            _print_migrated("Migrated", full_dir.name, name_dir.name)
+        except OSError as e:
+            _print_migrate_failed("Migrate", full_dir.name, e)
+
+
+def _migrate_ambiguous_name(
+    skills_dir: Path,
+    name_dir: Path,
+    handles: list[tuple[ParsedHandle, str | None]],
+    matched_handle: tuple[ParsedHandle, str | None] | None,
+    repo_root: Path,
+    tool_name: str,
+) -> None:
+    """Stamp metadata on skill directories when multiple handles share a name.
+
+    Cannot safely rename to the short name, but stamps metadata on
+    whichever directories exist so future operations can identify them.
+    """
+    if matched_handle:
+        _update_dir_metadata(
+            name_dir, matched_handle[0], repo_root, tool_name, matched_handle[1]
+        )
+
+    for handle, source_name in handles:
+        full_dir = skills_dir / handle.to_installed_name()
+        if is_valid_skill_dir(full_dir):
+            _update_dir_metadata(full_dir, handle, repo_root, tool_name, source_name)
+
+
 def migrate_flat_installed_names(
     skills_dir: Path,
     tool: ToolConfig,
@@ -342,35 +425,15 @@ def migrate_flat_installed_names(
     if not skills_dir.exists():
         return
 
-    # Index agr.toml skill dependencies by skill name so we can look up
-    # which handles claim each name. A name with >1 handle is ambiguous.
-    # Ralph deps are excluded because they install to .agents/ralphs/,
-    # not the skills directory, so they cannot cause name collisions.
-    handles_by_name: dict[str, list[tuple[ParsedHandle, str | None]]] = {}
-    for dep in config.dependencies:
-        if not (dep.path or dep.handle):
-            continue
-        if dep.is_ralph:
-            continue
-        try:
-            handle, source_name = dep.resolve(
-                config.default_source, config.default_owner
-            )
-        except (AgrError, ValueError):
-            continue
-        handles_by_name.setdefault(handle.name, []).append((handle, source_name))
+    handles_by_name = _build_handles_by_name(config)
 
     for skill_name, handles in handles_by_name.items():
         name_dir = skills_dir / skill_name
         name_dir_is_skill = is_valid_skill_dir(name_dir)
-
-        # Read metadata once — reused by both the matched-handle check and
-        # the Case 1 / Case 2 branches below.
         name_dir_meta = read_resource_metadata(name_dir) if name_dir_is_skill else None
 
         # Check if the plain-name dir already belongs to one of the known
-        # handles (by comparing .agr.json metadata IDs). This tells us
-        # whether the directory is "claimed" and by whom.
+        # handles (by comparing .agr.json metadata IDs).
         matched_handle: tuple[ParsedHandle, str | None] | None = None
         if name_dir_meta:
             for handle, source_name in handles:
@@ -379,45 +442,18 @@ def migrate_flat_installed_names(
                     matched_handle = (handle, source_name)
                     break
 
-        # --- Case 1: Unique name (single handle) ---
-        # Safe to use the short plain directory name.
         if len(handles) == 1:
-            handle, source_name = handles[0]
-            handle_id = build_handle_id(handle, repo_root, source_name)
-            if name_dir_is_skill:
-                # Plain-name dir exists — just ensure metadata is current.
-                if not name_dir_meta or name_dir_meta.get(METADATA_KEY_ID) != handle_id:
-                    _update_dir_metadata(
-                        name_dir, handle, repo_root, tool.name, source_name
-                    )
-                continue
-
-            # Plain-name dir doesn't exist — try renaming from the full
-            # flat name (e.g. ``user--repo--skill`` → ``skill``).
-            full_dir = skills_dir / handle.to_installed_name()
-            if is_valid_skill_dir(full_dir) and not name_dir.exists():
-                try:
-                    full_dir.rename(name_dir)
-                    _update_dir_metadata(
-                        name_dir, handle, repo_root, tool.name, source_name
-                    )
-                    _print_migrated("Migrated", full_dir.name, name_dir.name)
-                except OSError as e:
-                    _print_migrate_failed("Migrate", full_dir.name, e)
-            # else: something non-skill occupies the name; skip.
-            continue
-
-        # --- Case 2: Ambiguous name (multiple handles) ---
-        # Can't safely rename to the short name, but stamp metadata on
-        # whichever directories exist so they can be identified later.
-        if matched_handle:
-            _update_dir_metadata(
-                name_dir, matched_handle[0], repo_root, tool.name, matched_handle[1]
+            _migrate_unique_name(
+                skills_dir,
+                name_dir,
+                name_dir_is_skill,
+                name_dir_meta,
+                handles[0][0],
+                handles[0][1],
+                repo_root,
+                tool.name,
             )
-
-        for handle, source_name in handles:
-            full_dir = skills_dir / handle.to_installed_name()
-            if is_valid_skill_dir(full_dir):
-                _update_dir_metadata(
-                    full_dir, handle, repo_root, tool.name, source_name
-                )
+        else:
+            _migrate_ambiguous_name(
+                skills_dir, name_dir, handles, matched_handle, repo_root, tool.name
+            )
