@@ -21,7 +21,6 @@ agr/                     # Core library
   config.py              # agr.toml management (AgrConfig, Dependency)
   tool.py                # Tool definitions (ToolConfig: claude, cursor, codex, etc.)
   source.py              # Git source resolution (SourceConfig, SourceResolver)
-  resource_type.py       # ResourceType dataclass (SKILL_RESOURCE, RALPH_RESOURCE)
   fetcher.py             # Install/uninstall orchestration
   _install_common.py     # Shared infrastructure for skill and ralph installation
   skill_installer.py     # Skill-specific installation, destination resolution
@@ -172,11 +171,11 @@ AgrConfig.load("agr.toml")
 
 For each tool in config.tools:
   fetch_and_install_skill(handle, repo_root, tool)
-    → _locate_remote_dep(handle, resolver, resource_type=SKILL_RESOURCE)
+    → _locate_remote_dep(handle, prepare_repo_for_skill, SkillNotFoundError, "Skill")
       → iter_repo_candidates(handle.repo)  # ["skills", "agent-resources"]
         → For each repo candidate + source:
           → downloaded_repo(source, owner, repo_name)
-          → prepare_repo_for_deps(repo_dir, skill_name, SKILL_RESOURCE)
+          → prepare_repo_for_deps(repo_dir, skill_name, ...)
     → install_skill_from_repo(repo_dir, skill_name, handle, skills_dir, tool)
       → _resolve_flat_destination()  # where to put it
       → copy + write .agr.json metadata
@@ -189,7 +188,7 @@ config.save()
 
 ```
 fetch_and_install_ralph(handle, repo_root)
-  → _locate_remote_dep(handle, resolver, resource_type=RALPH_RESOURCE)
+  → _locate_remote_dep(handle, prepare_repo_for_ralph, RalphNotFoundError, "Ralph")
   → install_ralph_from_repo(repo_dir, ralph_name, handle, ralphs_dir)
     → _resolve_flat_destination()
     → copy + write .agr.json metadata
@@ -471,7 +470,7 @@ tests/
 ├── test_skill_installer.py        # agr/skill_installer.py tests
 ├── test_ralph_installer.py        # agr/ralph_installer.py tests
 ├── test_install_common.py         # agr/_install_common.py tests
-├── test_resource_type.py          # agr/resource_type.py tests
+├── test_resource_type.py          # Generic resource discovery and metadata tests
 ├── test_metadata.py               # agr/metadata.py tests
 ├── test_tool.py                   # agr/tool.py tests
 ├── test_copilot.py                # Copilot-specific tests

@@ -1,4 +1,4 @@
-"""Tests for the ResourceType abstraction and generic resource discovery."""
+"""Tests for generic resource discovery and unified metadata functions."""
 
 import json
 from pathlib import PurePosixPath
@@ -13,7 +13,6 @@ from agr.metadata import (
     write_resource_metadata,
     stamp_resource_metadata,
 )
-from agr.resource_type import RALPH_RESOURCE, SKILL_RESOURCE, ResourceType
 from agr.skill import (
     SKILL_MARKER,
     _find_resource_dirs_in_listing,
@@ -23,34 +22,6 @@ from agr.skill import (
     find_resources_in_repo_listing,
     is_valid_resource_dir,
 )
-
-
-# ---------------------------------------------------------------------------
-# ResourceType dataclass
-# ---------------------------------------------------------------------------
-
-
-class TestResourceType:
-    def test_skill_resource(self):
-        assert SKILL_RESOURCE.marker == "SKILL.md"
-        assert SKILL_RESOURCE.name == "skill"
-        assert SKILL_RESOURCE.has_tool_field is True
-
-    def test_ralph_resource(self):
-        assert RALPH_RESOURCE.marker == "RALPH.md"
-        assert RALPH_RESOURCE.name == "ralph"
-        assert RALPH_RESOURCE.has_tool_field is False
-
-    def test_frozen(self):
-        """ResourceType instances are immutable."""
-        import pytest
-
-        with pytest.raises(AttributeError):
-            SKILL_RESOURCE.marker = "OTHER.md"  # type: ignore[misc]  # ty: ignore[invalid-assignment]
-
-    def test_custom_resource_type(self):
-        custom = ResourceType(marker="CUSTOM.md", name="custom", has_tool_field=False)
-        assert custom.marker == "CUSTOM.md"
 
 
 # ---------------------------------------------------------------------------
