@@ -77,6 +77,11 @@ class TestDependency:
         for dep in cases:
             assert dep.installed_name == dep.to_parsed_handle().name
 
+    def test_installed_name_trailing_slash(self):
+        """Trailing slash in remote handle does not break installed_name."""
+        dep = Dependency(type="skill", handle="owner/repo/skill/")
+        assert dep.installed_name == "skill"
+
     def test_to_parsed_handle_remote_two_part(self):
         """Remote two-part handle converts to ParsedHandle."""
         dep = Dependency(type="skill", handle="owner/skill-name")

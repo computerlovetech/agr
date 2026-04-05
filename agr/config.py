@@ -232,7 +232,7 @@ class Dependency:
         ref = self.identifier
         if self.is_local:
             return Path(ref).name
-        return ref.rsplit("/", 1)[-1]
+        return ref.rstrip("/").rsplit("/", 1)[-1]
 
     def to_parsed_handle(self, default_owner: str | None = None) -> ParsedHandle:
         """Parse this dependency's reference into a ParsedHandle."""
