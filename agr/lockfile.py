@@ -41,6 +41,9 @@ class LockedEntry:
     # Local field
     path: str | None = None
 
+    # TOML key for the required installed-name field.
+    _TOML_KEY_INSTALLED_NAME: ClassVar[str] = "installed-name"
+
     # Mapping from dataclass field names to TOML key names.
     # Order defines the serialization order in the lockfile.
     _TOML_OPTIONAL_FIELDS: ClassVar[tuple[tuple[str, str], ...]] = (
@@ -68,13 +71,13 @@ class LockedEntry:
             value = data.get(key)
             return str(value) if value is not None else None
 
+        kwargs: dict[str, str | None] = {
+            attr: _get_optional_str(toml_key)
+            for attr, toml_key in cls._TOML_OPTIONAL_FIELDS
+        }
         return cls(
-            installed_name=str(data.get("installed-name", "")),
-            handle=_get_optional_str("handle"),
-            path=_get_optional_str("path"),
-            source=_get_optional_str("source"),
-            commit=_get_optional_str("commit"),
-            content_hash=_get_optional_str("content-hash"),
+            installed_name=str(data.get(cls._TOML_KEY_INSTALLED_NAME, "")),
+            **kwargs,
         )
 
     def to_toml_table(self) -> tomlkit.items.Table:
@@ -84,7 +87,7 @@ class LockedEntry:
             value = getattr(self, attr)
             if value is not None:
                 table[key] = value
-        table["installed-name"] = self.installed_name
+        table[self._TOML_KEY_INSTALLED_NAME] = self.installed_name
         return table
 
 
