@@ -141,6 +141,30 @@ class TestApplyGithubToken:
             # '/' and '@' should be percent-encoded
             assert "tok%2Fen%40val" in result
 
+    def test_lookalike_domain_does_not_get_token(self):
+        """Domains like 'evilgithub.com' must not receive the token.
+
+        Regression: endswith('github.com') matched any domain ending
+        in those characters, potentially leaking the token to a
+        third-party server.
+        """
+        for url in [
+            "https://evilgithub.com/owner/repo.git",
+            "https://notgithub.com/owner/repo.git",
+            "https://my-github.com/owner/repo.git",
+        ]:
+            with patch.dict(os.environ, {"GITHUB_TOKEN": "secret"}, clear=True):
+                assert apply_github_token(url) == url, (
+                    f"Token was injected into non-GitHub URL: {url}"
+                )
+
+    def test_github_subdomain_gets_token(self):
+        """Legitimate GitHub subdomains (e.g. api.github.com) should get the token."""
+        url = "https://api.github.com/owner/repo.git"
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
+            result = apply_github_token(url)
+            assert "my-token" in result
+
 
 class TestRaiseCloneError:
     """Tests for _raise_clone_error().

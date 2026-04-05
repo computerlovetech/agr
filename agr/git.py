@@ -195,7 +195,8 @@ def _apply_github_token(repo_url: str) -> str:
     parsed = urlparse(repo_url)
     if parsed.scheme != "https":
         return repo_url
-    if not parsed.netloc.endswith("github.com"):
+    netloc_lower = parsed.netloc.lower()
+    if not (netloc_lower == "github.com" or netloc_lower.endswith(".github.com")):
         return repo_url
     if "@" in parsed.netloc:
         return repo_url
