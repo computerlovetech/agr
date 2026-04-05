@@ -3,6 +3,7 @@
 import os
 import shlex
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from agr.config import (
@@ -145,6 +146,57 @@ def run_config_get(key: str, global_scope: bool) -> None:
         print(_format_nullable_value(getattr(config, key)))
 
 
+def _set_default_tool(config: AgrConfig, value: str) -> str:
+    """Validate and set default_tool. Returns the display value."""
+    names = normalize_and_validate_tool_names([value])
+    display_value = names[0]
+    if display_value not in config.tools:
+        error_exit(
+            f"Tool '{display_value}' is not in configured tools. "
+            f"Add it first with 'agr config add tools {display_value}'."
+        )
+    config.default_tool = display_value
+    return display_value
+
+
+def _set_default_source(config: AgrConfig, value: str) -> str:
+    """Validate and set default_source. Returns the display value."""
+    source_names = [s.name for s in config.sources]
+    if value not in source_names:
+        error_exit(
+            f"Source '{value}' not found in sources list.",
+            hint=f"Available sources: {', '.join(source_names)}",
+        )
+    config.default_source = value
+    return value
+
+
+def _set_sync_instructions(config: AgrConfig, value: str) -> str:
+    """Validate and set sync_instructions. Returns the display value."""
+    if value.lower() not in ("true", "false"):
+        error_exit("sync_instructions must be 'true' or 'false'.")
+    config.sync_instructions = value.lower() == "true"
+    return value.lower()
+
+
+def _set_canonical_instructions(config: AgrConfig, value: str) -> str:
+    """Validate and set canonical_instructions. Returns the display value."""
+    try:
+        validate_canonical_instructions(value)
+    except ConfigError as exc:
+        error_exit(str(exc))
+    config.canonical_instructions = value
+    return value
+
+
+_SCALAR_SETTERS: dict[str, Callable[[AgrConfig, str], str]] = {
+    "default_tool": _set_default_tool,
+    "default_source": _set_default_source,
+    "sync_instructions": _set_sync_instructions,
+    "canonical_instructions": _set_canonical_instructions,
+}
+
+
 def run_config_set(key: str, values: list[str], global_scope: bool) -> None:
     """Write a scalar value or replace a list."""
     console = get_console()
@@ -176,45 +228,11 @@ def run_config_set(key: str, values: list[str], global_scope: bool) -> None:
     if len(values) != 1:
         error_exit(f"'{key}' expects exactly one value.")
 
-    value = values[0]
-
-    if key == "default_tool":
-        names = normalize_and_validate_tool_names([value])
-        display_value = names[0]
-        if display_value not in config.tools:
-            error_exit(
-                f"Tool '{display_value}' is not in configured tools. "
-                f"Add it first with 'agr config add tools {display_value}'."
-            )
-        config.default_tool = display_value
-
-    elif key == "default_source":
-        source_names = [s.name for s in config.sources]
-        if value not in source_names:
-            error_exit(
-                f"Source '{value}' not found in sources list.",
-                hint=f"Available sources: {', '.join(source_names)}",
-            )
-        config.default_source = value
-        display_value = value
-
-    elif key == "sync_instructions":
-        if value.lower() not in ("true", "false"):
-            error_exit("sync_instructions must be 'true' or 'false'.")
-        config.sync_instructions = value.lower() == "true"
-        display_value = value.lower()
-
-    elif key == "canonical_instructions":
-        try:
-            validate_canonical_instructions(value)
-        except ConfigError as exc:
-            error_exit(str(exc))
-        config.canonical_instructions = value
-        display_value = value
-
-    else:
+    setter = _SCALAR_SETTERS.get(key)
+    if setter is None:
         raise AssertionError(f"Unhandled key: {key}")
 
+    display_value = setter(config, values[0])
     config.save()
     console.print(f"[green]Set:[/green] {key} = {display_value}")
 
