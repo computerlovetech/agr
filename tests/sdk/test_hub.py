@@ -116,6 +116,55 @@ description: This skill handles code reviews
         desc = _extract_description(content)
         assert desc == "This skill handles code reviews"
 
+    def test_extracts_frontmatter_description_strips_double_quotes(self):
+        """Test that YAML double-quoted description values are unquoted."""
+        content = """---
+name: my-skill
+description: "A cool skill for code reviews"
+---
+
+# my-skill
+
+## When to use
+
+## Instructions
+"""
+        desc = _extract_description(content)
+        assert desc == "A cool skill for code reviews"
+
+    def test_extracts_frontmatter_description_strips_single_quotes(self):
+        """Test that YAML single-quoted description values are unquoted."""
+        content = """---
+name: my-skill
+description: 'A cool skill for code reviews'
+---
+
+# my-skill
+
+## When to use
+
+## Instructions
+"""
+        desc = _extract_description(content)
+        assert desc == "A cool skill for code reviews"
+
+    def test_extracts_frontmatter_description_ignores_multiline_indicators(self):
+        """Test that YAML multiline indicators (>, |) are not returned as description."""
+        for indicator in (">", "|", ">-", "|-"):
+            content = f"""---
+name: my-skill
+description: {indicator}
+  This is a multiline value
+  that should be ignored
+---
+
+# my-skill
+
+## When to use
+"""
+            desc = _extract_description(content)
+            assert desc is None, f"description: {indicator} should return None"
+
     def test_body_paragraph_takes_precedence_over_frontmatter(self):
         """Test that body paragraph is preferred when both exist."""
         content = """---

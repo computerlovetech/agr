@@ -180,12 +180,22 @@ def _extract_frontmatter_description(frontmatter: str) -> str | None:
 
     Looks for a ``description:`` key in the YAML-like frontmatter and
     returns the trimmed value.  Returns None when no key is found or the
-    value is empty.
+    value is empty.  Strips surrounding YAML quotes and ignores multiline
+    indicators (``>``, ``|``, ``>-``, ``|-``).
     """
     for line in frontmatter.splitlines():
         stripped = line.strip()
         if stripped.lower().startswith("description:"):
             value = stripped.split(":", 1)[1].strip()
+            if not value:
+                return None
+            # YAML multiline indicators — the actual value spans subsequent
+            # indented lines which we don't parse, so return None.
+            if value in (">", "|", ">-", "|-"):
+                return None
+            # Strip surrounding YAML quotes (double or single).
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                value = value[1:-1]
             if value:
                 return value[:200]
     return None
