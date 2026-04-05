@@ -15,6 +15,7 @@ from agr.commands.migrations import (
 from agr.config import (
     DEPENDENCY_TYPE_RALPH,
     AgrConfig,
+    Dependency,
     find_config,
     require_repo_root,
 )
@@ -639,6 +640,97 @@ def run_sync(
     _print_results_and_summary(labeled_results)
 
 
+def _sync_dep_from_lockfile(
+    dep: Dependency,
+    lockfile: Lockfile,
+    config: AgrConfig,
+    repo_root: Path,
+    tools: list[ToolConfig],
+    resolver: SourceResolver,
+) -> SyncResult:
+    """Sync a single dependency using lockfile pins.
+
+    Returns UP_TO_DATE when already installed, INSTALLED after a
+    successful install.  Raises on failure so the caller can catch
+    per-entry.
+    """
+    handle, source_name = dep.resolve(config.default_source, config.default_owner)
+    is_ralph_dep = dep.type == DEPENDENCY_TYPE_RALPH
+
+    # Check installation status — initialise tools_needing_install
+    # unconditionally so it is always bound regardless of code path.
+    tools_needing_install: list[ToolConfig] = []
+
+    if is_ralph_dep:
+        if is_ralph_installed(handle, repo_root, source_name):
+            return SyncResult.up_to_date()
+    else:
+        tools_needing_install = filter_tools_needing_install(
+            handle, repo_root, tools, source_name
+        )
+        if not tools_needing_install:
+            return SyncResult.up_to_date()
+
+    # Local deps: install from disk (no lockfile commit needed)
+    if dep.is_local:
+        if is_ralph_dep:
+            fetch_and_install_ralph(
+                handle,
+                repo_root,
+                overwrite=False,
+                resolver=resolver,
+                source=source_name,
+                default_repo=config.default_repo,
+            )
+        else:
+            fetch_and_install_to_tools(
+                handle,
+                repo_root,
+                tools_needing_install,
+                overwrite=False,
+                resolver=resolver,
+                source=source_name,
+                default_repo=config.default_repo,
+            )
+        return SyncResult.installed()
+
+    # Remote deps: require a pinned commit
+    locked_entry = lockfile.find_entry(dep)
+    if locked_entry is None or locked_entry.commit is None:
+        raise AgrError(
+            f"No lockfile entry with commit for '{dep.identifier}'. "
+            "Run 'agr sync' to update the lockfile."
+        )
+
+    # Clone the repo and checkout the pinned commit
+    source_config = resolver.get(source_name or config.default_source)
+    owner, repo_name = handle.get_github_repo(default_repo=config.default_repo)
+    with downloaded_repo(source_config, owner, repo_name) as repo_dir:
+        fetch_and_checkout_commit(repo_dir, locked_entry.commit)
+        if is_ralph_dep:
+            ralphs_dir = get_ralphs_dir(repo_root)
+            install_ralph_from_repo(
+                repo_dir,
+                handle.name,
+                handle,
+                ralphs_dir,
+                repo_root,
+                overwrite=False,
+                install_source=source_name,
+            )
+        else:
+            install_skill_from_repo_to_tools(
+                repo_dir,
+                handle.name,
+                handle,
+                tools_needing_install,
+                repo_root,
+                overwrite=False,
+                install_source=source_name,
+            )
+    return SyncResult.installed()
+
+
 def _sync_from_lockfile(
     lockfile: Lockfile,
     config: AgrConfig,
@@ -655,86 +747,12 @@ def _sync_from_lockfile(
 
     for dep in config.dependencies:
         try:
-            handle, source_name = dep.resolve(
-                config.default_source, config.default_owner
+            result = _sync_dep_from_lockfile(
+                dep, lockfile, config, repo_root, tools, resolver
             )
-
-            is_ralph_dep = dep.type == DEPENDENCY_TYPE_RALPH
-
-            if is_ralph_dep:
-                # Ralph: check project-level install status
-                if is_ralph_installed(handle, repo_root, source_name):
-                    results.append((dep.identifier, SyncResult.up_to_date()))
-                    continue
-            else:
-                tools_needing_install = filter_tools_needing_install(
-                    handle, repo_root, tools, source_name
-                )
-                if not tools_needing_install:
-                    results.append((dep.identifier, SyncResult.up_to_date()))
-                    continue
-
-            locked_skill = lockfile.find_entry(dep)
-
-            if dep.is_local:
-                if is_ralph_dep:
-                    _path, _result = fetch_and_install_ralph(
-                        handle,
-                        repo_root,
-                        overwrite=False,
-                        resolver=resolver,
-                        source=source_name,
-                        default_repo=config.default_repo,
-                    )
-                else:
-                    _paths, _result = fetch_and_install_to_tools(
-                        handle,
-                        repo_root,
-                        tools_needing_install,
-                        overwrite=False,
-                        resolver=resolver,
-                        source=source_name,
-                        default_repo=config.default_repo,
-                    )
-                results.append((dep.identifier, SyncResult.installed()))
-                continue
-
-            if locked_skill is None or locked_skill.commit is None:
-                raise AgrError(
-                    f"No lockfile entry with commit for '{dep.identifier}'. "
-                    "Run 'agr sync' to update the lockfile."
-                )
-
-            # Clone the repo and checkout the pinned commit
-            source_config = resolver.get(source_name or config.default_source)
-            owner, repo_name = handle.get_github_repo(default_repo=config.default_repo)
-            with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-                fetch_and_checkout_commit(repo_dir, locked_skill.commit)
-                if is_ralph_dep:
-                    ralphs_dir = get_ralphs_dir(repo_root)
-                    install_ralph_from_repo(
-                        repo_dir,
-                        handle.name,
-                        handle,
-                        ralphs_dir,
-                        repo_root,
-                        overwrite=False,
-                        install_source=source_name,
-                    )
-                else:
-                    install_skill_from_repo_to_tools(
-                        repo_dir,
-                        handle.name,
-                        handle,
-                        tools_needing_install,
-                        repo_root,
-                        overwrite=False,
-                        install_source=source_name,
-                    )
-            results.append((dep.identifier, SyncResult.installed()))
-
         except INSTALL_ERROR_TYPES as e:
-            results.append((dep.identifier, SyncResult.from_error(e)))
+            result = SyncResult.from_error(e)
+        results.append((dep.identifier, result))
 
     _print_results_and_summary(results)
 
