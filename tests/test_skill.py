@@ -449,7 +449,9 @@ class TestIsExcludedResourcePath:
 
     def test_pycache_excluded(self):
         """Paths under __pycache__ are excluded."""
-        assert _is_excluded_resource_path(("__pycache__", "my-skill", "SKILL.md")) is True
+        assert (
+            _is_excluded_resource_path(("__pycache__", "my-skill", "SKILL.md")) is True
+        )
 
     def test_venv_excluded(self):
         """Paths under .venv are excluded."""
@@ -462,7 +464,8 @@ class TestIsExcludedResourcePath:
     def test_excluded_dir_deep_in_path(self):
         """An excluded dir anywhere in the path triggers exclusion."""
         assert (
-            _is_excluded_resource_path(("a", "b", "node_modules", "c", "SKILL.md")) is True
+            _is_excluded_resource_path(("a", "b", "node_modules", "c", "SKILL.md"))
+            is True
         )
 
     def test_skill_named_as_excluded_dir_not_excluded(self):

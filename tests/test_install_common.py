@@ -1,6 +1,7 @@
 """Tests for agr._install_common module (direct imports)."""
 
 import shutil
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -8,10 +9,13 @@ import pytest
 from agr._install_common import (
     RemoteDepLocation,
     _dir_matches_handle,
+    check_self_install,
     cleanup_empty_parents,
     dep_not_found_message,
+    prepare_local_handle,
     rollback_on_failure,
 )
+from agr.handle import ParsedHandle
 from agr.metadata import METADATA_KEY_ID
 from agr.source import SourceConfig
 
@@ -160,3 +164,116 @@ class TestCleanupEmptyParents:
         assert not (stop_at / "a" / "b").exists()
         assert (stop_at / "a").exists()
         assert (stop_at / "a" / "file.txt").exists()
+
+
+class TestPrepareLocalHandle:
+    """Tests for prepare_local_handle."""
+
+    def test_creates_handle_from_source_path(self, tmp_path):
+        source = tmp_path / "my-skill"
+        source.mkdir()
+        handle, repo_root = prepare_local_handle(source, None, None)
+        assert handle.is_local
+        assert handle.name == "my-skill"
+        assert handle.local_path == source
+        assert repo_root == Path.cwd()
+
+    def test_preserves_existing_handle(self, tmp_path):
+        source = tmp_path / "my-skill"
+        source.mkdir()
+        existing = ParsedHandle(is_local=True, name="custom-name", local_path=source)
+        handle, repo_root = prepare_local_handle(source, existing, tmp_path)
+        assert handle is existing
+        assert handle.name == "custom-name"
+        assert repo_root == tmp_path
+
+    def test_defaults_repo_root_to_cwd(self, tmp_path):
+        source = tmp_path / "my-skill"
+        source.mkdir()
+        _, repo_root = prepare_local_handle(source, None, None)
+        assert repo_root == Path.cwd()
+
+    def test_preserves_explicit_repo_root(self, tmp_path):
+        source = tmp_path / "my-skill"
+        source.mkdir()
+        _, repo_root = prepare_local_handle(source, None, tmp_path)
+        assert repo_root == tmp_path
+
+
+class TestCheckSelfInstall:
+    """Tests for check_self_install."""
+
+    def test_returns_path_on_self_install(self, tmp_path):
+        """When source IS the destination, returns the path."""
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# test")
+
+        handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
+        result = check_self_install(
+            skill_dir, skill_dir, handle, tmp_path, lambda p: (p / "SKILL.md").exists()
+        )
+        assert result == skill_dir
+
+    def test_stamps_metadata_on_self_install(self, tmp_path):
+        """Self-install stamps metadata when none exists."""
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# test")
+
+        handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
+        with patch("agr._install_common.read_resource_metadata", return_value=None):
+            with patch("agr._install_common.stamp_resource_metadata") as mock_stamp:
+                check_self_install(
+                    skill_dir,
+                    skill_dir,
+                    handle,
+                    tmp_path,
+                    lambda p: (p / "SKILL.md").exists(),
+                    tool_name="claude",
+                )
+                mock_stamp.assert_called_once_with(
+                    skill_dir, handle, tmp_path, "my-skill", tool_name="claude"
+                )
+
+    def test_skips_stamp_when_metadata_exists(self, tmp_path):
+        """Self-install skips stamp when metadata already present."""
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# test")
+
+        handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
+        with patch(
+            "agr._install_common.read_resource_metadata", return_value={"id": "x"}
+        ):
+            with patch("agr._install_common.stamp_resource_metadata") as mock_stamp:
+                result = check_self_install(
+                    skill_dir,
+                    skill_dir,
+                    handle,
+                    tmp_path,
+                    lambda p: (p / "SKILL.md").exists(),
+                )
+                assert result == skill_dir
+                mock_stamp.assert_not_called()
+
+    def test_returns_none_when_paths_differ(self, tmp_path):
+        """Returns None when source and destination are different paths."""
+        source = tmp_path / "source" / "my-skill"
+        dest = tmp_path / "dest" / "my-skill"
+        source.mkdir(parents=True)
+
+        handle = ParsedHandle(is_local=True, name="my-skill", local_path=source)
+        result = check_self_install(source, dest, handle, tmp_path, lambda p: True)
+        assert result is None
+
+    def test_returns_none_when_dest_invalid(self, tmp_path):
+        """Returns None when destination fails validation."""
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+
+        handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
+        result = check_self_install(
+            skill_dir, skill_dir, handle, tmp_path, lambda p: False
+        )
+        assert result is None

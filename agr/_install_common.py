@@ -257,7 +257,9 @@ def resolve_flat_destination(
     Returns:
         Resolved destination path.
     """
-    existing = find_existing_flat_dir(handle, parent_dir, repo_root, source, is_valid_dir)
+    existing = find_existing_flat_dir(
+        handle, parent_dir, repo_root, source, is_valid_dir
+    )
     if existing:
         return existing
 
@@ -275,6 +277,68 @@ def dep_not_found_message(kind: str, name: str, marker: str, subdir: str) -> str
         f"No directory named '{name}' containing {marker} was found.\n"
         f"Hint: Create a {kind.lower()} at '{subdir}/{name}/{marker}' or '{name}/{marker}'"
     )
+
+
+def prepare_local_handle(
+    source_path: Path,
+    handle: ParsedHandle | None,
+    repo_root: Path | None,
+) -> tuple[ParsedHandle, Path]:
+    """Ensure handle and repo_root are set for local installations.
+
+    Creates a local ParsedHandle from the source path name if not
+    provided, and defaults repo_root to the current working directory.
+
+    Args:
+        source_path: Path to the local resource directory.
+        handle: Optional pre-parsed handle; built from source_path if None.
+        repo_root: Repository root; defaults to cwd if None.
+
+    Returns:
+        Tuple of (resolved handle, resolved repo_root).
+    """
+    handle = handle or ParsedHandle(
+        is_local=True, name=source_path.name, local_path=source_path
+    )
+    repo_root = repo_root if repo_root is not None else Path.cwd()
+    return handle, repo_root
+
+
+def check_self_install(
+    source_path: Path,
+    default_dest: Path,
+    handle: ParsedHandle,
+    repo_root: Path,
+    is_valid_dir: Callable[[Path], bool],
+    tool_name: str | None = None,
+) -> Path | None:
+    """Detect self-install and stamp metadata if needed.
+
+    A "self-install" occurs when the source path IS the default
+    destination (e.g. ``agr add ./skills/my-skill`` when ``skills/``
+    is the tool's skills directory).  In this case copying is skipped;
+    only metadata is stamped if missing.
+
+    Args:
+        source_path: Path to the local resource directory.
+        default_dest: The computed default install destination.
+        handle: Parsed handle for metadata.
+        repo_root: Repository root for metadata resolution.
+        is_valid_dir: Callable to verify the directory is a valid resource.
+        tool_name: Tool name to record in metadata (skills only).
+
+    Returns:
+        The destination path if this is a self-install, None otherwise.
+    """
+    if source_path.resolve() != default_dest.resolve():
+        return None
+    if not is_valid_dir(default_dest):
+        return None
+    if read_resource_metadata(default_dest) is None:
+        stamp_resource_metadata(
+            default_dest, handle, repo_root, default_dest.name, tool_name=tool_name
+        )
+    return default_dest
 
 
 def resolve_skills_dir(
@@ -413,8 +477,7 @@ def prepare_repo_for_deps(
     try:
         paths = git_list_files(repo_dir)
         rel_paths = {
-            name: Path(d)
-            for name, d in find_in_listing(paths, unique_names).items()
+            name: Path(d) for name, d in find_in_listing(paths, unique_names).items()
         }
 
         if rel_paths:

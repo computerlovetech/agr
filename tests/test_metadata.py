@@ -349,7 +349,9 @@ class TestStampResourceMetadata:
         (skill_dir / "SKILL.md").write_text("# My Skill\nInstructions here.")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
+        stamp_resource_metadata(
+            skill_dir, handle, tmp_path, "my-skill", tool_name="claude"
+        )
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -363,7 +365,9 @@ class TestStampResourceMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
+        stamp_resource_metadata(
+            skill_dir, handle, tmp_path, "my-skill", tool_name="claude"
+        )
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -397,7 +401,9 @@ class TestStampResourceMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(is_local=True, name="my-skill", local_path=skill_dir)
-        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
+        stamp_resource_metadata(
+            skill_dir, handle, tmp_path, "my-skill", tool_name="claude"
+        )
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None
@@ -411,7 +417,9 @@ class TestStampResourceMetadata:
         (skill_dir / "SKILL.md").write_text("# Test")
 
         handle = ParsedHandle(username="user", name="my-skill")
-        stamp_resource_metadata(skill_dir, handle, tmp_path, "my-skill", tool_name="claude")
+        stamp_resource_metadata(
+            skill_dir, handle, tmp_path, "my-skill", tool_name="claude"
+        )
 
         meta = read_resource_metadata(skill_dir)
         assert meta is not None

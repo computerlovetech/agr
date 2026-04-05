@@ -12,6 +12,7 @@ from collections.abc import Generator
 from agr._install_common import (
     InstallResult,
     RemoteDepLocation,
+    check_self_install,
     cleanup_empty_parents,
     copy_resource_to_destination,
     dep_not_found_message,
@@ -19,6 +20,7 @@ from agr._install_common import (
     find_local_name_conflicts,
     list_remote_repo_deps,
     locate_remote_dep,
+    prepare_local_handle,
     prepare_repo_for_deps,
     raise_on_local_name_conflict,
     resolve_flat_destination,
@@ -36,11 +38,7 @@ from agr.handle import (
     ParsedHandle,
     warn_legacy_repo,
 )
-from agr.metadata import (
-    compute_content_hash,
-    read_resource_metadata,
-    stamp_resource_metadata,
-)
+from agr.metadata import compute_content_hash
 from agr.skill import (
     SKILL_MARKER,
     discover_skills_in_repo_listing,
@@ -75,9 +73,7 @@ def _find_local_name_conflicts(
     else:
         candidates = [skills_dir / handle.name, skills_dir / handle.to_installed_name()]
 
-    return find_local_name_conflicts(
-        candidates, handle, repo_root, is_valid_skill_dir
-    )
+    return find_local_name_conflicts(candidates, handle, repo_root, is_valid_skill_dir)
 
 
 def _find_existing_skill_dir(
@@ -330,25 +326,20 @@ def install_local_skill(
             f"'{INSTALLED_NAME_SEPARATOR}'"
         )
 
-    # Determine installed path using ParsedHandle for consistency
-    handle = handle or ParsedHandle(
-        is_local=True, name=source_path.name, local_path=source_path
-    )
-    if repo_root is None:
-        repo_root = Path.cwd()
+    handle, repo_root = prepare_local_handle(source_path, handle, repo_root)
 
-    # Self-install case: the source path is already the install destination
-    # (e.g. `agr add ./skills/my-skill` when skills/ is the tool's skills dir).
-    # Skip copying; just stamp metadata if missing.
+    # Self-install case: source path IS the install destination.
     default_dest = dest_dir / handle.to_skill_path(tool)
-    if source_path.resolve() == default_dest.resolve() and is_valid_skill_dir(
-        default_dest
-    ):
-        if read_resource_metadata(default_dest) is None:
-            stamp_resource_metadata(
-                default_dest, handle, repo_root, default_dest.name, tool_name=tool.name
-            )
-        return default_dest
+    self_installed = check_self_install(
+        source_path,
+        default_dest,
+        handle,
+        repo_root,
+        is_valid_skill_dir,
+        tool_name=tool.name,
+    )
+    if self_installed is not None:
+        return self_installed
 
     conflicts, has_unknown = _find_local_name_conflicts(
         handle, dest_dir, tool, repo_root

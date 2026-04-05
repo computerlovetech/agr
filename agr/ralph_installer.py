@@ -14,12 +14,14 @@ from agr._install_common import (
     RALPHS_CONFIG_DIR,
     RALPHS_SUBDIR,
     RemoteDepLocation,
+    check_self_install,
     copy_resource_to_destination,
     dep_not_found_message,
     find_existing_flat_dir,
     find_local_name_conflicts,
     list_remote_repo_deps,
     locate_remote_dep,
+    prepare_local_handle,
     prepare_repo_for_deps,
     raise_on_local_name_conflict,
     resolve_flat_destination,
@@ -35,11 +37,7 @@ from agr.handle import (
     ParsedHandle,
     warn_legacy_repo,
 )
-from agr.metadata import (
-    compute_content_hash,
-    read_resource_metadata,
-    stamp_resource_metadata,
-)
+from agr.metadata import compute_content_hash
 from agr.ralph import (
     RALPH_MARKER,
     discover_ralphs_in_repo_listing,
@@ -72,7 +70,9 @@ def _find_existing_ralph_dir(
     source: str | None = None,
 ) -> Path | None:
     """Find an existing installed ralph directory for this handle."""
-    return find_existing_flat_dir(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
+    return find_existing_flat_dir(
+        handle, ralphs_dir, repo_root, source, is_valid_ralph_dir
+    )
 
 
 def _resolve_ralph_destination(
@@ -82,7 +82,9 @@ def _resolve_ralph_destination(
     source: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a ralph."""
-    return resolve_flat_destination(handle, ralphs_dir, repo_root, source, is_valid_ralph_dir)
+    return resolve_flat_destination(
+        handle, ralphs_dir, repo_root, source, is_valid_ralph_dir
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -193,9 +195,7 @@ def _find_local_ralph_name_conflicts(
     """
     candidates = [ralphs_dir / handle.name, ralphs_dir / handle.to_installed_name()]
 
-    return find_local_name_conflicts(
-        candidates, handle, repo_root, is_valid_ralph_dir
-    )
+    return find_local_name_conflicts(candidates, handle, repo_root, is_valid_ralph_dir)
 
 
 def install_local_ralph(
@@ -217,22 +217,19 @@ def install_local_ralph(
             f"reserved sequence '{INSTALLED_NAME_SEPARATOR}'"
         )
 
-    handle = handle or ParsedHandle(
-        is_local=True, name=source_path.name, local_path=source_path
-    )
-    if repo_root is None:
-        repo_root = Path.cwd()
+    handle, repo_root = prepare_local_handle(source_path, handle, repo_root)
 
-    # Self-install case: ralphs always install by name (no tool-specific
-    # path nesting), so handle.name is the correct destination, unlike
-    # skills which use handle.to_skill_path(tool).
+    # Self-install case: source path IS the install destination.
     default_dest = ralphs_dir / handle.name
-    if source_path.resolve() == default_dest.resolve() and is_valid_ralph_dir(
-        default_dest
-    ):
-        if read_resource_metadata(default_dest) is None:
-            stamp_resource_metadata(default_dest, handle, repo_root, default_dest.name)
-        return default_dest
+    self_installed = check_self_install(
+        source_path,
+        default_dest,
+        handle,
+        repo_root,
+        is_valid_ralph_dir,
+    )
+    if self_installed is not None:
+        return self_installed
 
     conflicts, has_unknown = _find_local_ralph_name_conflicts(
         handle, ralphs_dir, repo_root
