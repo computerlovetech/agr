@@ -28,6 +28,7 @@ from agr.lockfile import (
 from agr.ralph import is_valid_ralph_dir
 from agr.skill import is_valid_skill_dir
 from agr.source import SourceResolver
+from agr.tool import ToolConfig
 
 
 def _detect_local_type(source_path: Path) -> str:
@@ -47,6 +48,58 @@ def _detect_local_type(source_path: Path) -> str:
     if has_ralph:
         return DEPENDENCY_TYPE_RALPH
     return DEPENDENCY_TYPE_SKILL
+
+
+def _install_remote_dependency(
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    tools: list[ToolConfig],
+    overwrite: bool,
+    resolver: SourceResolver,
+    source: str | None,
+    skills_dirs: dict[str, Path] | None,
+    default_repo: str | None,
+) -> tuple[list[str], InstallResult, str]:
+    """Install a remote dependency, trying as skill first then ralph.
+
+    Returns:
+        Tuple of (formatted install paths, install metadata, dependency type).
+
+    Raises:
+        SkillNotFoundError: If not found as either skill or ralph.
+    """
+    try:
+        installed_paths_dict, install_result = fetch_and_install_to_tools(
+            handle,
+            repo_root,
+            tools,
+            overwrite,
+            resolver=resolver,
+            source=source,
+            skills_dirs=skills_dirs,
+            default_repo=default_repo,
+        )
+        installed_paths = [
+            f"{name}: {path}" for name, path in installed_paths_dict.items()
+        ]
+        return installed_paths, install_result, DEPENDENCY_TYPE_SKILL
+    except SkillNotFoundError:
+        pass
+
+    try:
+        installed_path, install_result = fetch_and_install_ralph(
+            handle,
+            repo_root,
+            overwrite,
+            resolver=resolver,
+            source=source,
+            default_repo=default_repo,
+        )
+        return [str(installed_path)], install_result, DEPENDENCY_TYPE_RALPH
+    except RalphNotFoundError:
+        raise SkillNotFoundError(
+            f"'{handle.name}' not found as a skill or ralph in any configured source."
+        ) from None
 
 
 def run_add(
@@ -138,39 +191,16 @@ def run_add(
                 installed_paths = [str(installed_path)]
             else:
                 # Remote — try as skill first, fall back to ralph
-                try:
-                    installed_paths_dict, install_result = fetch_and_install_to_tools(
-                        handle,
-                        repo_root,
-                        tools,
-                        overwrite,
-                        resolver=resolver,
-                        source=source,
-                        skills_dirs=skills_dirs,
-                        default_repo=config.default_repo,
-                    )
-                    installed_paths = [
-                        f"{name}: {path}" for name, path in installed_paths_dict.items()
-                    ]
-                    dep_type = DEPENDENCY_TYPE_SKILL
-                except SkillNotFoundError:
-                    try:
-                        installed_path, install_result = fetch_and_install_ralph(
-                            handle,
-                            repo_root,
-                            overwrite,
-                            resolver=resolver,
-                            source=source,
-                            default_repo=config.default_repo,
-                        )
-                        installed_paths = [str(installed_path)]
-                        dep_type = DEPENDENCY_TYPE_RALPH
-                    except RalphNotFoundError:
-                        # Neither skill nor ralph found
-                        raise SkillNotFoundError(
-                            f"'{handle.name}' not found as a skill or ralph "
-                            f"in any configured source."
-                        ) from None
+                installed_paths, install_result, dep_type = _install_remote_dependency(
+                    handle,
+                    repo_root,
+                    tools,
+                    overwrite,
+                    resolver,
+                    source,
+                    skills_dirs,
+                    config.default_repo,
+                )
 
             # Add to config
             if handle.is_local:
