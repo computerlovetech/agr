@@ -195,6 +195,26 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError, match="contains reserved sequence"):
             parse_handle(str(bad_skill))
 
+    def test_empty_repo_in_three_part_handle_raises(self):
+        """Handle with empty middle component (user//skill) must be rejected.
+
+        Without this check, 'user//skill' silently produces repo=""
+        which is not None but falsy, causing misclassification in sync
+        (treated as specific-repo instead of default-repo, skipping
+        legacy fallback).
+        """
+        with pytest.raises(InvalidHandleError, match="empty"):
+            parse_handle("user//skill")
+
+    def test_empty_username_in_two_part_handle_raises(self):
+        """Handle with empty username (/skill) must be rejected in remote mode.
+
+        With prefer_local=False, '/skill' bypasses local detection and
+        splits into ['', 'skill'], producing an empty username.
+        """
+        with pytest.raises(InvalidHandleError, match="empty"):
+            parse_handle("/skill", prefer_local=False)
+
 
 class TestParsedHandle:
     """Tests for ParsedHandle methods."""

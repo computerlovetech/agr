@@ -250,6 +250,12 @@ def parse_handle(
     # Remote handle: split by /
     parts = ref.split("/")
 
+    # Reject empty components (e.g. "user//skill" → ["user", "", "skill"])
+    if any(not part for part in parts):
+        raise InvalidHandleError(
+            f"Invalid handle '{ref}': contains empty path segments"
+        )
+
     if len(parts) == 1:
         # Simple name like "commit" — resolve with default_owner if available
         if default_owner is not None:
