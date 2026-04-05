@@ -132,9 +132,14 @@ def fetch_and_checkout_commit(repo_dir: Path, commit: str) -> None:
 
     Used by ``--frozen`` sync to pin to lockfile commits.
     Works with depth-1 clones on GitHub by fetching the exact SHA.
+
+    Always ensures the working tree is populated, even when HEAD
+    already matches *commit* — partial clones use ``--no-checkout``
+    so the working tree may be empty after the initial clone.
     """
     current = get_head_commit_full(repo_dir)
     if current == commit:
+        checkout_full(repo_dir)
         return
 
     result = _run_git(_git_cmd(repo_dir, "fetch", "--depth=1", "origin", commit))

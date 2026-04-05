@@ -1,12 +1,14 @@
 """Unit tests for the git module's pure helper functions."""
 
 import os
+import subprocess
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from agr.exceptions import AgrError, AuthenticationError, RepoNotFoundError
-from agr.git import get_github_token
+from agr.git import fetch_and_checkout_commit, get_github_token
 from agr.git import _is_github_source as is_github_source
 from agr.git import _partial_clone_unsupported as partial_clone_unsupported
 from agr.git import _apply_github_token as apply_github_token
@@ -383,3 +385,63 @@ class TestRaiseCloneError:
                 "repo",
                 self.GITHUB_SOURCE,
             )
+
+
+class TestFetchAndCheckoutCommit:
+    """Tests for fetch_and_checkout_commit()."""
+
+    def _create_origin_repo(self, tmp_path: Path) -> tuple[Path, str]:
+        """Create a local git repo with one commit and return (path, commit_sha)."""
+        origin = tmp_path / "origin"
+        origin.mkdir()
+        subprocess.run(["git", "init", str(origin)], capture_output=True, check=True)
+        subprocess.run(
+            ["git", "-C", str(origin), "config", "user.email", "test@test.com"],
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(origin), "config", "user.name", "Test"],
+            capture_output=True,
+            check=True,
+        )
+        (origin / "SKILL.md").write_text("---\nname: test\n---\n")
+        subprocess.run(
+            ["git", "-C", str(origin), "add", "."], capture_output=True, check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(origin), "commit", "-m", "init"],
+            capture_output=True,
+            check=True,
+        )
+        result = subprocess.run(
+            ["git", "-C", str(origin), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return origin, result.stdout.strip()
+
+    def test_populates_working_tree_when_head_matches_commit(self, tmp_path: Path):
+        """Working tree must be populated even when HEAD already matches.
+
+        Regression: partial clones use --no-checkout, so the working tree
+        is empty after clone. fetch_and_checkout_commit returned early
+        when HEAD == commit without ensuring the working tree was populated.
+        """
+        origin, commit = self._create_origin_repo(tmp_path)
+
+        # Clone with --no-checkout to simulate partial clone behaviour
+        clone_dir = tmp_path / "clone"
+        subprocess.run(
+            ["git", "clone", "--no-checkout", str(origin), str(clone_dir)],
+            capture_output=True,
+            check=True,
+        )
+
+        # Precondition: working tree is empty
+        assert not (clone_dir / "SKILL.md").exists()
+
+        # After fetch_and_checkout_commit, working tree must be populated
+        fetch_and_checkout_commit(clone_dir, commit)
+        assert (clone_dir / "SKILL.md").exists()
