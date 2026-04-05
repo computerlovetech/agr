@@ -772,19 +772,18 @@ def _build_lockfile_from_results(
         result = results[index]
         is_ralph = dep.is_ralph
 
+        # Local deps: record path only (no commit to pin).
         if dep.is_local:
             if result.status == SyncStatus.ERROR:
                 continue
             handle = dep.to_parsed_handle(config.default_owner)
             lockfile.update_entry(
-                LockedEntry(
-                    path=dep.path,
-                    installed_name=handle.name,
-                ),
+                LockedEntry(path=dep.path, installed_name=handle.name),
                 ralph=is_ralph,
             )
             continue
 
+        # Remote: freshly installed with commit — record new metadata.
         if result.status == SyncStatus.INSTALLED and result.commit:
             handle = dep.to_parsed_handle(config.default_owner)
             lockfile.update_entry(
@@ -797,25 +796,32 @@ def _build_lockfile_from_results(
                 ),
                 ralph=is_ralph,
             )
-        else:
-            existing = (
-                existing_lockfile.find_entry(dep)
-                if existing_lockfile is not None
-                else None
-            )
-            if existing is not None:
-                lockfile.update_entry(existing, ralph=is_ralph)
-            elif result.status == SyncStatus.ERROR:
-                pass
-            else:
-                handle = dep.to_parsed_handle(config.default_owner)
-                lockfile.update_entry(
-                    LockedEntry(
-                        handle=dep.handle,
-                        source=dep.resolve_source_name(config.default_source),
-                        installed_name=handle.name,
-                    ),
-                    ralph=is_ralph,
-                )
+            continue
+
+        # Remote, not freshly installed: carry forward existing lockfile entry.
+        existing = (
+            existing_lockfile.find_entry(dep)
+            if existing_lockfile is not None
+            else None
+        )
+        if existing is not None:
+            lockfile.update_entry(existing, ralph=is_ralph)
+            continue
+
+        # No existing entry for a failed dep — nothing to record.
+        if result.status == SyncStatus.ERROR:
+            continue
+
+        # Up-to-date with no prior lockfile entry (e.g. first sync after
+        # adding to agr.toml) — record a minimal entry without commit.
+        handle = dep.to_parsed_handle(config.default_owner)
+        lockfile.update_entry(
+            LockedEntry(
+                handle=dep.handle,
+                source=dep.resolve_source_name(config.default_source),
+                installed_name=handle.name,
+            ),
+            ralph=is_ralph,
+        )
 
     return lockfile
