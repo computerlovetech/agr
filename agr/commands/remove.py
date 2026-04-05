@@ -3,7 +3,6 @@
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
 from agr.commands.migrations import run_tool_migrations
-from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
 from agr.ralph_installer import uninstall_ralph
@@ -79,7 +78,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             if dep and dep.is_remote:
                 source_name = dep.source or config.default_source
 
-            is_ralph = dep is not None and dep.type == DEPENDENCY_TYPE_RALPH
+            is_ralph = dep is not None and dep.is_ralph
 
             # Remove from filesystem
             removed_fs = False

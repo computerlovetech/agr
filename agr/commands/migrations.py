@@ -7,7 +7,7 @@ updates needed when upgrading from older naming conventions.
 import shutil
 from pathlib import Path
 
-from agr.config import DEPENDENCY_TYPE_RALPH, AgrConfig
+from agr.config import AgrConfig
 from agr.console import get_console
 from agr.exceptions import AgrError
 from agr.handle import (
@@ -350,7 +350,7 @@ def migrate_flat_installed_names(
     for dep in config.dependencies:
         if not (dep.path or dep.handle):
             continue
-        if dep.type == DEPENDENCY_TYPE_RALPH:
+        if dep.is_ralph:
             continue
         try:
             handle, source_name = dep.resolve(

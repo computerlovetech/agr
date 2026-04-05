@@ -205,6 +205,16 @@ class Dependency:
         return self.handle is not None
 
     @property
+    def is_skill(self) -> bool:
+        """True if this is a skill dependency."""
+        return self.type == DEPENDENCY_TYPE_SKILL
+
+    @property
+    def is_ralph(self) -> bool:
+        """True if this is a ralph dependency."""
+        return self.type == DEPENDENCY_TYPE_RALPH
+
+    @property
     def identifier(self) -> str:
         """Unique identifier (path or handle)."""
         return self.path or self.handle or ""
@@ -219,6 +229,12 @@ class Dependency:
                 raise InvalidHandleError(
                     f"Invalid local path '{ref}': empty resource name "
                     "(path must point to a named directory, not '.' or '..')"
+                )
+            if INSTALLED_NAME_SEPARATOR in name:
+                raise InvalidHandleError(
+                    f"Invalid local path '{ref}': name '{name}' "
+                    f"contains reserved sequence "
+                    f"'{INSTALLED_NAME_SEPARATOR}'"
                 )
             return ParsedHandle(is_local=True, name=name, local_path=path)
         return parse_handle(ref, prefer_local=False, default_owner=default_owner)

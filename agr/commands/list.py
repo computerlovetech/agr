@@ -5,7 +5,6 @@ from pathlib import Path
 from rich.table import Table
 
 from agr.commands._tool_helpers import load_existing_config, print_missing_config_hint
-from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console
 from agr.exceptions import AgrError, InvalidHandleError
 from agr.metadata import METADATA_TYPE_LOCAL, METADATA_TYPE_REMOTE
@@ -100,7 +99,7 @@ def run_list(global_install: bool = False) -> None:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
-            if dep.type == DEPENDENCY_TYPE_RALPH:
+            if dep.is_ralph:
                 status = _get_ralph_installation_status(handle, repo_root, source_name)
             else:
                 status = _get_installation_status(

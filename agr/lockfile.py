@@ -16,7 +16,7 @@ import tomlkit.items
 from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
-from agr.config import DEPENDENCY_TYPE_RALPH, Dependency
+from agr.config import Dependency
 from agr.exceptions import ConfigError
 
 LOCKFILE_FILENAME = "agr.lock"
@@ -129,7 +129,7 @@ class Lockfile:
     def find_entry(self, dep: Dependency) -> LockedEntry | None:
         """Look up a dependency's entry."""
         identifier = dep.identifier
-        ralph = dep.type == DEPENDENCY_TYPE_RALPH
+        ralph = dep.is_ralph
         for entry in self._entries(ralph):
             if entry.identifier == identifier:
                 return entry
@@ -143,12 +143,8 @@ class Lockfile:
         """
         lockfile_skill_ids = {s.identifier for s in self.skills}
         lockfile_ralph_ids = {r.identifier for r in self.ralphs}
-        config_skill_ids = {
-            d.identifier for d in dependencies if d.type != DEPENDENCY_TYPE_RALPH
-        }
-        config_ralph_ids = {
-            d.identifier for d in dependencies if d.type == DEPENDENCY_TYPE_RALPH
-        }
+        config_skill_ids = {d.identifier for d in dependencies if not d.is_ralph}
+        config_ralph_ids = {d.identifier for d in dependencies if d.is_ralph}
         return (
             lockfile_skill_ids == config_skill_ids
             and lockfile_ralph_ids == config_ralph_ids

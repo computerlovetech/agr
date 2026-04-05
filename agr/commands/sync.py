@@ -13,7 +13,6 @@ from agr.commands.migrations import (
     run_tool_migrations,
 )
 from agr.config import (
-    DEPENDENCY_TYPE_RALPH,
     AgrConfig,
     Dependency,
     find_config,
@@ -431,7 +430,7 @@ def _run_global_sync() -> None:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
-            if dep.type == DEPENDENCY_TYPE_RALPH:
+            if dep.is_ralph:
                 # Ralphs are project-level only; skip in global mode.
                 console.print(
                     f"[yellow]Skipped:[/yellow] {dep.identifier} "
@@ -547,7 +546,7 @@ def run_sync(
                 config.default_source, config.default_owner
             )
 
-            if dep.type == DEPENDENCY_TYPE_RALPH:
+            if dep.is_ralph:
                 # Ralphs are tool-agnostic: check project-level ralphs dir.
                 if is_ralph_installed(handle, repo_root, source_name):
                     results[index] = SyncResult.up_to_date()
@@ -655,7 +654,7 @@ def _sync_dep_from_lockfile(
     per-entry.
     """
     handle, source_name = dep.resolve(config.default_source, config.default_owner)
-    is_ralph_dep = dep.type == DEPENDENCY_TYPE_RALPH
+    is_ralph_dep = dep.is_ralph
 
     # Check installation status — initialise tools_needing_install
     # unconditionally so it is always bound regardless of code path.
@@ -771,7 +770,7 @@ def _build_lockfile_from_results(
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
-        is_ralph = dep.type == DEPENDENCY_TYPE_RALPH
+        is_ralph = dep.is_ralph
 
         if dep.is_local:
             if result.status == SyncStatus.ERROR:
