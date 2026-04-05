@@ -117,6 +117,18 @@ class TestDependency:
         assert handle.name == "my-skill"
         assert source_name is None
 
+    def test_to_parsed_handle_dot_path_raises(self):
+        """Local dependency with path='.' must raise due to empty resource name."""
+        dep = Dependency(type="skill", path=".")
+        with pytest.raises(AgrError, match="empty resource name"):
+            dep.to_parsed_handle()
+
+    def test_to_parsed_handle_dotdot_path_raises(self):
+        """Local dependency with path='..' must raise due to invalid resource name."""
+        dep = Dependency(type="skill", path="..")
+        with pytest.raises(AgrError, match="empty resource name"):
+            dep.to_parsed_handle()
+
 
 class TestRalphDependency:
     """Tests for ralph dependency type."""

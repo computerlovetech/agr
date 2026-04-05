@@ -10,7 +10,7 @@ from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
 from agr.console import error_exit
-from agr.exceptions import ConfigError
+from agr.exceptions import ConfigError, InvalidHandleError
 from agr.handle import (
     DEFAULT_OWNER,
     DEFAULT_REPO_NAME,
@@ -214,7 +214,13 @@ class Dependency:
         ref = self.path or self.handle or ""
         if self.is_local:
             path = Path(ref)
-            return ParsedHandle(is_local=True, name=path.name, local_path=path)
+            name = path.name
+            if not name or name == "..":
+                raise InvalidHandleError(
+                    f"Invalid local path '{ref}': empty resource name "
+                    "(path must point to a named directory, not '.' or '..')"
+                )
+            return ParsedHandle(is_local=True, name=name, local_path=path)
         return parse_handle(ref, prefer_local=False, default_owner=default_owner)
 
     def resolve_source_name(self, default_source: str | None = None) -> str | None:
