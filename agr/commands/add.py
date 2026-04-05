@@ -277,6 +277,11 @@ def run_add(
             console.print(f"[red]Failed:[/red] {result.ref}")
             console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
 
+    # Update lockfile before save_and_summarize_results because the latter
+    # raises SystemExit(1) on partial failure, which would skip the lockfile
+    # write and leave it inconsistent with the config.
+    _update_lockfile_for_adds(lockfile_updates, config_path)
+
     save_and_summarize_results(
         results,
         config,
@@ -285,8 +290,6 @@ def run_add(
         total=len(refs),
         print_result=_print_add_result,
     )
-
-    _update_lockfile_for_adds(lockfile_updates, config_path)
 
 
 def _maybe_suggest_repo_skills(

@@ -131,3 +131,34 @@ class TestAgrAddRalph:
         result = agr("add", "./both-type")
 
         assert_cli(result).failed().stdout_contains("SKILL.md and RALPH.md")
+
+
+class TestAgrAddLockfileOnPartialFailure:
+    """Regression: lockfile must be updated for successful adds even when others fail."""
+
+    def test_lockfile_updated_on_partial_add_failure(self, agr, cli_project, cli_skill):
+        """agr add updates lockfile for successful installs even when some refs fail.
+
+        When `agr add good-skill bad-skill` partially succeeds, the config
+        is saved with the good skill but the lockfile must also be updated.
+        Previously, SystemExit(1) from the summary prevented the lockfile
+        write, leaving it inconsistent with the config.
+        """
+        result = agr("add", "./skills/test-skill", "./nonexistent")
+
+        # Partial failure: exit code 1, but one skill succeeded
+        assert_cli(result).failed()
+        assert "Added:" in result.stdout
+
+        # Config should have the successful dep
+        config = AgrConfig.load(cli_project / "agr.toml")
+        assert any(d.path == "./skills/test-skill" for d in config.dependencies)
+
+        # Lockfile must also have the successful dep's entry
+        from agr.lockfile import load_lockfile
+
+        lockfile = load_lockfile(cli_project / "agr.lock")
+        assert lockfile is not None, "agr.lock should exist after partial add"
+        assert len(lockfile.skills) == 1
+        assert lockfile.skills[0].path == "./skills/test-skill"
+        assert lockfile.skills[0].installed_name == "test-skill"
