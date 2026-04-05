@@ -22,9 +22,14 @@ METADATA_KEY_LOCAL_PATH = "local_path"
 METADATA_KEY_HANDLE = "handle"
 METADATA_KEY_SOURCE = "source"
 
-# Metadata type discriminators written to and read from .agr.json
+# Metadata type discriminators written to and read from .agr.json.
+# These values also serve as the prefix in metadata IDs produced by
+# build_handle_id (e.g. "local:/abs/path", "remote:user/skill").
 METADATA_TYPE_LOCAL = "local"
 METADATA_TYPE_REMOTE = "remote"
+
+# Hash algorithm used by compute_content_hash for deterministic file hashing.
+CONTENT_HASH_ALGORITHM = "sha256"
 
 
 def build_handle_id(
@@ -34,11 +39,11 @@ def build_handle_id(
     if handle.is_local:
         if handle.local_path is not None:
             resolved = handle.resolve_local_path(repo_root)
-            return f"local:{resolved}"
-        return "local:"
+            return f"{METADATA_TYPE_LOCAL}:{resolved}"
+        return f"{METADATA_TYPE_LOCAL}:"
     if source:
-        return f"remote:{source}:{handle.to_toml_handle()}"
-    return f"remote:{handle.to_toml_handle()}"
+        return f"{METADATA_TYPE_REMOTE}:{source}:{handle.to_toml_handle()}"
+    return f"{METADATA_TYPE_REMOTE}:{handle.to_toml_handle()}"
 
 
 def build_handle_ids(
@@ -83,7 +88,7 @@ def compute_content_hash(skill_dir: Path) -> str:
     POSIX path, and feeds each path + contents into a single SHA-256 hasher.
 
     Returns:
-        Hash string in the format "sha256:<64 hex chars>".
+        Hash string in the format "<algorithm>:<64 hex chars>".
     """
     hasher = hashlib.sha256()
     entries: list[tuple[str, Path]] = []
@@ -100,7 +105,7 @@ def compute_content_hash(skill_dir: Path) -> str:
         hasher.update(b"\0")
         hasher.update(file_path.read_bytes())
         hasher.update(b"\0")
-    return f"sha256:{hasher.hexdigest()}"
+    return f"{CONTENT_HASH_ALGORITHM}:{hasher.hexdigest()}"
 
 
 def write_resource_metadata(
