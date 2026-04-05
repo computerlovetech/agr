@@ -274,7 +274,7 @@ def _sync_batched_repo_entries(
                 # Capture commit SHA for lockfile before installing.
                 try:
                     commit = get_head_commit_full(repo_dir)
-                except Exception:
+                except AgrError:
                     commit = None
 
                 # Prepare all skills from this repo in one sparse checkout pass.
