@@ -67,6 +67,55 @@ def _parse_tools_flag(value: str | None) -> list[str] | None:
     return raw or None
 
 
+def _resolve_tools(
+    config: AgrConfig,
+    tools_flag: str | None,
+    created: bool,
+    repo_root: Path,
+) -> list[str] | None:
+    """Resolve the tools list from flag, auto-detection, or existing config.
+
+    Updates ``config.tools`` in place and returns the list for display,
+    or None when there is nothing to display.
+    """
+    tools_override = _parse_tools_flag(tools_flag)
+    if tools_override:
+        tools_override = normalize_and_validate_tool_names(tools_override)
+        config.tools = tools_override
+        return tools_override
+
+    if created:
+        detected = detect_tools(repo_root)
+        if detected:
+            config.tools = detected
+            return detected
+        return None
+
+    return config.tools if config.tools else None
+
+
+def _apply_instruction_sync(
+    config: AgrConfig,
+    sync_instructions: bool | None,
+    canonical_instructions: str | None,
+) -> None:
+    """Apply instruction-sync settings to *config* in place."""
+    if sync_instructions is not None:
+        config.sync_instructions = sync_instructions
+
+    if canonical_instructions:
+        try:
+            validate_canonical_instructions(canonical_instructions)
+        except ConfigError as exc:
+            error_exit(str(exc))
+        config.canonical_instructions = canonical_instructions
+    elif config.sync_instructions and config.canonical_instructions is None:
+        if config.default_tool:
+            config.canonical_instructions = canonical_instruction_file(
+                config.default_tool
+            )
+
+
 def run_init(
     skill_name: str | None = None,
     *,
@@ -110,20 +159,7 @@ def run_init(
     else:
         console.print(f"[yellow]Already exists:[/yellow] {config_path}")
 
-    # Tools
-    tools_display: list[str] | None = None
-    tools_override = _parse_tools_flag(tools)
-    if tools_override:
-        tools_override = normalize_and_validate_tool_names(tools_override)
-        config.tools = tools_override
-        tools_display = tools_override
-    elif created:
-        detected_tools = detect_tools(repo_root)
-        if detected_tools:
-            config.tools = detected_tools
-            tools_display = detected_tools
-    else:
-        tools_display = config.tools if config.tools else None
+    tools_display = _resolve_tools(config, tools, created, repo_root)
 
     # Default tool
     if default_tool:
@@ -133,21 +169,7 @@ def run_init(
     if config.default_tool and config.default_tool not in config.tools:
         error_exit("default_tool must be listed in tools. Use --tools to include it.")
 
-    # Instruction sync
-    if sync_instructions is not None:
-        config.sync_instructions = sync_instructions
-
-    if canonical_instructions:
-        try:
-            validate_canonical_instructions(canonical_instructions)
-        except ConfigError as exc:
-            error_exit(str(exc))
-        config.canonical_instructions = canonical_instructions
-    elif config.sync_instructions and config.canonical_instructions is None:
-        if config.default_tool:
-            config.canonical_instructions = canonical_instruction_file(
-                config.default_tool
-            )
+    _apply_instruction_sync(config, sync_instructions, canonical_instructions)
 
     current_state = (
         list(config.tools),
