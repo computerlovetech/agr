@@ -263,6 +263,47 @@ class Dependency:
             default_source
         )
 
+    def to_toml_dict(self) -> dict[str, str]:
+        """Serialize to a dict for TOML inline tables.
+
+        Returns a dict with only the non-None optional fields (handle,
+        path, source) plus the required type field, matching the agr.toml
+        dependency format.
+        """
+        data: dict[str, str] = {}
+        if self.handle:
+            data["handle"] = self.handle
+        if self.path:
+            data["path"] = self.path
+        if self.source:
+            data["source"] = self.source
+        data["type"] = self.type
+        return data
+
+    @classmethod
+    def from_toml_dict(cls, item: dict[str, Any]) -> "Dependency":
+        """Deserialize a TOML dependency dict into a Dependency.
+
+        Validates the dependency type and extracts known fields.  The
+        caller is responsible for ensuring ``item`` contains at least one
+        of ``handle`` or ``path``.
+
+        Raises:
+            ConfigError: If the dependency type is invalid.
+        """
+        dep_type = item.get("type", DEPENDENCY_TYPE_SKILL)
+        if dep_type not in VALID_DEPENDENCY_TYPES:
+            raise ConfigError(
+                f"Unknown dependency type '{dep_type}'. "
+                f"Valid types: {', '.join(sorted(VALID_DEPENDENCY_TYPES))}"
+            )
+        handle = item.get("handle")
+        path_val = item.get("path")
+        source = item.get("source")
+        if source is not None:
+            source = str(source)
+        return cls(handle=handle, path=path_val, type=dep_type, source=source)
+
 
 def _parse_dependencies_from_doc(
     doc: TOMLDocument,
@@ -282,27 +323,12 @@ def _parse_dependencies_from_doc(
     for item in deps_list:
         if not isinstance(item, dict):
             continue
-        dep_type = item.get("type", DEPENDENCY_TYPE_SKILL)
-        if dep_type not in VALID_DEPENDENCY_TYPES:
-            raise ConfigError(
-                f"Unknown dependency type '{dep_type}'. "
-                f"Valid types: {', '.join(sorted(VALID_DEPENDENCY_TYPES))}"
-            )
-        handle = item.get("handle")
-        path_val = item.get("path")
-        source = item.get("source")
-        if source is not None:
-            source = str(source)
-
-        if handle or path_val:
-            try:
-                dependencies.append(
-                    Dependency(
-                        handle=handle, path=path_val, type=dep_type, source=source
-                    )
-                )
-            except ValueError as e:
-                raise ConfigError(str(e)) from None
+        if not (item.get("handle") or item.get("path")):
+            continue
+        try:
+            dependencies.append(Dependency.from_toml_dict(item))
+        except (ValueError, ConfigError) as e:
+            raise ConfigError(str(e)) from None
 
     for dep in dependencies:
         if dep.source and dep.source not in source_names:
@@ -515,13 +541,7 @@ class AgrConfig:
 
         for dep in self.dependencies:
             item = tomlkit.inline_table()
-            if dep.handle:
-                item["handle"] = dep.handle
-            if dep.path:
-                item["path"] = dep.path
-            if dep.source:
-                item["source"] = dep.source
-            item["type"] = dep.type
+            item.update(dep.to_toml_dict())
             deps_array.append(item)
 
         doc["dependencies"] = deps_array

@@ -140,6 +140,75 @@ class TestDependency:
         with pytest.raises(AgrError, match="reserved sequence"):
             dep.to_parsed_handle()
 
+    def test_to_toml_dict_remote(self):
+        """Remote dependency serializes handle, type, and optional source."""
+        dep = Dependency(type="skill", handle="owner/repo/skill")
+        result = dep.to_toml_dict()
+        assert result == {"handle": "owner/repo/skill", "type": "skill"}
+
+    def test_to_toml_dict_remote_with_source(self):
+        """Remote dependency with explicit source includes it."""
+        dep = Dependency(type="skill", handle="owner/skill", source="custom")
+        result = dep.to_toml_dict()
+        assert result == {
+            "handle": "owner/skill",
+            "source": "custom",
+            "type": "skill",
+        }
+
+    def test_to_toml_dict_local(self):
+        """Local dependency serializes path and type."""
+        dep = Dependency(type="skill", path="./my-skill")
+        result = dep.to_toml_dict()
+        assert result == {"path": "./my-skill", "type": "skill"}
+
+    def test_to_toml_dict_ralph(self):
+        """Ralph dependency preserves the type."""
+        dep = Dependency(type="ralph", handle="owner/repo/my-ralph")
+        result = dep.to_toml_dict()
+        assert result == {"handle": "owner/repo/my-ralph", "type": "ralph"}
+
+    def test_from_toml_dict_remote(self):
+        """Deserialize a remote dependency from TOML dict."""
+        dep = Dependency.from_toml_dict({"handle": "owner/repo/skill", "type": "skill"})
+        assert dep.handle == "owner/repo/skill"
+        assert dep.type == "skill"
+        assert dep.path is None
+        assert dep.source is None
+
+    def test_from_toml_dict_local(self):
+        """Deserialize a local dependency from TOML dict."""
+        dep = Dependency.from_toml_dict({"path": "./my-skill", "type": "skill"})
+        assert dep.path == "./my-skill"
+        assert dep.type == "skill"
+        assert dep.handle is None
+
+    def test_from_toml_dict_with_source(self):
+        """Deserialize a remote dependency with explicit source."""
+        dep = Dependency.from_toml_dict(
+            {"handle": "owner/skill", "type": "skill", "source": "custom"}
+        )
+        assert dep.source == "custom"
+
+    def test_from_toml_dict_defaults_to_skill(self):
+        """Missing type defaults to skill."""
+        dep = Dependency.from_toml_dict({"handle": "owner/skill"})
+        assert dep.type == "skill"
+
+    def test_from_toml_dict_unknown_type_raises(self):
+        """Unknown dependency type raises ConfigError."""
+        with pytest.raises(ConfigError, match="Unknown dependency type"):
+            Dependency.from_toml_dict({"handle": "owner/skill", "type": "unknown"})
+
+    def test_to_toml_dict_roundtrip(self):
+        """Serialization and deserialization produce equivalent objects."""
+        original = Dependency(type="skill", handle="owner/repo/skill", source="custom")
+        restored = Dependency.from_toml_dict(original.to_toml_dict())
+        assert restored.handle == original.handle
+        assert restored.path == original.path
+        assert restored.source == original.source
+        assert restored.type == original.type
+
 
 class TestRalphDependency:
     """Tests for ralph dependency type."""
@@ -512,9 +581,7 @@ class TestGetTools:
 
         # Uncomment the canonical_instructions line
         content = config_path.read_text()
-        content = content.replace(
-            "# canonical_instructions", "canonical_instructions"
-        )
+        content = content.replace("# canonical_instructions", "canonical_instructions")
         config_path.write_text(content)
 
         # Should load without error — the example value must be valid
