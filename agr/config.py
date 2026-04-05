@@ -219,6 +219,21 @@ class Dependency:
         """Unique identifier (path or handle)."""
         return self.path or self.handle or ""
 
+    @property
+    def installed_name(self) -> str:
+        """Short name the resource is installed as (last path/handle segment).
+
+        For local deps this is the directory name; for remote deps it's the
+        final segment of the handle string (e.g. ``"skill"`` from
+        ``"user/repo/skill"``).  Equivalent to
+        ``to_parsed_handle(...).name`` but cheaper since it only extracts
+        the last component without full handle parsing.
+        """
+        ref = self.identifier
+        if self.is_local:
+            return Path(ref).name
+        return ref.rsplit("/", 1)[-1]
+
     def to_parsed_handle(self, default_owner: str | None = None) -> ParsedHandle:
         """Parse this dependency's reference into a ParsedHandle."""
         ref = self.path or self.handle or ""

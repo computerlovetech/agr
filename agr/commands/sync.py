@@ -805,28 +805,27 @@ def _build_lockfile_from_results(
     for index, dep in enumerate(config.dependencies):
         result = results[index]
         is_ralph = dep.is_ralph
+        name = dep.installed_name
 
         # Local deps: record path only (no commit to pin).
         if dep.is_local:
             if result.status == SyncStatus.ERROR:
                 continue
-            handle = dep.to_parsed_handle(config.default_owner)
             lockfile.update_entry(
-                LockedEntry(path=dep.path, installed_name=handle.name),
+                LockedEntry(path=dep.path, installed_name=name),
                 ralph=is_ralph,
             )
             continue
 
         # Remote: freshly installed with commit — record new metadata.
         if result.status == SyncStatus.INSTALLED and result.commit:
-            handle = dep.to_parsed_handle(config.default_owner)
             lockfile.update_entry(
                 LockedEntry(
                     handle=dep.handle,
                     source=result.source_name,
                     commit=result.commit,
                     content_hash=result.content_hash,
-                    installed_name=handle.name,
+                    installed_name=name,
                 ),
                 ralph=is_ralph,
             )
@@ -846,12 +845,11 @@ def _build_lockfile_from_results(
 
         # Up-to-date with no prior lockfile entry (e.g. first sync after
         # adding to agr.toml) — record a minimal entry without commit.
-        handle = dep.to_parsed_handle(config.default_owner)
         lockfile.update_entry(
             LockedEntry(
                 handle=dep.handle,
                 source=dep.resolve_source_name(config.default_source),
-                installed_name=handle.name,
+                installed_name=name,
             ),
             ralph=is_ralph,
         )

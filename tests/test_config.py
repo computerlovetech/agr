@@ -46,6 +46,37 @@ class TestDependency:
         ):
             Dependency(type="skill", path="./my-skill", source="github")
 
+    def test_installed_name_remote_two_part(self):
+        """Two-part handle returns the skill name."""
+        dep = Dependency(type="skill", handle="owner/skill-name")
+        assert dep.installed_name == "skill-name"
+
+    def test_installed_name_remote_three_part(self):
+        """Three-part handle returns the last segment."""
+        dep = Dependency(type="skill", handle="owner/repo/skill-name")
+        assert dep.installed_name == "skill-name"
+
+    def test_installed_name_local(self):
+        """Local dependency returns the directory name."""
+        dep = Dependency(type="skill", path="./my-skill")
+        assert dep.installed_name == "my-skill"
+
+    def test_installed_name_local_nested(self):
+        """Nested local path returns the leaf directory name."""
+        dep = Dependency(type="skill", path="./some/nested/my-skill")
+        assert dep.installed_name == "my-skill"
+
+    def test_installed_name_matches_to_parsed_handle(self):
+        """installed_name matches to_parsed_handle().name for valid deps."""
+        cases = [
+            Dependency(type="skill", handle="owner/skill"),
+            Dependency(type="skill", handle="owner/repo/skill"),
+            Dependency(type="skill", path="./my-skill"),
+            Dependency(type="ralph", handle="owner/my-ralph"),
+        ]
+        for dep in cases:
+            assert dep.installed_name == dep.to_parsed_handle().name
+
     def test_to_parsed_handle_remote_two_part(self):
         """Remote two-part handle converts to ParsedHandle."""
         dep = Dependency(type="skill", handle="owner/skill-name")
