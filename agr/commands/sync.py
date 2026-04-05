@@ -125,6 +125,16 @@ class SyncEntry:
     tools_needing_install: list[ToolConfig] | None = None
 
 
+@dataclass
+class _ClassifiedDeps:
+    """Dependencies classified by install strategy."""
+
+    results: list[SyncResult]
+    pending_local: list[SyncEntry]
+    pending_remote: list[SyncEntry]
+    pending_ralph: list[SyncEntry]
+
+
 def _print_results_and_summary(
     results: list[tuple[str, SyncResult]],
 ) -> None:
@@ -453,6 +463,67 @@ def _run_global_sync() -> None:
     _print_results_and_summary(results)
 
 
+def _classify_dependencies(
+    config: AgrConfig,
+    repo_root: Path,
+    tools: list[ToolConfig],
+) -> _ClassifiedDeps:
+    """Classify dependencies into local, remote, and ralph install queues.
+
+    Resolves each dependency and checks whether it is already installed.
+    Up-to-date or errored entries are recorded directly in the results list;
+    entries that need installation are placed into the appropriate pending queue.
+    """
+    results: list[SyncResult] = [SyncResult.pending() for _ in config.dependencies]
+    pending_local: list[SyncEntry] = []
+    pending_remote: list[SyncEntry] = []
+    pending_ralph: list[SyncEntry] = []
+
+    for index, dep in enumerate(config.dependencies):
+        try:
+            handle, source_name = dep.resolve(
+                config.default_source, config.default_owner
+            )
+
+            if dep.is_ralph:
+                # Ralphs are tool-agnostic: check project-level ralphs dir.
+                if is_ralph_installed(handle, repo_root, source_name):
+                    results[index] = SyncResult.up_to_date()
+                    continue
+                pending_ralph.append(
+                    SyncEntry(index=index, handle=handle, source_name=source_name)
+                )
+            else:
+                # Skills: check per-tool install status.
+                tools_needing_install = filter_tools_needing_install(
+                    handle, repo_root, tools, source_name
+                )
+
+                if not tools_needing_install:
+                    results[index] = SyncResult.up_to_date()
+                    continue
+
+                entry = SyncEntry(
+                    index=index,
+                    handle=handle,
+                    source_name=source_name,
+                    tools_needing_install=tools_needing_install,
+                )
+                if dep.is_local:
+                    pending_local.append(entry)
+                else:
+                    pending_remote.append(entry)
+        except INSTALL_ERROR_TYPES as e:
+            results[index] = SyncResult.from_error(e)
+
+    return _ClassifiedDeps(
+        results=results,
+        pending_local=pending_local,
+        pending_remote=pending_remote,
+        pending_ralph=pending_ralph,
+    )
+
+
 def run_sync(
     global_install: bool = False,
     frozen: bool = False,
@@ -533,56 +604,15 @@ def run_sync(
         return
 
     # --- Phase 1: Classify dependencies ---
-    # Pre-allocate a result slot per dependency so parallel paths can fill
-    # them by index without coordination.
-    results: list[SyncResult] = [SyncResult.pending() for _ in config.dependencies]
-    pending_local: list[SyncEntry] = []
-    pending_remote: list[SyncEntry] = []
-    pending_ralph: list[SyncEntry] = []
-
-    for index, dep in enumerate(config.dependencies):
-        try:
-            handle, source_name = dep.resolve(
-                config.default_source, config.default_owner
-            )
-
-            if dep.is_ralph:
-                # Ralphs are tool-agnostic: check project-level ralphs dir.
-                if is_ralph_installed(handle, repo_root, source_name):
-                    results[index] = SyncResult.up_to_date()
-                    continue
-                pending_ralph.append(
-                    SyncEntry(index=index, handle=handle, source_name=source_name)
-                )
-            else:
-                # Skills: check per-tool install status.
-                tools_needing_install = filter_tools_needing_install(
-                    handle, repo_root, tools, source_name
-                )
-
-                if not tools_needing_install:
-                    results[index] = SyncResult.up_to_date()
-                    continue
-
-                entry = SyncEntry(
-                    index=index,
-                    handle=handle,
-                    source_name=source_name,
-                    tools_needing_install=tools_needing_install,
-                )
-                if dep.is_local:
-                    pending_local.append(entry)
-                else:
-                    pending_remote.append(entry)
-        except INSTALL_ERROR_TYPES as e:
-            results[index] = SyncResult.from_error(e)
+    classified = _classify_dependencies(config, repo_root, tools)
+    results = classified.results
 
     # --- Phase 2: Install pending dependencies ---
     # Skills: three categories processed separately for efficiency.
     #
     # 1. Local skills — no git download, just copy from the local path.
     _sync_individual_entries(
-        pending_local,
+        classified.pending_local,
         results,
         repo_root,
         tools,
@@ -593,8 +623,12 @@ def run_sync(
     # 2. Default-repo remotes (two-part handles like "user/skill") — the
     #    repo name is unknown and must be discovered by trying candidates
     #    ("skills", "agent-resources"), so each must download individually.
-    pending_remote_default = [e for e in pending_remote if e.handle.repo is None]
-    pending_remote_specific = [e for e in pending_remote if e.handle.repo is not None]
+    pending_remote_default = [
+        e for e in classified.pending_remote if e.handle.repo is None
+    ]
+    pending_remote_specific = [
+        e for e in classified.pending_remote if e.handle.repo is not None
+    ]
 
     _sync_individual_entries(
         pending_remote_default,
@@ -620,7 +654,7 @@ def run_sync(
 
     # 4. Ralphs — installed to project-level .agents/ralphs/ directory.
     _sync_ralph_entries(
-        pending_ralph,
+        classified.pending_ralph,
         results,
         repo_root,
         resolver,
@@ -800,9 +834,7 @@ def _build_lockfile_from_results(
 
         # Remote, not freshly installed: carry forward existing lockfile entry.
         existing = (
-            existing_lockfile.find_entry(dep)
-            if existing_lockfile is not None
-            else None
+            existing_lockfile.find_entry(dep) if existing_lockfile is not None else None
         )
         if existing is not None:
             lockfile.update_entry(existing, ralph=is_ralph)
