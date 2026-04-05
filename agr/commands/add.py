@@ -50,8 +50,35 @@ def _detect_local_type(source_path: Path) -> str:
     return DEPENDENCY_TYPE_SKILL
 
 
-def _install_remote_dependency(
+def _check_local_name_unique(
     handle: ParsedHandle,
+    dep_type: str,
+    ref: str,
+    existing_deps: list[Dependency],
+) -> None:
+    """Reject a second local dependency with the same name but different path.
+
+    Two local deps with the same name would collide in the installed directory.
+    """
+    for existing in existing_deps:
+        if (
+            existing.is_local
+            and existing.type == dep_type
+            and existing.identifier != ref
+            and Path(existing.identifier).name == handle.name
+        ):
+            raise AgrError(
+                f"A local {dep_type} named '{handle.name}' is "
+                f"already installed from '{existing.identifier}' — "
+                f"only one local {dep_type} with the same name is "
+                f"allowed. Remove the existing one first with: "
+                f"agr remove {existing.identifier}"
+            )
+
+
+def _install_dependency(
+    handle: ParsedHandle,
+    dep_type: str,
     repo_root: Path | None,
     tools: list[ToolConfig],
     overwrite: bool,
@@ -60,14 +87,42 @@ def _install_remote_dependency(
     skills_dirs: dict[str, Path] | None,
     default_repo: str | None,
 ) -> tuple[list[str], InstallResult, str]:
-    """Install a remote dependency, trying as skill first then ralph.
+    """Install a dependency and return paths, metadata, and resolved type.
+
+    For local deps, installs directly as the detected type. For remote deps,
+    tries as skill first then falls back to ralph.
 
     Returns:
         Tuple of (formatted install paths, install metadata, dependency type).
-
-    Raises:
-        SkillNotFoundError: If not found as either skill or ralph.
     """
+    if handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL:
+        installed_paths_dict, install_result = fetch_and_install_to_tools(
+            handle,
+            repo_root,
+            tools,
+            overwrite,
+            resolver=resolver,
+            source=source,
+            skills_dirs=skills_dirs,
+            default_repo=default_repo,
+        )
+        installed_paths = [
+            f"{name}: {path}" for name, path in installed_paths_dict.items()
+        ]
+        return installed_paths, install_result, dep_type
+
+    if handle.is_local:
+        installed_path, install_result = fetch_and_install_ralph(
+            handle,
+            repo_root,
+            overwrite,
+            resolver=resolver,
+            source=source,
+            default_repo=default_repo,
+        )
+        return [str(installed_path)], install_result, dep_type
+
+    # Remote — try as skill first, fall back to ralph.
     try:
         installed_paths_dict, install_result = fetch_and_install_to_tools(
             handle,
@@ -102,6 +157,36 @@ def _install_remote_dependency(
         ) from None
 
 
+def _update_lockfile_for_adds(
+    lockfile_updates: list[tuple[ParsedHandle, str, InstallResult, str]],
+    config_path: Path,
+) -> None:
+    """Write install results to the lockfile."""
+    if not lockfile_updates:
+        return
+    lockfile_path = build_lockfile_path(config_path)
+    lockfile = load_lockfile(lockfile_path) or Lockfile()
+    for handle, ref, install_result, dep_type in lockfile_updates:
+        is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
+        if handle.is_local:
+            lockfile.update_entry(
+                LockedEntry(path=ref, installed_name=handle.name),
+                ralph=is_ralph,
+            )
+        else:
+            lockfile.update_entry(
+                LockedEntry(
+                    handle=handle.to_toml_handle(),
+                    source=install_result.source_name,
+                    commit=install_result.commit,
+                    content_hash=install_result.content_hash,
+                    installed_name=handle.name,
+                ),
+                ralph=is_ralph,
+            )
+    save_lockfile(lockfile, lockfile_path)
+
+
 def run_add(
     refs: list[str],
     overwrite: bool = False,
@@ -129,90 +214,40 @@ def run_add(
 
     for ref in refs:
         try:
-            # Parse handle
             handle = parse_handle(ref, default_owner=config.default_owner)
 
             if source and handle.is_local:
                 raise AgrError("Local dependencies cannot specify a source")
-
-            # Validate explicit source if provided
             if source:
                 resolver.get(source)
 
-            # Auto-detect type and install
+            # Detect dependency type
             if handle.is_local:
                 source_path = handle.resolve_local_path(repo_root)
                 dep_type = _detect_local_type(source_path)
-
-                # Reject a second local dependency with the same name but
-                # different path — they would collide in the installed dir.
-                for existing in config.dependencies:
-                    if (
-                        existing.is_local
-                        and existing.type == dep_type
-                        and existing.identifier != ref
-                        and Path(existing.identifier).name == handle.name
-                    ):
-                        raise AgrError(
-                            f"A local {dep_type} named '{handle.name}' is "
-                            f"already installed from '{existing.identifier}' — "
-                            f"only one local {dep_type} with the same name is "
-                            f"allowed. Remove the existing one first with: "
-                            f"agr remove {existing.identifier}"
-                        )
+                _check_local_name_unique(handle, dep_type, ref, config.dependencies)
             else:
                 dep_type = DEPENDENCY_TYPE_SKILL  # default, may change below
 
-            if handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL:
-                # Local skill — install directly to tools
-                installed_paths_dict, install_result = fetch_and_install_to_tools(
-                    handle,
-                    repo_root,
-                    tools,
-                    overwrite,
-                    resolver=resolver,
-                    source=source,
-                    skills_dirs=skills_dirs,
-                    default_repo=config.default_repo,
-                )
-                installed_paths = [
-                    f"{name}: {path}" for name, path in installed_paths_dict.items()
-                ]
-            elif handle.is_local:
-                # Local ralph — install to project ralphs directory
-                installed_path, install_result = fetch_and_install_ralph(
-                    handle,
-                    repo_root,
-                    overwrite,
-                    resolver=resolver,
-                    source=source,
-                    default_repo=config.default_repo,
-                )
-                installed_paths = [str(installed_path)]
-            else:
-                # Remote — try as skill first, fall back to ralph
-                installed_paths, install_result, dep_type = _install_remote_dependency(
-                    handle,
-                    repo_root,
-                    tools,
-                    overwrite,
-                    resolver,
-                    source,
-                    skills_dirs,
-                    config.default_repo,
-                )
+            # Install
+            installed_paths, install_result, dep_type = _install_dependency(
+                handle,
+                dep_type,
+                repo_root,
+                tools,
+                overwrite,
+                resolver,
+                source,
+                skills_dirs,
+                config.default_repo,
+            )
 
             # Add to config
             if handle.is_local:
                 path_value = ref
                 if global_install and handle.local_path is not None:
                     path_value = str(handle.resolve_local_path())
-                config.add_dependency(
-                    Dependency(
-                        type=dep_type,
-                        path=path_value,
-                    )
-                )
+                config.add_dependency(Dependency(type=dep_type, path=path_value))
             else:
                 config.add_dependency(
                     Dependency(
@@ -223,9 +258,7 @@ def run_add(
                     also_matches=[ref],
                 )
 
-            # For local global installs, use the resolved path (same as the
-            # dependency identifier) so the lockfile stays consistent with
-            # agr.toml.  For everything else the raw ref is correct.
+            # Track for lockfile update
             lockfile_ref = path_value if handle.is_local else ref
             lockfile_updates.append((handle, lockfile_ref, install_result, dep_type))
             results.append(CommandResult(ref, True, ", ".join(installed_paths)))
@@ -253,29 +286,7 @@ def run_add(
         print_result=_print_add_result,
     )
 
-    # Update lockfile with install results
-    if lockfile_updates:
-        lockfile_path = build_lockfile_path(config_path)
-        lockfile = load_lockfile(lockfile_path) or Lockfile()
-        for handle, ref, install_result, dep_type in lockfile_updates:
-            is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
-            if handle.is_local:
-                lockfile.update_entry(
-                    LockedEntry(path=ref, installed_name=handle.name),
-                    ralph=is_ralph,
-                )
-            else:
-                lockfile.update_entry(
-                    LockedEntry(
-                        handle=handle.to_toml_handle(),
-                        source=install_result.source_name,
-                        commit=install_result.commit,
-                        content_hash=install_result.content_hash,
-                        installed_name=handle.name,
-                    ),
-                    ralph=is_ralph,
-                )
-        save_lockfile(lockfile, lockfile_path)
+    _update_lockfile_for_adds(lockfile_updates, config_path)
 
 
 def _maybe_suggest_repo_skills(
