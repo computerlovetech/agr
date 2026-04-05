@@ -53,14 +53,25 @@ class TestSanitizePathComponent:
 
     def test_path_traversal_rejected(self):
         """Test that path traversal is rejected."""
-        with pytest.raises(ValueError, match="cannot contain '..'"):
+        with pytest.raises(ValueError, match="cannot be '\\.' or contain '\\.\\.'"):
             _sanitize_path_component("..", "owner")
-        with pytest.raises(ValueError, match="cannot contain '..'"):
+        with pytest.raises(ValueError, match="cannot be '\\.' or contain '\\.\\.'"):
             _sanitize_path_component("../evil", "owner")
         # "owner/../evil" is caught by the path separator check (/)
         # rather than the '..' check, but it's still rejected
         with pytest.raises(ValueError):
             _sanitize_path_component("owner/../evil", "owner")
+
+    def test_single_dot_rejected(self):
+        """Test that '.' is rejected as a path component.
+
+        A single dot means 'current directory' and would collapse during
+        path resolution, effectively skipping a directory level in the
+        cache hierarchy (e.g. owner/repo/./revision resolves to
+        owner/repo/revision, bypassing the skill name level).
+        """
+        with pytest.raises(ValueError):
+            _sanitize_path_component(".", "skill")
 
     def test_consecutive_dots_in_valid_name_accepted(self):
         """Test that names containing '..' as a substring are accepted.
