@@ -234,10 +234,16 @@ def parse_handle(
         path = Path(ref)
         # Local path detection: starts with ./ ../ / or exists on disk
         if is_local_path_ref(ref) or path.exists():
-            _validate_no_separator(ref, "name", path.name)
+            name = path.name
+            if not name or name == "..":
+                raise InvalidHandleError(
+                    f"Invalid handle '{ref}': empty resource name "
+                    "(path must point to a named directory, not '.' or '..')"
+                )
+            _validate_no_separator(ref, "name", name)
             return ParsedHandle(
                 is_local=True,
-                name=path.name,
+                name=name,
                 local_path=path,
             )
 

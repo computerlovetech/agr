@@ -166,6 +166,26 @@ class TestParseHandle:
         h = parse_handle("user/my-repo/skill")
         assert h.repo == "my-repo"
 
+    def test_dot_path_rejects_empty_name(self):
+        """parse_handle('.') must reject because Path('.').name is empty."""
+        with pytest.raises(InvalidHandleError, match="empty resource name"):
+            parse_handle(".")
+
+    def test_dot_slash_path_rejects_empty_name(self):
+        """parse_handle('./') must reject because Path('./').name is empty."""
+        with pytest.raises(InvalidHandleError, match="empty resource name"):
+            parse_handle("./")
+
+    def test_dotdot_path_rejects_traversal_name(self):
+        """parse_handle('..') must reject because Path('..').name is '..'."""
+        with pytest.raises(InvalidHandleError, match="empty resource name"):
+            parse_handle("..")
+
+    def test_dotdot_slash_path_rejects_traversal_name(self):
+        """parse_handle('../') must reject because name resolves to '..'."""
+        with pytest.raises(InvalidHandleError, match="empty resource name"):
+            parse_handle("../")
+
     def test_parse_handle_rejects_double_hyphen_in_local_skill(self, tmp_path):
         """Local skill directory containing -- raises error."""
         # Create a directory with -- in the name
