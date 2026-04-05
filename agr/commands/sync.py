@@ -20,16 +20,18 @@ from agr.config import (
 )
 from agr.console import error_exit, get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, AgrError, format_install_error
-from agr.fetcher import (
-    InstallResult,
+from agr._install_common import InstallResult
+from agr.ralph_installer import (
     fetch_and_install_ralph,
+    get_ralphs_dir,
+    install_ralph_from_repo,
+    is_ralph_installed,
+)
+from agr.skill_installer import (
     fetch_and_install_to_tools,
     filter_tools_needing_install,
-    install_ralph_from_repo,
     install_skill_from_repo_to_tools,
-    is_ralph_installed,
     prepare_repo_for_skills,
-    get_ralphs_dir,
     skill_not_found_message,
 )
 from agr.git import downloaded_repo, fetch_and_checkout_commit, get_head_commit_full

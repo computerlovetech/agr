@@ -16,7 +16,7 @@ import typer
 from agr.config import AgrConfig, find_config, find_repo_root
 from agr.console import get_console, print_error
 from agr.exceptions import AgrError
-from agr.fetcher import install_remote_skill
+from agr.skill_installer import install_remote_skill
 from agr.handle import parse_handle
 from agr.tool import (
     DEFAULT_TOOL_NAMES,

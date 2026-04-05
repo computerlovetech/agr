@@ -9,7 +9,8 @@ from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console
 from agr.exceptions import AgrError, InvalidHandleError
 from agr.metadata import METADATA_TYPE_LOCAL, METADATA_TYPE_REMOTE
-from agr.fetcher import filter_tools_needing_install, is_ralph_installed
+from agr.ralph_installer import is_ralph_installed
+from agr.skill_installer import filter_tools_needing_install
 from agr.handle import ParsedHandle
 from agr.tool import ToolConfig
 

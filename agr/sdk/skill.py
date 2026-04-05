@@ -8,7 +8,7 @@ from agr.exceptions import (
     RepoNotFoundError,
     SkillNotFoundError,
 )
-from agr.fetcher import prepare_repo_for_skill
+from agr.skill_installer import prepare_repo_for_skill
 from agr.git import downloaded_repo, get_head_commit
 from agr.handle import (
     DEFAULT_OWNER,

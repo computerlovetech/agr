@@ -24,7 +24,7 @@ from agr.config import (
 from agr.console import error_exit, get_console, print_error
 from agr.detect import detect_tools
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
-from agr.fetcher import fetch_and_install_to_tools, filter_tools_needing_install
+from agr.skill_installer import fetch_and_install_to_tools, filter_tools_needing_install
 from agr.tool import TOOLS, ToolConfig, available_tools_string, build_global_skills_dirs
 
 

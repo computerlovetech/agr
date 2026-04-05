@@ -6,7 +6,8 @@ from agr.commands.migrations import run_tool_migrations
 from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
-from agr.fetcher import uninstall_ralph, uninstall_skill
+from agr.ralph_installer import uninstall_ralph
+from agr.skill_installer import uninstall_skill
 from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
     build_lockfile_path,

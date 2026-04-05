@@ -1,4 +1,4 @@
-"""Tests for agr.fetcher module."""
+"""Tests for skill and ralph installer modules."""
 
 from pathlib import Path
 import shutil
@@ -12,8 +12,8 @@ from agr.exceptions import (
     RepoNotFoundError,
     SkillNotFoundError,
 )
-from agr.fetcher import (
-    cleanup_empty_parents,
+from agr._install_common import cleanup_empty_parents
+from agr.skill_installer import (
     fetch_and_install_to_tools,
     install_local_skill,
     install_skill_from_repo,
@@ -768,7 +768,7 @@ class TestInstallLocalRalph:
 
     def test_installs_local_ralph(self, tmp_path, ralph_fixture):
         """Installs a local ralph to ralphs dir."""
-        from agr.fetcher import install_local_ralph, get_ralphs_dir
+        from agr.ralph_installer import install_local_ralph, get_ralphs_dir
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -784,7 +784,7 @@ class TestInstallLocalRalph:
     def test_rejects_non_ralph_dir(self, tmp_path):
         """Raises when source dir is not a valid ralph."""
         from agr.exceptions import RalphNotFoundError
-        from agr.fetcher import install_local_ralph, get_ralphs_dir
+        from agr.ralph_installer import install_local_ralph, get_ralphs_dir
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -799,7 +799,7 @@ class TestInstallLocalRalph:
 
     def test_stamps_metadata(self, tmp_path, ralph_fixture):
         """Installed ralph has .agr.json metadata."""
-        from agr.fetcher import install_local_ralph, get_ralphs_dir
+        from agr.ralph_installer import install_local_ralph, get_ralphs_dir
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -818,7 +818,11 @@ class TestUninstallRalph:
 
     def test_uninstall_ralph(self, tmp_path, ralph_fixture):
         """Uninstalls an installed ralph."""
-        from agr.fetcher import install_local_ralph, uninstall_ralph, get_ralphs_dir
+        from agr.ralph_installer import (
+            install_local_ralph,
+            uninstall_ralph,
+            get_ralphs_dir,
+        )
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -837,7 +841,7 @@ class TestUninstallRalph:
 
     def test_uninstall_nonexistent_ralph(self, tmp_path):
         """Returns False when ralph is not installed."""
-        from agr.fetcher import uninstall_ralph
+        from agr.ralph_installer import uninstall_ralph
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -854,7 +858,11 @@ class TestIsRalphInstalled:
 
     def test_is_installed(self, tmp_path, ralph_fixture):
         """Returns True when ralph is installed."""
-        from agr.fetcher import install_local_ralph, is_ralph_installed, get_ralphs_dir
+        from agr.ralph_installer import (
+            install_local_ralph,
+            is_ralph_installed,
+            get_ralphs_dir,
+        )
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
@@ -870,7 +878,7 @@ class TestIsRalphInstalled:
 
     def test_not_installed(self, tmp_path):
         """Returns False when ralph is not installed."""
-        from agr.fetcher import is_ralph_installed
+        from agr.ralph_installer import is_ralph_installed
 
         repo_root = tmp_path / "repo"
         repo_root.mkdir()

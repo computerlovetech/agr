@@ -14,12 +14,9 @@ from agr.exceptions import (
     SkillNotFoundError,
     format_install_error,
 )
-from agr.fetcher import (
-    InstallResult,
-    fetch_and_install_ralph,
-    fetch_and_install_to_tools,
-    list_remote_repo_skills,
-)
+from agr._install_common import InstallResult
+from agr.ralph_installer import fetch_and_install_ralph
+from agr.skill_installer import fetch_and_install_to_tools, list_remote_repo_skills
 from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
     LockedEntry,

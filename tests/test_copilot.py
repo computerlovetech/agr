@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 from agr.config import AgrConfig
-from agr.fetcher import (
+from agr.skill_installer import (
     install_local_skill,
     is_skill_installed,
 )

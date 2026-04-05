@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from agr.config import AgrConfig
-from agr.fetcher import (
+from agr.skill_installer import (
     fetch_and_install,
     install_local_skill,
     is_skill_installed,
