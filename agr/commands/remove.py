@@ -1,5 +1,9 @@
 """agr remove command implementation."""
 
+from __future__ import annotations
+
+from pathlib import Path
+
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
 from agr.commands.migrations import run_tool_migrations
@@ -13,7 +17,68 @@ from agr.lockfile import (
     load_lockfile,
     save_lockfile,
 )
-from agr.tool import lookup_skills_dir
+from agr.tool import ToolConfig, lookup_skills_dir
+
+
+def _print_remove_result(result: CommandResult) -> None:
+    """Print a styled result line for a single remove operation."""
+    console = get_console()
+    if result.success:
+        console.print(f"[green]Removed:[/green] {result.ref}")
+    elif result.message == "Not found":
+        console.print(f"[yellow]Not found:[/yellow] {result.ref}")
+    else:
+        print_error(result.ref)
+        console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
+
+
+def _uninstall_from_filesystem(
+    handle: ParsedHandle,
+    is_ralph: bool,
+    tools: list[ToolConfig],
+    repo_root: Path | None,
+    source_name: str | None,
+    skills_dirs: dict[str, Path] | None,
+) -> bool:
+    """Remove a dependency from the filesystem.
+
+    For ralphs, removes from the project-level ralphs directory.
+    For skills, removes from all configured tools.
+
+    Returns True if anything was removed.
+    """
+    if is_ralph:
+        return uninstall_ralph(handle, repo_root, source_name)
+    removed = False
+    for tool in tools:
+        if uninstall_skill(
+            handle,
+            repo_root,
+            tool,
+            source_name,
+            skills_dir=lookup_skills_dir(skills_dirs, tool),
+        ):
+            removed = True
+    return removed
+
+
+def _update_lockfile_after_remove(
+    config_path: Path,
+    removed_candidates: list[list[str]],
+    removed_ralph_flags: list[bool],
+) -> None:
+    """Remove entries from the lockfile for successfully removed deps."""
+    if not removed_candidates:
+        return
+    lockfile_path = build_lockfile_path(config_path)
+    lockfile = load_lockfile(lockfile_path)
+    if lockfile is None:
+        return
+    for candidates, is_ralph in zip(removed_candidates, removed_ralph_flags):
+        for identifier in candidates:
+            if lockfile.remove_entry(identifier, ralph=is_ralph):
+                break
+    save_lockfile(lockfile, lockfile_path)
 
 
 def _identifier_candidates(
@@ -44,7 +109,6 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     Args:
         refs: List of handles or paths to remove
     """
-    console = get_console()
     loaded = load_existing_config(global_install)
     config, config_path = loaded.config, loaded.config_path
     tools, repo_root, skills_dirs = loaded.tools, loaded.repo_root, loaded.skills_dirs
@@ -81,20 +145,9 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             is_ralph = dep is not None and dep.is_ralph
 
             # Remove from filesystem
-            removed_fs = False
-            if is_ralph:
-                if uninstall_ralph(handle, repo_root, source_name):
-                    removed_fs = True
-            else:
-                for tool in tools:
-                    if uninstall_skill(
-                        handle,
-                        repo_root,
-                        tool,
-                        source_name,
-                        skills_dir=lookup_skills_dir(skills_dirs, tool),
-                    ):
-                        removed_fs = True
+            removed_fs = _uninstall_from_filesystem(
+                handle, is_ralph, tools, repo_root, source_name, skills_dirs
+            )
 
             # Remove from config (try same candidate identifiers)
             removed_config = False
@@ -113,15 +166,6 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         except INSTALL_ERROR_TYPES as e:
             results.append(CommandResult(ref, False, format_install_error(e)))
 
-    def _print_remove_result(result: CommandResult) -> None:
-        if result.success:
-            console.print(f"[green]Removed:[/green] {result.ref}")
-        elif result.message == "Not found":
-            console.print(f"[yellow]Not found:[/yellow] {result.ref}")
-        else:
-            print_error(result.ref)
-            console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
-
     save_and_summarize_results(
         results,
         config,
@@ -132,13 +176,4 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         exit_on_failure=False,
     )
 
-    # Update lockfile: remove entries for successfully removed deps
-    if removed_candidates:
-        lockfile_path = build_lockfile_path(config_path)
-        lockfile = load_lockfile(lockfile_path)
-        if lockfile is not None:
-            for candidates, is_ralph_lf in zip(removed_candidates, removed_ralph_flags):
-                for identifier in candidates:
-                    if lockfile.remove_entry(identifier, ralph=is_ralph_lf):
-                        break
-            save_lockfile(lockfile, lockfile_path)
+    _update_lockfile_after_remove(config_path, removed_candidates, removed_ralph_flags)
