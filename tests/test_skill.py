@@ -4,7 +4,7 @@ import pytest
 
 from agr.skill import (
     SKILL_MARKER,
-    _is_excluded_skill_path,
+    _is_excluded_resource_path,
     create_skill_scaffold,
     discover_skills_in_repo_listing,
     find_skill_in_repo,
@@ -428,41 +428,41 @@ class TestFindSkillsInRepoListing:
         assert result["commit"].as_posix() == "skills/commit"
 
 
-class TestIsExcludedSkillPath:
-    """Tests for _is_excluded_skill_path — the shared exclusion predicate."""
+class TestIsExcludedResourcePath:
+    """Tests for _is_excluded_resource_path — the shared exclusion predicate."""
 
     def test_root_level_skill_md_excluded(self):
         """A single-component path (root SKILL.md) is excluded."""
-        assert _is_excluded_skill_path(("SKILL.md",)) is True
+        assert _is_excluded_resource_path(("SKILL.md",)) is True
 
     def test_nested_skill_md_not_excluded(self):
         """A normal skill path like skills/my-skill/SKILL.md is included."""
-        assert _is_excluded_skill_path(("skills", "my-skill", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("skills", "my-skill", "SKILL.md")) is False
 
     def test_git_dir_excluded(self):
         """Paths under .git are excluded."""
-        assert _is_excluded_skill_path((".git", "hooks", "SKILL.md")) is True
+        assert _is_excluded_resource_path((".git", "hooks", "SKILL.md")) is True
 
     def test_node_modules_excluded(self):
         """Paths under node_modules are excluded."""
-        assert _is_excluded_skill_path(("node_modules", "pkg", "SKILL.md")) is True
+        assert _is_excluded_resource_path(("node_modules", "pkg", "SKILL.md")) is True
 
     def test_pycache_excluded(self):
         """Paths under __pycache__ are excluded."""
-        assert _is_excluded_skill_path(("__pycache__", "my-skill", "SKILL.md")) is True
+        assert _is_excluded_resource_path(("__pycache__", "my-skill", "SKILL.md")) is True
 
     def test_venv_excluded(self):
         """Paths under .venv are excluded."""
-        assert _is_excluded_skill_path((".venv", "lib", "SKILL.md")) is True
+        assert _is_excluded_resource_path((".venv", "lib", "SKILL.md")) is True
 
     def test_build_dir_excluded(self):
         """Paths under build/ are excluded."""
-        assert _is_excluded_skill_path(("build", "output", "SKILL.md")) is True
+        assert _is_excluded_resource_path(("build", "output", "SKILL.md")) is True
 
     def test_excluded_dir_deep_in_path(self):
         """An excluded dir anywhere in the path triggers exclusion."""
         assert (
-            _is_excluded_skill_path(("a", "b", "node_modules", "c", "SKILL.md")) is True
+            _is_excluded_resource_path(("a", "b", "node_modules", "c", "SKILL.md")) is True
         )
 
     def test_skill_named_as_excluded_dir_not_excluded(self):
@@ -473,16 +473,16 @@ class TestIsExcludedSkillPath:
         legitimate skill named "build", not a build artifact.
         """
         # "build" is the skill directory (parts[-2]), "skills" is an ancestor
-        assert _is_excluded_skill_path(("skills", "build", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("skills", "build", "SKILL.md")) is False
         # Same for other excluded names used as skill directories
-        assert _is_excluded_skill_path(("skills", "dist", "SKILL.md")) is False
-        assert _is_excluded_skill_path(("skills", "vendor", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("skills", "dist", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("skills", "vendor", "SKILL.md")) is False
 
     def test_skill_named_as_excluded_dir_at_top_level(self):
         """A top-level skill named after an excluded dir should NOT be excluded."""
-        assert _is_excluded_skill_path(("build", "SKILL.md")) is False
-        assert _is_excluded_skill_path(("dist", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("build", "SKILL.md")) is False
+        assert _is_excluded_resource_path(("dist", "SKILL.md")) is False
 
     def test_empty_tuple_not_excluded(self):
         """Edge case: empty parts tuple is not excluded (no excluded dir check)."""
-        assert _is_excluded_skill_path(()) is False
+        assert _is_excluded_resource_path(()) is False

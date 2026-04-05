@@ -22,7 +22,7 @@ _FRONTMATTER_NAME_LINE_RE = re.compile(r"^\s*name\s*:")
 # no leading/trailing/consecutive hyphens.
 _VALID_SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-# Directories to exclude from skill discovery
+# Directories to exclude from resource discovery (skills, ralphs, etc.)
 EXCLUDED_DIRS = {
     ".git",
     "node_modules",
@@ -50,18 +50,18 @@ def _shallowest(paths: list[_P]) -> _P:
     return min(paths, key=lambda p: len(p.parts))
 
 
-def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
-    """Check if a relative SKILL.md path should be excluded from discovery.
+def _is_excluded_resource_path(parts: tuple[str, ...]) -> bool:
+    """Check if a relative marker-file path should be excluded from discovery.
 
     Centralizes the two exclusion rules shared by both filesystem and
-    git-listing discovery:
+    git-listing discovery for all resource types (skills, ralphs, etc.):
 
-    1. Root-level SKILL.md (single component, e.g. just ``SKILL.md``)
-       is a repo marker, not a skill directory.
+    1. Root-level marker (single component, e.g. just ``SKILL.md``)
+       is a repo marker, not a resource directory.
     2. Any **ancestor** directory matching ``EXCLUDED_DIRS`` (.git,
        node_modules, __pycache__, etc.) disqualifies the entry.
-       The skill directory itself (``parts[-2]``) is NOT checked —
-       a skill legitimately named ``build`` or ``dist`` should be
+       The resource directory itself (``parts[-2]``) is NOT checked —
+       a resource legitimately named ``build`` or ``dist`` should be
        discoverable.
 
     Args:
@@ -69,12 +69,12 @@ def _is_excluded_skill_path(parts: tuple[str, ...]) -> bool:
             (e.g. ``("skills", "my-skill", "SKILL.md")``).
 
     Returns:
-        True if the path should be excluded from skill discovery.
+        True if the path should be excluded from resource discovery.
     """
     if len(parts) == 1:
         return True
-    # parts[-1] is the marker file, parts[-2] is the skill directory.
-    # Only check ancestor directories above the skill directory.
+    # parts[-1] is the marker file, parts[-2] is the resource directory.
+    # Only check ancestor directories above the resource directory.
     ancestors = parts[:-2]
     return any(part in EXCLUDED_DIRS for part in ancestors)
 
@@ -99,7 +99,7 @@ def _find_resource_dirs(repo_dir: Path, marker: str) -> list[Path]:
     dirs: list[Path] = []
     for marker_path in repo_dir.rglob(marker):
         rel = marker_path.relative_to(repo_dir)
-        if _is_excluded_skill_path(rel.parts):
+        if _is_excluded_resource_path(rel.parts):
             continue
         dirs.append(marker_path.parent)
     return dirs
@@ -122,7 +122,7 @@ def _find_resource_dirs_in_listing(
         rel_path = PurePosixPath(rel)
         if rel_path.name != marker:
             continue
-        if _is_excluded_skill_path(rel_path.parts):
+        if _is_excluded_resource_path(rel_path.parts):
             continue
         results.append(rel_path.parent)
     return results
