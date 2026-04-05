@@ -12,7 +12,7 @@ from agr.exceptions import (
     RepoNotFoundError,
     SkillNotFoundError,
 )
-from agr.git import get_head_commit
+from agr.git import SHORT_HASH_LENGTH, get_head_commit
 from agr.sdk.skill import Skill
 
 
@@ -339,7 +339,7 @@ class TestGetHeadCommit:
         commit = get_head_commit(mock_github_repo)
 
         # Should be a 12-char hex string (truncated SHA)
-        assert len(commit) == 12
+        assert len(commit) == SHORT_HASH_LENGTH
         assert all(c in "0123456789abcdef" for c in commit)
 
     def test_fallback_generates_unique_hash(self, tmp_path: Path):
@@ -352,8 +352,8 @@ class TestGetHeadCommit:
         hash2 = get_head_commit(non_git_dir)
 
         # Both should be 12-char hex strings
-        assert len(hash1) == 12
-        assert len(hash2) == 12
+        assert len(hash1) == SHORT_HASH_LENGTH
+        assert len(hash2) == SHORT_HASH_LENGTH
         assert all(c in "0123456789abcdef" for c in hash1)
         assert all(c in "0123456789abcdef" for c in hash2)
 
@@ -374,5 +374,5 @@ class TestGetHeadCommit:
         hash2 = get_head_commit(dir2)
 
         # Both are valid hashes
-        assert len(hash1) == 12
-        assert len(hash2) == 12
+        assert len(hash1) == SHORT_HASH_LENGTH
+        assert len(hash2) == SHORT_HASH_LENGTH

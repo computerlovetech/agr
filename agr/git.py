@@ -18,6 +18,9 @@ from agr.exceptions import (
 )
 from agr.source import SourceConfig
 
+SHORT_HASH_LENGTH = 12
+"""Number of hex characters used for abbreviated commit hashes."""
+
 
 def _git_cmd(repo_dir: Path, *args: str) -> list[str]:
     """Build a git command targeting a specific repository.
@@ -101,8 +104,13 @@ def get_github_token() -> str | None:
     return None
 
 
+def short_commit(commit: str) -> str:
+    """Abbreviate a full commit hash to ``SHORT_HASH_LENGTH`` characters."""
+    return commit[:SHORT_HASH_LENGTH]
+
+
 def get_head_commit(repo_dir: Path) -> str:
-    """Get the HEAD commit hash of a repository (truncated to 12 chars).
+    """Get the HEAD commit hash of a repository (truncated).
 
     If the git command fails (e.g. not a git repo), generates a unique
     fallback hash based on current time and repo path to ensure proper
@@ -111,8 +119,8 @@ def get_head_commit(repo_dir: Path) -> str:
     result = _run_git(_git_cmd(repo_dir, "rev-parse", "HEAD"))
     if result.returncode != 0:
         fallback_data = f"{time.time_ns()}:{repo_dir}"
-        return hashlib.sha256(fallback_data.encode()).hexdigest()[:12]
-    return result.stdout.strip()[:12]
+        return short_commit(hashlib.sha256(fallback_data.encode()).hexdigest())
+    return short_commit(result.stdout.strip())
 
 
 def get_head_commit_full(repo_dir: Path) -> str:
@@ -145,12 +153,12 @@ def fetch_and_checkout_commit(repo_dir: Path, commit: str) -> None:
     result = _run_git(_git_cmd(repo_dir, "fetch", "--depth=1", "origin", commit))
     if result.returncode != 0:
         raise AgrError(
-            f"Failed to fetch commit {commit[:12]}. The commit may no longer exist."
+            f"Failed to fetch commit {short_commit(commit)}. The commit may no longer exist."
         )
 
     _run_git_checked(
         _git_cmd(repo_dir, "checkout", commit),
-        f"Failed to checkout commit {commit[:12]}.",
+        f"Failed to checkout commit {short_commit(commit)}.",
     )
 
 
