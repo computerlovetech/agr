@@ -255,6 +255,42 @@ def _reset_repo_dir(repo_dir: Path) -> None:
         shutil.rmtree(repo_dir, ignore_errors=True)
 
 
+def _is_explicit_auth_failure(lowered: str) -> bool:
+    """Detect explicit authentication failures from git credential helpers."""
+    return "authentication failed" in lowered or "permission denied" in lowered
+
+
+def _is_repo_not_found(lowered: str) -> bool:
+    """Detect explicit 'repository not found' responses from the server."""
+    return (
+        "repository not found" in lowered
+        or ("not found" in lowered and "repository" in lowered)
+        or "does not exist" in lowered
+    )
+
+
+def _is_network_error(lowered: str) -> bool:
+    """Detect DNS / network failures."""
+    return "could not resolve host" in lowered
+
+
+def _is_ambiguous_auth_hint(lowered: str) -> bool:
+    """Detect ambiguous errors that likely indicate missing authentication.
+
+    When no GitHub token is set, these errors suggest the repo is private
+    or doesn't exist.  Includes the empty-message case — git sometimes
+    exits non-zero with no output when auth is needed.
+    """
+    return (
+        not lowered
+        or "could not read username" in lowered  # no credential helper
+        or "terminal prompts disabled" in lowered  # GIT_TERMINAL_PROMPT=0
+        or "authentication required" in lowered
+        or "authorization failed" in lowered
+        or "access denied" in lowered
+    )
+
+
 def _raise_clone_error(
     stderr: str | None,
     owner: str,
@@ -279,7 +315,7 @@ def _raise_clone_error(
     token_missing = _is_github_source(source) and not get_github_token()
 
     # 1. Explicit authentication failures (git credential helper responded)
-    if "authentication failed" in lowered or "permission denied" in lowered:
+    if _is_explicit_auth_failure(lowered):
         if token_missing:
             raise AuthenticationError(
                 f"Authentication failed for source '{source.name}'. "
@@ -290,33 +326,21 @@ def _raise_clone_error(
         ) from None
 
     # 2. Explicit "not found" responses from the server
-    if (
-        "repository not found" in lowered
-        or ("not found" in lowered and "repository" in lowered)
-        or "does not exist" in lowered
-    ):
+    if _is_repo_not_found(lowered):
         raise RepoNotFoundError(
             f"Repository '{owner}/{repo_name}' not found in source '{source.name}'."
         ) from None
 
     # 3. DNS / network failures
-    if "could not resolve host" in lowered:
+    if _is_network_error(lowered):
         raise AgrError(
             f"Network error: could not resolve host for source '{source.name}'."
         ) from None
 
     # 4. Heuristic: when no token is set, ambiguous errors likely mean the
     # repo is private or doesn't exist. We report "not found" to guide the
-    # user toward setting GITHUB_TOKEN. This includes empty stderr (git
-    # sometimes exits non-zero with no output when auth is needed).
-    if token_missing and (
-        not lowered
-        or "could not read username" in lowered  # no credential helper
-        or "terminal prompts disabled" in lowered  # GIT_TERMINAL_PROMPT=0
-        or "authentication required" in lowered
-        or "authorization failed" in lowered
-        or "access denied" in lowered
-    ):
+    # user toward setting GITHUB_TOKEN.
+    if token_missing and _is_ambiguous_auth_hint(lowered):
         raise RepoNotFoundError(
             f"Repository '{owner}/{repo_name}' not found in source '{source.name}'."
         ) from None
