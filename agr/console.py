@@ -38,5 +38,3 @@ def error_exit(message: str, *, hint: str | None = None) -> NoReturn:
     if hint:
         get_console().print(f"[dim]{hint}[/dim]")
     raise SystemExit(1)
-
-

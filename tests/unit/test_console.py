@@ -99,5 +99,3 @@ class TestErrorExit:
             error_exit("bad input")
         output = capsys.readouterr().out
         assert "bad input" in output
-
-
