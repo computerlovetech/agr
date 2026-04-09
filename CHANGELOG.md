@@ -2,6 +2,52 @@
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-04-09
+
+### Added
+- Ralph as a dependency type — manage ralphs (project-scoped agents) via `agr add`, `remove`, and `sync`
+- Configurable `default_repo` option — set once, use short handles everywhere
+- Ralph documentation across all doc surfaces (tutorial, concepts, troubleshooting, creating ralphs guide)
+- Lockfile documentation in the tutorial
+- `installed_name` property on Dependency to avoid repeated handle parsing
+- `is_ralph` and `is_skill` properties on Dependency for clearer type checks
+
+### Changed
+- Rebranded agr as "the package manager for AI agents, built for teams"
+- Split `fetcher.py` into focused modules for maintainability
+- Renamed `LockedSkill` to `LockedEntry` and `read_skill_metadata` to `read_resource_metadata` for resource-generic naming
+- Extensive complexity reduction across CLI commands (`run_add`, `run_remove`, `run_sync`, `run_init`, `run_config_set`, `migrate_flat_installed_names`)
+- Removed dead code: `print_deprecation`, `detect_instruction_files`, `list_remote_repo_ralphs`, unused `ResourceType` module, fetcher re-export shim
+
+### Fixed
+- Token leak to lookalike GitHub domains in `_apply_github_token`
+- Lockfile not updating on partial `add` failure
+- Empty `installed_name` for handles with trailing slashes
+- YAML quoting artifacts in frontmatter description extraction
+- Working tree not populated in `fetch_and_checkout_commit` for partial clones
+- Local path validation now rejects `.` and `..` as handles
+- Handles with empty path segments (e.g. `user//skill`) now rejected
+- `_sanitize_path_component` no longer accepts `.` which collapsed cache paths
+- Ralph deps no longer incorrectly block skill name migration
+- Local name-conflict detection no longer skips occupied destination paths
+- Errored local deps no longer written to lockfile
+- Duplicate local skills with the same name but different paths now rejected
+- `sync_dependencies_to_tools` no longer erroneously installs ralphs as skills
+- Overly broad path traversal check no longer rejects valid filenames containing `..`
+- Overly aggressive skill discovery exclusion for excluded directory names
+- Invalid `canonical_instructions` example in saved config
+- Rich console no longer wraps detail messages in CLI output
+- Lockfile path mismatch for global local skill installs
+- `_extract_description` now correctly reads frontmatter description field
+- Overly broad exception catch narrowed from `Exception` to `AgrError` in sync
+
+### Docs
+- Split "Creating Ralphs" into its own page
+- Updated architecture page to reflect ralph support and new module structure
+- Updated Configuration and Handles pages to use resource-generic language
+- Added SEO frontmatter to contributing pages
+- Switched to sidebar navigation layout with light mode default
+
 ## [0.8.1] - 2026-03-31
 
 ### Added
