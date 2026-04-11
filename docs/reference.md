@@ -60,7 +60,8 @@ agr add user/skill                     # Install from GitHub
 agr add user/repo/skill                # Install from a specific repo
 agr add ./path/to/skill                # Install from local directory
 agr add user/skill user/other-skill    # Install multiple at once
-agr add user/skill --overwrite         # Update to latest version
+agr upgrade                            # Update everything to the latest commit
+agr upgrade user/skill                 # Update one resource
 agr remove user/skill                  # Uninstall a skill
 ```
 
@@ -270,6 +271,48 @@ agr sync --locked         # CI PR check: fail if agr.lock is stale
 agr sync -g               # Sync global ~/.agr/agr.toml (ralphs are skipped)
 ```
 
+### agr upgrade
+
+Re-fetch installed dependencies at the latest upstream commit and refresh
+`agr.lock`. `agr sync` only installs what is missing — use `agr upgrade`
+when you want to move past the currently pinned commit.
+
+```bash
+agr upgrade                              # Upgrade everything
+agr upgrade anthropics/skills/pdf        # Upgrade one (full handle)
+agr upgrade pdf                          # Upgrade one (short name)
+agr upgrade pdf collaboration            # Upgrade several at once
+```
+
+Handles may be a full identifier (`user/repo/skill`, `./path/to/skill`) or
+the short installed name (`pdf`). Short-name matching errors out when more
+than one dependency has the same name; pass the full identifier to
+disambiguate.
+
+With no arguments, every dependency in the current scope is re-installed
+and the lockfile is refreshed. Runs the same instruction-sync and
+directory-migration stages as `agr sync` before installing.
+
+!!! note "Same-repo siblings"
+    Upgrading a single skill from a multi-skill repo (`user/repo/skillA`)
+    only refreshes `skillA` — sibling skills in the same repo keep their
+    existing lockfile commit and on-disk content. Run `agr upgrade` with
+    no arguments, or name each sibling, to refresh them all together.
+
+**Options:**
+
+- `--global`, `-g` — Upgrade global dependencies from `~/.agr/agr.toml`.
+
+**Examples:**
+
+```bash
+agr upgrade                              # Upgrade every resource in agr.toml
+agr upgrade anthropics/skills/pdf        # Upgrade a single remote skill
+agr upgrade pdf collaboration            # Upgrade several at once
+agr upgrade ./my-skill                   # Re-copy a local skill
+agr upgrade -g                           # Upgrade global dependencies
+```
+
 ### agr list
 
 Show all dependencies (skills and ralphs) and their installation status.
@@ -304,7 +347,7 @@ agr list
 !!! tip "Partial installs"
     You'll see `partial` status when using [multiple tools](tools.md#target-multiple-tools-at-once)
     and a skill is only installed in some of them. Run `agr sync` to install the
-    missing copies, or `agr add <handle> --overwrite` to reinstall everywhere.
+    missing copies, or `agr upgrade <handle>` to refresh from upstream everywhere.
 
 **Options:**
 

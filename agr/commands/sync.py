@@ -123,6 +123,7 @@ class SyncEntry:
     handle: ParsedHandle
     source_name: str | None
     tools_needing_install: list[ToolConfig] | None = None
+    overwrite: bool = False
 
 
 @dataclass
@@ -174,6 +175,30 @@ def _print_results_and_summary(
 
     if errors:
         raise SystemExit(1)
+
+
+def _run_pre_install_setup(
+    repo_root: Path,
+    config: AgrConfig,
+    tools: list[ToolConfig],
+) -> None:
+    """Instruction sync + directory migrations. Shared by `run_sync` and `run_upgrade`."""
+    _sync_instructions_if_configured(repo_root, config, tools)
+    run_tool_migrations(tools, repo_root)
+    for tool in tools:
+        skills_dir = tool.get_skills_dir(repo_root)
+        migrate_legacy_directories(skills_dir, tool)
+        migrate_flat_installed_names(skills_dir, tool, config, repo_root)
+
+
+def _is_forced(
+    dep: Dependency,
+    force_all: bool,
+    force_identifiers: set[str] | None,
+) -> bool:
+    return force_all or (
+        force_identifiers is not None and dep.identifier in force_identifiers
+    )
 
 
 def _sync_instructions_if_configured(
@@ -248,6 +273,7 @@ def _sync_individual_entries(
                 resolver,
                 tools_needing_install=entry.tools_needing_install,
                 default_repo=default_repo,
+                overwrite=entry.overwrite,
             )
         except INSTALL_ERROR_TYPES as e:
             results[entry.index] = SyncResult.from_error(e)
@@ -300,6 +326,7 @@ def _sync_batched_repo_entries(
                         tools,
                         source_name,
                         commit=commit,
+                        overwrite=entry.overwrite,
                     )
         except INSTALL_ERROR_TYPES as e:
             # If the repo-level operation fails (clone, checkout), mark
@@ -317,15 +344,18 @@ def _install_one_from_repo(
     tools: list[ToolConfig],
     source_name: str,
     commit: str | None = None,
+    overwrite: bool = False,
 ) -> None:
     """Install a single skill from an already-downloaded repo."""
     handle = entry.handle
-    tools_needing_install = entry.tools_needing_install or filter_tools_needing_install(
-        handle, repo_root, tools, entry.source_name
+    # _classify_dependencies only queues entries with a non-empty
+    # tools_needing_install list, so the invariant is asserted rather than
+    # re-checked here.
+    assert entry.tools_needing_install, (
+        "_classify_dependencies must populate tools_needing_install before "
+        "queuing to _install_one_from_repo"
     )
-    if not tools_needing_install:
-        results[entry.index] = SyncResult.up_to_date()
-        return
+    tools_needing_install = entry.tools_needing_install
     skill_source = skill_sources.get(handle.name)
     if skill_source is None:
         results[entry.index] = SyncResult(
@@ -339,7 +369,7 @@ def _install_one_from_repo(
             handle,
             tools_needing_install,
             repo_root,
-            overwrite=False,
+            overwrite=overwrite,
             install_source=source_name,
             skill_source=skill_source,
         )
@@ -363,6 +393,7 @@ def _sync_one_dependency(
     skills_dirs: dict[str, Path] | None = None,
     tools_needing_install: list[ToolConfig] | None = None,
     default_repo: str | None = None,
+    overwrite: bool = False,
 ) -> SyncResult:
     """Sync a single dependency: check install status and install if needed.
 
@@ -371,9 +402,12 @@ def _sync_one_dependency(
     caller can handle errors per-entry.
     """
     if tools_needing_install is None:
-        tools_needing_install = filter_tools_needing_install(
-            handle, repo_root, tools, source_name, skills_dirs
-        )
+        if overwrite:
+            tools_needing_install = list(tools)
+        else:
+            tools_needing_install = filter_tools_needing_install(
+                handle, repo_root, tools, source_name, skills_dirs
+            )
     if not tools_needing_install:
         return SyncResult.up_to_date()
 
@@ -381,7 +415,7 @@ def _sync_one_dependency(
         handle,
         repo_root,
         tools_needing_install,
-        overwrite=False,
+        overwrite=overwrite,
         resolver=resolver,
         source=source_name,
         skills_dirs=skills_dirs,
@@ -403,7 +437,7 @@ def _sync_ralph_entries(
             path, install_result = fetch_and_install_ralph(
                 entry.handle,
                 repo_root,
-                overwrite=False,
+                overwrite=entry.overwrite,
                 resolver=resolver,
                 source=entry.source_name,
                 default_repo=default_repo,
@@ -413,8 +447,16 @@ def _sync_ralph_entries(
             results[entry.index] = SyncResult.from_error(e)
 
 
-def _run_global_sync() -> None:
-    """Sync global dependencies from ~/.agr/agr.toml."""
+def _run_global_sync(
+    *,
+    force_all: bool = False,
+    force_identifiers: set[str] | None = None,
+) -> None:
+    """Sync global dependencies from ~/.agr/agr.toml.
+
+    When ``force_all`` or ``force_identifiers`` is supplied, matching deps
+    are re-fetched with ``overwrite=True`` (used by ``run_upgrade``).
+    """
     console = get_console()
     loaded = load_existing_config(global_install=True, missing_ok=True)
     if loaded is None:
@@ -436,6 +478,12 @@ def _run_global_sync() -> None:
     results: list[tuple[str, SyncResult]] = []
 
     for dep in config.dependencies:
+        forced = _is_forced(dep, force_all, force_identifiers)
+        # Targeted upgrade: skip untargeted deps before resolving or printing
+        # anything, so `agr upgrade -g alpha` doesn't leak ralph-skip noise or
+        # sibling resolve errors for deps the user didn't ask about.
+        if force_identifiers is not None and not forced:
+            continue
         try:
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
@@ -455,6 +503,7 @@ def _run_global_sync() -> None:
                 resolver,
                 skills_dirs,
                 default_repo=config.default_repo,
+                overwrite=forced,
             )
         except INSTALL_ERROR_TYPES as e:
             result = SyncResult.from_error(e)
@@ -467,12 +516,19 @@ def _classify_dependencies(
     config: AgrConfig,
     repo_root: Path,
     tools: list[ToolConfig],
+    *,
+    force_all: bool = False,
+    force_identifiers: set[str] | None = None,
 ) -> _ClassifiedDeps:
     """Classify dependencies into local, remote, and ralph install queues.
 
     Resolves each dependency and checks whether it is already installed.
     Up-to-date or errored entries are recorded directly in the results list;
     entries that need installation are placed into the appropriate pending queue.
+
+    When ``force_all`` is True, every dep is pushed to the pending queue with
+    ``overwrite=True`` regardless of its current install state. When
+    ``force_identifiers`` is provided, only matching deps are forced.
     """
     results: list[SyncResult] = [SyncResult.pending() for _ in config.dependencies]
     pending_local: list[SyncEntry] = []
@@ -485,19 +541,36 @@ def _classify_dependencies(
                 config.default_source, config.default_owner
             )
 
+            forced = _is_forced(dep, force_all, force_identifiers)
+
+            # Targeted upgrade: skip non-forced deps entirely so `agr upgrade
+            # alpha` never touches siblings (same repo or otherwise), even if
+            # they're partially installed. Partial repair is `agr sync`'s job.
+            if force_identifiers is not None and not forced:
+                results[index] = SyncResult.up_to_date()
+                continue
+
             if dep.is_ralph:
                 # Ralphs are tool-agnostic: check project-level ralphs dir.
-                if is_ralph_installed(handle, repo_root, source_name):
+                if not forced and is_ralph_installed(handle, repo_root, source_name):
                     results[index] = SyncResult.up_to_date()
                     continue
                 pending_ralph.append(
-                    SyncEntry(index=index, handle=handle, source_name=source_name)
+                    SyncEntry(
+                        index=index,
+                        handle=handle,
+                        source_name=source_name,
+                        overwrite=forced,
+                    )
                 )
             else:
                 # Skills: check per-tool install status.
-                tools_needing_install = filter_tools_needing_install(
-                    handle, repo_root, tools, source_name
-                )
+                if forced:
+                    tools_needing_install = list(tools)
+                else:
+                    tools_needing_install = filter_tools_needing_install(
+                        handle, repo_root, tools, source_name
+                    )
 
                 if not tools_needing_install:
                     results[index] = SyncResult.up_to_date()
@@ -508,6 +581,7 @@ def _classify_dependencies(
                     handle=handle,
                     source_name=source_name,
                     tools_needing_install=tools_needing_install,
+                    overwrite=forced,
                 )
                 if dep.is_local:
                     pending_local.append(entry)
@@ -567,16 +641,9 @@ def run_sync(
     config = AgrConfig.load(config_path)
     tools = config.get_tools()
 
-    # Stage 1: Sync instruction files across tools (e.g. CLAUDE.md → AGENTS.md).
-    _sync_instructions_if_configured(repo_root, config, tools)
-
-    # Stage 2: Run directory migrations before installing new skills so that
-    # existing installs are in the expected layout for duplicate detection.
-    run_tool_migrations(tools, repo_root)
-    for tool in tools:
-        skills_dir = tool.get_skills_dir(repo_root)
-        migrate_legacy_directories(skills_dir, tool)
-        migrate_flat_installed_names(skills_dir, tool, config, repo_root)
+    # Sync instruction files and run directory migrations before installing,
+    # so existing installs are in the expected layout for duplicate detection.
+    _run_pre_install_setup(repo_root, config, tools)
 
     if not config.dependencies:
         console.print("[yellow]No dependencies in agr.toml.[/yellow] Nothing to sync.")
@@ -603,8 +670,36 @@ def run_sync(
         _sync_from_lockfile(existing_lockfile, config, repo_root, tools, resolver)
         return
 
+    _run_install_pipeline(
+        config,
+        lockfile_path,
+        repo_root,
+        tools,
+        resolver,
+        existing_lockfile,
+    )
+
+
+def _run_install_pipeline(
+    config: AgrConfig,
+    lockfile_path: Path,
+    repo_root: Path,
+    tools: list[ToolConfig],
+    resolver: SourceResolver,
+    existing_lockfile: Lockfile | None,
+    *,
+    force_all: bool = False,
+    force_identifiers: set[str] | None = None,
+) -> None:
+    """Shared by `run_sync` and `run_upgrade`: classify → install → lockfile → report."""
     # --- Phase 1: Classify dependencies ---
-    classified = _classify_dependencies(config, repo_root, tools)
+    classified = _classify_dependencies(
+        config,
+        repo_root,
+        tools,
+        force_all=force_all,
+        force_identifiers=force_identifiers,
+    )
     results = classified.results
 
     # --- Phase 2: Install pending dependencies ---
@@ -817,8 +912,10 @@ def _build_lockfile_from_results(
             )
             continue
 
-        # Remote: freshly installed with commit — record new metadata.
-        if result.status == SyncStatus.INSTALLED and result.commit:
+        # Remote: freshly installed — record new metadata. When commit
+        # capture failed (result.commit is None), we still drop the old
+        # lockfile entry rather than carrying a stale commit forward.
+        if result.status == SyncStatus.INSTALLED:
             lockfile.update_entry(
                 LockedEntry(
                     handle=dep.handle,

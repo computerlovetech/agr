@@ -10,6 +10,7 @@ from agr.commands.init import run_init
 from agr.commands.list import run_list
 from agr.commands.remove import run_remove
 from agr.commands.sync import run_sync
+from agr.commands.upgrade import run_upgrade
 from agr.commands.config_cmd import (
     run_config_add,
     run_config_edit,
@@ -313,6 +314,35 @@ def sync(
     Installs any dependencies that aren't already installed.
     """
     run_sync(global_install=global_install, frozen=frozen, locked=locked)
+
+
+@app.command()
+def upgrade(
+    handles: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Handles or local paths to upgrade. Omit to upgrade all.",
+        ),
+    ] = None,
+    global_install: Annotated[
+        bool,
+        typer.Option(
+            "--global",
+            "-g",
+            help="Upgrade global dependencies from ~/.agr/agr.toml.",
+        ),
+    ] = False,
+) -> None:
+    """Re-install dependencies (latest upstream commit for remotes, fresh copy for local) and refresh agr.lock.
+
+    Examples:
+        agr upgrade                              # Upgrade everything
+        agr upgrade anthropics/skills/pdf        # Upgrade one (full handle)
+        agr upgrade pdf                          # Upgrade one (short name)
+        agr upgrade pdf collaboration            # Upgrade several
+        agr upgrade -g                           # Upgrade globals
+    """
+    run_upgrade(handles or [], global_install=global_install)
 
 
 @app.command(name="list")
