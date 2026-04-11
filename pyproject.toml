@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agr"
-version = "0.8.2"
+version = "0.8.3"
 description = "Agent Resources - The package manager for AI agents. Built for teams."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-04-12
+
+### Added
+- `agr upgrade [handle...]` command — re-fetches dependencies past the pinned commit (or re-copies local paths) and refreshes `agr.lock`. Supports full handles, short names, local paths, multiple targets, and `--global`. Targeted upgrades leave untargeted siblings alone.
+
+### Changed
+- Extracted `_run_pre_install_setup` and `_run_install_pipeline` from `run_sync` so `sync` and `upgrade` share classify/install/lockfile/report.
+
 ## [0.8.2] - 2026-04-09
 
 ### Added

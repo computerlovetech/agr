@@ -324,9 +324,7 @@ Beta v2
         alpha_md = (
             cli_project / ".claude" / "skills" / "alpha" / "SKILL.md"
         ).read_text()
-        beta_md = (
-            cli_project / ".claude" / "skills" / "beta" / "SKILL.md"
-        ).read_text()
+        beta_md = (cli_project / ".claude" / "skills" / "beta" / "SKILL.md").read_text()
         assert "Alpha v2" in alpha_md
         assert "Beta v1" in beta_md  # sibling untouched on disk
 

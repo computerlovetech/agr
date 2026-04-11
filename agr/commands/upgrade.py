@@ -79,9 +79,7 @@ def _run_global_upgrade(handles: list[str]) -> None:
     if loaded is None:
         # Handles were supplied but there's no global config to look them up
         # in — exit non-zero instead of masquerading as success.
-        error_exit(
-            f"No global agr.toml found. Cannot upgrade: {', '.join(handles)}."
-        )
+        error_exit(f"No global agr.toml found. Cannot upgrade: {', '.join(handles)}.")
 
     matched = _match_handles(
         handles, loaded.config.dependencies, scope_label="global agr.toml"

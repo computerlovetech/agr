@@ -171,6 +171,7 @@ Browse the full list in the [Skill Directory](https://computerlovetech.github.io
 | `agr add <handle> -o` | Update to the latest version |
 | `agr remove <handle>` | Uninstall a skill |
 | `agr sync` | Install all from `agr.toml` |
+| `agr upgrade [handle...]` | Re-fetch deps past the pinned commit |
 | `agr list` | Show installed skills |
 | `agr init` | Create `agr.toml` (auto-detects tools) |
 | `agr init <name>` | Create a new skill |
