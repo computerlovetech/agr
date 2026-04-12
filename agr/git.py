@@ -42,11 +42,39 @@ def _git_cmd(repo_dir: Path, *args: str) -> list[str]:
     return ["git", "-C", str(repo_dir), *args]
 
 
+def _build_github_auth_env() -> dict[str, str]:
+    """Build env vars to authenticate git HTTP requests to GitHub.
+
+    Uses ``GIT_CONFIG_COUNT``/``GIT_CONFIG_KEY_N``/``GIT_CONFIG_VALUE_N``
+    (git 2.31+) to inject an ``Authorization`` header scoped to
+    ``https://github.com/``.  This avoids embedding the token in the
+    git URL, which would expose it in process listings (``ps aux``,
+    ``/proc/PID/cmdline``).
+
+    Returns:
+        Dict of env var overrides.  Empty when no token is available.
+    """
+    token = get_github_token()
+    if not token:
+        return {}
+
+    existing_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    return {
+        "GIT_CONFIG_COUNT": str(existing_count + 1),
+        f"GIT_CONFIG_KEY_{existing_count}": ("http.https://github.com/.extraheader"),
+        f"GIT_CONFIG_VALUE_{existing_count}": (f"AUTHORIZATION: bearer {token}"),
+    }
+
+
 def _run_git(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     """Run a git command with consistent error handling.
 
     Wraps subprocess.run with standard options (capture output, text mode,
     no check) and ensures OSError is always converted to AgrError.
+
+    GitHub authentication is handled automatically via env-based git
+    config (``http.extraheader``) so tokens never appear in process
+    command-line arguments.
 
     Args:
         cmd: Full command list starting with "git".
@@ -57,12 +85,15 @@ def _run_git(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     Raises:
         AgrError: If git cannot be executed (e.g., not installed).
     """
+    auth_env = _build_github_auth_env()
+    env = {**os.environ, **auth_env} if auth_env else None
     try:
         return subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             check=False,
+            env=env,
         )
     except OSError as e:
         raise AgrError(f"Failed to run git: {type(e).__name__}") from None
@@ -217,7 +248,15 @@ def _get_default_branch(repo_url: str) -> str | None:
 
 
 def _apply_github_token(repo_url: str) -> str:
-    """Inject GitHub token into HTTPS URL if available."""
+    """Inject GitHub token into HTTPS URL if available.
+
+    .. deprecated::
+        Retained only for backward-compatible tests.  Production code
+        no longer embeds the token in the URL — authentication is
+        handled via ``_build_github_auth_env`` which passes the token
+        through environment-based git config so it never appears in
+        process command-line arguments.
+    """
     token = get_github_token()
     if not token:
         return repo_url
@@ -401,7 +440,7 @@ def downloaded_repo(
         raise AgrError("git CLI not found. Install git to fetch remote skills.")
 
     repo_url = source.build_repo_url(owner, repo_name)
-    repo_url = _apply_github_token(repo_url)
+    # Token is passed via env-based git config in _run_git, not in the URL.
     default_branch = _get_default_branch(repo_url)
 
     with tempfile.TemporaryDirectory() as tmp_dir:

@@ -78,7 +78,7 @@ class TestDownloadedRepoE2E:
         """Successful clone yields repo dir."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             if cmd[:2] == ["git", "ls-remote"]:
                 return subprocess.CompletedProcess(
                     cmd, 0, "ref: refs/heads/main\tHEAD\n", ""
@@ -102,7 +102,7 @@ class TestDownloadedRepoE2E:
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
         calls: list[list[str]] = []
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             calls.append(cmd)
             if cmd[:2] == ["git", "ls-remote"]:
                 return subprocess.CompletedProcess(
@@ -132,7 +132,7 @@ class TestDownloadedRepoE2E:
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
         calls: list[list[str]] = []
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             calls.append(cmd)
             if cmd[:2] == ["git", "ls-remote"]:
                 return subprocess.CompletedProcess(
@@ -165,7 +165,7 @@ class TestDownloadedRepoE2E:
         """Repository not found errors are classified."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             return subprocess.CompletedProcess(
                 cmd, 1, "", "fatal: repository not found"
             )
@@ -184,7 +184,7 @@ class TestDownloadedRepoE2E:
         """Authentication failures are classified."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             return subprocess.CompletedProcess(
                 cmd, 1, "", "fatal: Authentication failed"
             )
@@ -210,7 +210,7 @@ class TestListRemoteRepoSkills:
         """Lists skills found in a cloned repo."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             if cmd[:2] == ["git", "ls-remote"]:
                 return subprocess.CompletedProcess(
                     cmd, 0, "ref: refs/heads/main\tHEAD\n", ""
@@ -235,7 +235,7 @@ class TestListRemoteRepoSkills:
         """Returns empty list when repo doesn't exist."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             return subprocess.CompletedProcess(
                 cmd, 1, "", "fatal: repository not found"
             )
@@ -249,7 +249,7 @@ class TestListRemoteRepoSkills:
         """Returns empty list when repo has no skills."""
         monkeypatch.setattr(shutil, "which", lambda _: "/usr/bin/git")
 
-        def fake_run(cmd, capture_output, text, check):
+        def fake_run(cmd, **kwargs):
             if cmd[:2] == ["git", "ls-remote"]:
                 return subprocess.CompletedProcess(
                     cmd, 0, "ref: refs/heads/main\tHEAD\n", ""

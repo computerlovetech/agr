@@ -12,6 +12,7 @@ from agr.git import fetch_and_checkout_commit, get_github_token, validate_commit
 from agr.git import _is_github_source as is_github_source
 from agr.git import _partial_clone_unsupported as partial_clone_unsupported
 from agr.git import _apply_github_token as apply_github_token
+from agr.git import _build_github_auth_env as build_github_auth_env
 from agr.git import _raise_clone_error as raise_clone_error
 from agr.source import DEFAULT_GITHUB_URL, SourceConfig
 
@@ -554,3 +555,65 @@ class TestValidateCommitSha:
         """Full ref paths like refs/heads/main must be rejected."""
         with pytest.raises(AgrError, match="Invalid commit SHA"):
             validate_commit_sha("refs/heads/main")
+
+
+class TestBuildGithubAuthEnv:
+    """Tests for _build_github_auth_env().
+
+    Verifies that GitHub token authentication is passed via git
+    config environment variables instead of being embedded in the URL.
+    """
+
+    def test_returns_empty_when_no_token(self):
+        with patch.dict(os.environ, {}, clear=True):
+            assert build_github_auth_env() == {}
+
+    def test_returns_auth_env_when_token_set(self):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_test123"}, clear=True):
+            env = build_github_auth_env()
+            assert env["GIT_CONFIG_COUNT"] == "1"
+            assert env["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
+            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer ghp_test123"
+
+    def test_token_value_not_in_config_keys(self):
+        """Token must only appear in GIT_CONFIG_VALUE, never in keys."""
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_secret"}, clear=True):
+            env = build_github_auth_env()
+            for key in env:
+                assert "ghp_secret" not in key
+
+    def test_appends_to_existing_git_config_count(self):
+        """Must not overwrite existing GIT_CONFIG_COUNT entries."""
+        with patch.dict(
+            os.environ,
+            {
+                "GITHUB_TOKEN": "tok",
+                "GIT_CONFIG_COUNT": "2",
+                "GIT_CONFIG_KEY_0": "user.name",
+                "GIT_CONFIG_VALUE_0": "Test User",
+                "GIT_CONFIG_KEY_1": "user.email",
+                "GIT_CONFIG_VALUE_1": "test@example.com",
+            },
+            clear=True,
+        ):
+            env = build_github_auth_env()
+            assert env["GIT_CONFIG_COUNT"] == "3"
+            assert "GIT_CONFIG_KEY_2" in env
+            assert "GIT_CONFIG_VALUE_2" in env
+
+    def test_uses_gh_token_fallback(self):
+        with patch.dict(os.environ, {"GH_TOKEN": "gh_fallback"}, clear=True):
+            env = build_github_auth_env()
+            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer gh_fallback"
+
+    def test_whitespace_only_token_returns_empty(self):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "  "}, clear=True):
+            assert build_github_auth_env() == {}
+
+    def test_scoped_to_github_com(self):
+        """The config key must be scoped to github.com to avoid leaking to other hosts."""
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "tok"}, clear=True):
+            env = build_github_auth_env()
+            key = env["GIT_CONFIG_KEY_0"]
+            assert "github.com" in key
+            assert key.startswith("http.https://github.com/")
