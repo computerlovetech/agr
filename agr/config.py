@@ -445,6 +445,32 @@ class AgrConfig:
         return SourceResolver(self.sources, self.default_source)
 
     @classmethod
+    def _load_toml_doc(cls, path: Path) -> tuple["AgrConfig", TOMLDocument | None]:
+        """Parse a TOML file and return a fresh config with the parsed document.
+
+        Handles the shared boilerplate of file-existence checking, TOML
+        parsing, error wrapping, and ``_path`` assignment used by both
+        ``load()`` and ``load_sub_manifest()``.
+
+        Returns:
+            Tuple of (config, doc). ``doc`` is ``None`` when the file
+            does not exist; the config is still usable as an empty default.
+        """
+        config = cls()
+        config._path = path
+
+        if not path.exists():
+            return config, None
+
+        try:
+            content = path.read_text()
+            doc = tomlkit.parse(content)
+        except TOMLKitError as e:
+            raise ConfigError(f"Invalid TOML in {path}: {e}") from e
+
+        return config, doc
+
+    @classmethod
     def load(cls, path: Path) -> "AgrConfig":
         """Load configuration from agr.toml.
 
@@ -457,19 +483,9 @@ class AgrConfig:
         Raises:
             ConfigError: If the file contains invalid TOML
         """
-        if not path.exists():
-            config = cls()
-            config._path = path
+        config, doc = cls._load_toml_doc(path)
+        if doc is None:
             return config
-
-        try:
-            content = path.read_text()
-            doc = tomlkit.parse(content)
-        except TOMLKitError as e:
-            raise ConfigError(f"Invalid TOML in {path}: {e}") from e
-
-        config = cls()
-        config._path = path
 
         config.tools = _parse_tools_from_doc(doc)
         config.default_tool = _parse_default_tool_from_doc(doc, config.tools)
@@ -511,19 +527,9 @@ class AgrConfig:
         consumer-only fields like tools, sources, default_tool, etc.
         so that bundles don't need to declare them.
         """
-        if not path.exists():
-            config = cls()
-            config._path = path
+        config, doc = cls._load_toml_doc(path)
+        if doc is None:
             return config
-
-        try:
-            content = path.read_text()
-            doc = tomlkit.parse(content)
-        except TOMLKitError as e:
-            raise ConfigError(f"Invalid TOML in {path}: {e}") from e
-
-        config = cls()
-        config._path = path
 
         # Only parse dependencies and [package] — skip tools, sources, etc.
         config.dependencies = _parse_dependencies_from_doc(doc)
