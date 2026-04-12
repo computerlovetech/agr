@@ -237,15 +237,7 @@ def add(
             help="Source name to use for this install.",
         ),
     ] = None,
-    global_install: Annotated[
-        bool,
-        typer.Option(
-            "--global",
-            "-g",
-            help="Install globally using ~/.agr/agr.toml "
-            "and per-tool global skill directories.",
-        ),
-    ] = False,
+    global_install: GlobalScope = False,
 ) -> None:
     """Add skills from GitHub or local paths.
 
@@ -266,14 +258,7 @@ def remove(
             help="Skill handles or paths to remove.",
         ),
     ],
-    global_install: Annotated[
-        bool,
-        typer.Option(
-            "--global",
-            "-g",
-            help="Remove from global installation (~/.agr/agr.toml).",
-        ),
-    ] = False,
+    global_install: GlobalScope = False,
 ) -> None:
     """Remove skills from the current scope.
 
@@ -286,14 +271,7 @@ def remove(
 
 @app.command()
 def sync(
-    global_install: Annotated[
-        bool,
-        typer.Option(
-            "--global",
-            "-g",
-            help="Sync global dependencies from ~/.agr/agr.toml.",
-        ),
-    ] = False,
+    global_install: GlobalScope = False,
     frozen: Annotated[
         bool,
         typer.Option(
@@ -324,14 +302,7 @@ def upgrade(
             help="Handles or local paths to upgrade. Omit to upgrade all.",
         ),
     ] = None,
-    global_install: Annotated[
-        bool,
-        typer.Option(
-            "--global",
-            "-g",
-            help="Upgrade global dependencies from ~/.agr/agr.toml.",
-        ),
-    ] = False,
+    global_install: GlobalScope = False,
 ) -> None:
     """Re-install dependencies (latest upstream commit for remotes, fresh copy for local) and refresh agr.lock.
 
@@ -347,14 +318,7 @@ def upgrade(
 
 @app.command(name="list")
 def list_cmd(
-    global_install: Annotated[
-        bool,
-        typer.Option(
-            "--global",
-            "-g",
-            help="List global dependencies from ~/.agr/agr.toml.",
-        ),
-    ] = False,
+    global_install: GlobalScope = False,
 ) -> None:
     """List all skills and their status for the current scope.
 
