@@ -9,8 +9,10 @@ import pytest
 from agr._install_common import (
     RemoteDepLocation,
     _dir_matches_handle,
+    _ignore_symlinks,
     check_self_install,
     cleanup_empty_parents,
+    copy_resource_to_destination,
     dep_not_found_message,
     prepare_local_handle,
     rollback_on_failure,
@@ -277,3 +279,74 @@ class TestCheckSelfInstall:
             skill_dir, skill_dir, handle, tmp_path, lambda p: False
         )
         assert result is None
+
+
+class TestIgnoreSymlinks:
+    """Tests for _ignore_symlinks and symlink-safe copytree."""
+
+    def test_ignore_symlinks_returns_symlink_names(self, tmp_path):
+        """_ignore_symlinks returns names of entries that are symlinks."""
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "real.txt").write_text("content")
+        (source / "link.txt").symlink_to(source / "real.txt")
+
+        ignored = _ignore_symlinks(str(source), ["real.txt", "link.txt"])
+        assert ignored == ["link.txt"]
+
+    def test_ignore_symlinks_returns_empty_when_no_symlinks(self, tmp_path):
+        """_ignore_symlinks returns empty list when no symlinks exist."""
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "a.txt").write_text("a")
+        (source / "b.txt").write_text("b")
+
+        ignored = _ignore_symlinks(str(source), ["a.txt", "b.txt"])
+        assert ignored == []
+
+    def test_copy_resource_skips_symlinks(self, tmp_path):
+        """copy_resource_to_destination does not copy symlinks."""
+        # Create a source skill directory with a regular file and a symlink
+        source = tmp_path / "source-skill"
+        source.mkdir()
+        (source / "SKILL.md").write_text("# My Skill")
+        # Simulate a malicious symlink pointing outside the skill dir
+        secret = tmp_path / "secret.txt"
+        secret.write_text("SENSITIVE_DATA")
+        (source / "exfil").symlink_to(secret)
+
+        dest = tmp_path / "dest-skill"
+        handle = ParsedHandle(username="user", repo="repo", name="my-skill")
+
+        with patch("agr._install_common.stamp_resource_metadata"):
+            copy_resource_to_destination(
+                source, dest, handle, overwrite=False, repo_root=tmp_path, kind="Skill"
+            )
+
+        # The regular file should be copied
+        assert (dest / "SKILL.md").exists()
+        assert (dest / "SKILL.md").read_text() == "# My Skill"
+        # The symlink should NOT be copied (neither as a symlink nor dereferenced)
+        assert not (dest / "exfil").exists()
+
+    def test_copy_resource_skips_symlinked_directories(self, tmp_path):
+        """copy_resource_to_destination does not follow directory symlinks."""
+        source = tmp_path / "source-skill"
+        source.mkdir()
+        (source / "SKILL.md").write_text("# test")
+        # Symlink to a directory outside the skill
+        external_dir = tmp_path / "external"
+        external_dir.mkdir()
+        (external_dir / "secret.key").write_text("KEY_DATA")
+        (source / "stolen").symlink_to(external_dir)
+
+        dest = tmp_path / "dest-skill"
+        handle = ParsedHandle(username="user", repo="repo", name="test")
+
+        with patch("agr._install_common.stamp_resource_metadata"):
+            copy_resource_to_destination(
+                source, dest, handle, overwrite=False, repo_root=tmp_path, kind="Skill"
+            )
+
+        assert (dest / "SKILL.md").exists()
+        assert not (dest / "stolen").exists()

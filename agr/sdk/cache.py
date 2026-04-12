@@ -21,6 +21,7 @@ from collections.abc import Generator
 from typing import Any, TextIO, cast
 from pathlib import Path
 
+from agr._install_common import _ignore_symlinks
 from agr.exceptions import CacheError
 from agr.skill import SKILL_MARKER
 from agr.source import DEFAULT_SOURCE_NAME
@@ -208,7 +209,7 @@ def cache_skill(
             # Use temp dir in same parent for atomic rename
             with tempfile.TemporaryDirectory(dir=cache_path.parent) as tmp_dir:
                 tmp_path = Path(tmp_dir) / "skill"
-                shutil.copytree(source_path, tmp_path)
+                shutil.copytree(source_path, tmp_path, ignore=_ignore_symlinks)
 
                 # Atomic rename
                 try:

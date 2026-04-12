@@ -5,6 +5,7 @@ skill_installer and ralph_installer.
 """
 
 import logging
+import os
 import shutil
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
@@ -38,6 +39,16 @@ RALPHS_CONFIG_DIR = ".agents"
 RALPHS_SUBDIR = "ralphs"
 
 logger = logging.getLogger(__name__)
+
+
+def _ignore_symlinks(directory: str, entries: list[str]) -> list[str]:
+    """Return entry names that are symlinks so copytree skips them.
+
+    Prevents a malicious repository from using symlinks to exfiltrate
+    sensitive files (e.g. ~/.ssh/id_rsa, .env) into an installed skill
+    directory where an AI agent could read them.
+    """
+    return [e for e in entries if os.path.islink(os.path.join(directory, e))]
 
 
 @dataclass
@@ -99,7 +110,7 @@ def copy_resource_to_destination(
         shutil.rmtree(dest)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, dest)
+    shutil.copytree(source, dest, ignore=_ignore_symlinks)
 
     if post_copy:
         post_copy(dest)
