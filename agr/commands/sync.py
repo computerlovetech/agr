@@ -986,10 +986,14 @@ def _build_lockfile_from_results(
             continue
 
         # Remote, not freshly installed: carry forward existing lockfile entry.
+        # Update the parent field to reflect the current dependency graph
+        # (e.g. a transitive dep promoted to direct must drop its parent).
         existing = (
             existing_lockfile.find_entry(dep) if existing_lockfile is not None else None
         )
         if existing is not None:
+            if existing.parent != parent:
+                existing = replace(existing, parent=parent)
             lockfile.update_entry(existing, kind=dep_kind)
             continue
 

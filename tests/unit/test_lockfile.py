@@ -821,3 +821,51 @@ class TestBuildLockfileFromResults:
             "The parents dict from package expansion is not forwarded "
             "to _build_lockfile_from_results."
         )
+
+    def test_carried_forward_entry_updates_stale_parent(self):
+        """Carried-forward lockfile entries must reflect the current parent.
+
+        When a dependency transitions from transitive (parent set) to
+        direct (parent None), the carried-forward lockfile entry must
+        drop the stale parent field.  Otherwise ``is_current()`` excludes
+        the entry (it filters out entries with a parent) and falsely
+        reports the lockfile as out of date.
+        """
+        # Existing lockfile has skill S as a transitive dep (parent set).
+        existing_lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="owner/repo/skill-s",
+                    source="github",
+                    commit="a" * 40,
+                    content_hash="sha256:aaa",
+                    installed_name="skill-s",
+                    parent="owner/repo/bundle",
+                ),
+            ]
+        )
+
+        # Config now lists skill S as a direct dep (no parent).
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="skill", handle="owner/repo/skill-s"),
+            ]
+        )
+
+        # S is already installed — up to date, not freshly installed.
+        results = [SyncResult.up_to_date()]
+
+        # No parents dict — S is direct now, not transitive.
+        lockfile = _build_lockfile_from_results(
+            config, results, existing_lockfile, parents={}
+        )
+
+        assert len(lockfile.skills) == 1
+        entry = lockfile.skills[0]
+        assert entry.handle == "owner/repo/skill-s"
+        # The parent must be None because S is now a direct dep.
+        assert entry.parent is None, (
+            f"Expected parent=None for direct dep, got parent={entry.parent!r}. "
+            "Carried-forward lockfile entries must update the parent field "
+            "when a dep transitions from transitive to direct."
+        )
