@@ -195,6 +195,41 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError, match="contains reserved sequence"):
             parse_handle(str(bad_skill))
 
+    def test_remote_dotdot_in_skill_name_rejected(self):
+        """Remote handle 'user/..' must reject '..' as skill name."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("user/..")
+
+    def test_remote_dotdot_in_repo_rejected(self):
+        """Remote handle 'user/../skill' must reject '..' as repo."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("user/../skill")
+
+    def test_remote_dotdot_in_username_rejected(self):
+        """Remote handle '../skill' must reject '..' as username."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("../skill", prefer_local=False)
+
+    def test_remote_dot_in_skill_name_rejected(self):
+        """Remote handle 'user/.' must reject '.' as skill name."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("user/.", prefer_local=False)
+
+    def test_remote_dot_in_repo_rejected(self):
+        """Remote handle 'user/./skill' must reject '.' as repo."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("user/./skill")
+
+    def test_remote_dotdot_as_single_name_with_default_owner(self):
+        """Single-part handle '..' with default_owner must be rejected."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle("..", prefer_local=False, default_owner="acme")
+
+    def test_remote_dot_as_single_name_with_default_owner(self):
+        """Single-part handle '.' with default_owner must be rejected."""
+        with pytest.raises(InvalidHandleError, match="path traversal"):
+            parse_handle(".", prefer_local=False, default_owner="acme")
+
     def test_empty_repo_in_three_part_handle_raises(self):
         """Handle with empty middle component (user//skill) must be rejected.
 

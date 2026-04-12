@@ -261,7 +261,9 @@ def parse_handle(
         if default_owner is not None:
             skill_name = parts[0]
             _validate_no_separator(ref, "skill name", skill_name)
+            _validate_no_path_traversal(ref, "skill name", skill_name)
             _validate_no_separator(ref, "default owner", default_owner)
+            _validate_no_path_traversal(ref, "default owner", default_owner)
             return ParsedHandle(username=default_owner, name=skill_name)
         raise InvalidHandleError(
             f"Invalid handle '{ref}': remote handles require username/name format"
@@ -271,7 +273,9 @@ def parse_handle(
         # user/name format
         username, skill_name = parts[0], parts[1]
         _validate_no_separator(ref, "username", username)
+        _validate_no_path_traversal(ref, "username", username)
         _validate_no_separator(ref, "skill name", skill_name)
+        _validate_no_path_traversal(ref, "skill name", skill_name)
         return ParsedHandle(
             username=username,
             name=skill_name,
@@ -281,8 +285,11 @@ def parse_handle(
         # user/repo/name format
         username, repo, skill_name = parts[0], parts[1], parts[2]
         _validate_no_separator(ref, "username", username)
+        _validate_no_path_traversal(ref, "username", username)
         _validate_no_separator(ref, "repo", repo)
+        _validate_no_path_traversal(ref, "repo", repo)
         _validate_no_separator(ref, "skill name", skill_name)
+        _validate_no_path_traversal(ref, "skill name", skill_name)
         return ParsedHandle(
             username=username,
             repo=repo,
@@ -338,4 +345,29 @@ def _validate_no_separator(ref: str, label: str, value: str) -> None:
             f"Invalid handle '{ref}': {label} '{value}' "
             f"contains reserved sequence "
             f"'{INSTALLED_NAME_SEPARATOR}'"
+        )
+
+
+def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
+    """Reject path traversal sequences in a handle component.
+
+    Prevents ``..`` and ``.`` from being used as handle components,
+    which would cause the resolved install destination to escape the
+    skills directory (e.g. ``skills_dir / ".."`` → parent directory).
+
+    This is security-critical for transitive dependencies loaded from
+    remote package manifests, where the user never sees the raw handle.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component.
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value is ``.`` or ``..``.
+    """
+    if value in (".", ".."):
+        raise InvalidHandleError(
+            f"Invalid handle '{ref}': {label} '{value}' "
+            f"is a path traversal component"
         )
