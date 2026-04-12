@@ -662,3 +662,129 @@ class TestBuildLockfileFromResults:
         # Only the successfully installed local dep should be in the lockfile
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].path == "./good-skill"
+
+    def test_parents_dict_sets_parent_field_on_lockfile_entries(self):
+        """Transitive deps must have their parent field set in the lockfile.
+
+        Regression: _run_install_pipeline computed the parents dict from
+        package expansion but never forwarded it to
+        _build_lockfile_from_results, so the parent field on skill/ralph
+        lockfile entries was always None.  This broke
+        ``agr upgrade <package>`` which relies on the parent field to
+        identify transitive deps via _transitive_closure.
+        """
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="skill", handle="owner/repo/alpha"),
+                Dependency(type="skill", handle="owner/repo/beta"),
+            ]
+        )
+        results = [
+            SyncResult.installed(
+                commit="a" * 40,
+                content_hash="sha256:aaa",
+                source_name="github",
+            ),
+            SyncResult.installed(
+                commit="b" * 40,
+                content_hash="sha256:bbb",
+                source_name="github",
+            ),
+        ]
+        parents = {
+            "owner/repo/alpha": "owner/repo/bundle",
+            "owner/repo/beta": "owner/repo/bundle",
+        }
+
+        lockfile = _build_lockfile_from_results(config, results, None, parents=parents)
+
+        assert len(lockfile.skills) == 2
+        for entry in lockfile.skills:
+            assert entry.parent == "owner/repo/bundle", (
+                f"Expected parent='owner/repo/bundle' for {entry.handle}, "
+                f"got parent={entry.parent!r}"
+            )
+
+    def test_run_install_pipeline_forwards_parents_to_lockfile(self):
+        """_run_install_pipeline must forward expanded.parents to lockfile builder.
+
+        Regression: the parents dict from package expansion was computed
+        but only used for display labels, not passed to
+        _build_lockfile_from_results, so transitive dependency entries
+        never had their parent field set in the lockfile.
+        """
+        from unittest.mock import patch, MagicMock
+        from agr.commands.sync import _run_install_pipeline
+        from agr.package import ExpandedDeps
+
+        # A config with one package dep that expands into one skill
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="package", handle="owner/repo/bundle"),
+            ]
+        )
+
+        expanded = ExpandedDeps(
+            dependencies=[
+                Dependency(type="skill", handle="owner/repo/alpha"),
+            ],
+            parents={"owner/repo/alpha": "owner/repo/bundle"},
+            package_entries=[
+                LockedEntry(
+                    handle="owner/repo/bundle",
+                    source="github",
+                    commit="c" * 40,
+                    installed_name="bundle",
+                ),
+            ],
+        )
+
+        lockfile_path = MagicMock()
+        repo_root = MagicMock()
+        tools = []
+        resolver = MagicMock()
+
+        saved_lockfile = {}
+
+        def capture_save(lf, path):
+            saved_lockfile["lockfile"] = lf
+
+        with (
+            patch("agr.commands.sync.expand_packages", return_value=expanded),
+            patch(
+                "agr.commands.sync.detect_conflicts",
+                side_effect=lambda deps, parents, direct_ids: deps,
+            ),
+            patch("agr.commands.sync._classify_dependencies") as mock_classify,
+            patch("agr.commands.sync.save_lockfile", side_effect=capture_save),
+            patch("agr.commands.sync._print_results_and_summary"),
+        ):
+            # _classify_dependencies returns all deps as up-to-date
+            # (no pending installs) so no actual install work happens.
+            from agr.commands.sync import _ClassifiedDeps
+
+            mock_classify.return_value = _ClassifiedDeps(
+                results=[
+                    SyncResult.installed(
+                        commit="a" * 40,
+                        content_hash="sha256:aaa",
+                        source_name="github",
+                    )
+                ],
+                pending_local=[],
+                pending_remote=[],
+                pending_ralph=[],
+            )
+
+            _run_install_pipeline(
+                config, lockfile_path, repo_root, tools, resolver, None
+            )
+
+        lockfile = saved_lockfile["lockfile"]
+        assert len(lockfile.skills) == 1
+        assert lockfile.skills[0].parent == "owner/repo/bundle", (
+            f"Expected parent='owner/repo/bundle', "
+            f"got parent={lockfile.skills[0].parent!r}. "
+            "The parents dict from package expansion is not forwarded "
+            "to _build_lockfile_from_results."
+        )

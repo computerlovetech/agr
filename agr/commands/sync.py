@@ -789,13 +789,17 @@ def _run_install_pipeline(
 
     # --- Phase 3: Update lockfile ---
     package_entries = expanded.package_entries if expanded else []
+    parents = expanded.parents if expanded else {}
     new_lockfile = _build_lockfile_from_results(
-        config, results, existing_lockfile, package_entries=package_entries
+        config,
+        results,
+        existing_lockfile,
+        package_entries=package_entries,
+        parents=parents,
     )
     save_lockfile(new_lockfile, lockfile_path)
 
     # --- Phase 4: Report ---
-    parents = expanded.parents if expanded else {}
     labeled_results = []
     for index, dep in enumerate(config.dependencies):
         label = dep.identifier
