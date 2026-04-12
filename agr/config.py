@@ -332,9 +332,14 @@ class Dependency:
 
 def _parse_dependencies_from_doc(
     doc: TOMLDocument,
-    source_names: set[str],
+    source_names: set[str] | None = None,
 ) -> list[Dependency]:
-    """Parse and validate dependencies from TOML document."""
+    """Parse and validate dependencies from TOML document.
+
+    When *source_names* is provided, each dependency's explicit source is
+    validated against the known set.  Pass ``None`` to skip source
+    validation (used by ``load_sub_manifest`` which ignores sources).
+    """
     sources_list = doc.get("source")
     deps_list = doc.get("dependencies", [])
     if "dependencies" not in doc and sources_list:
@@ -355,11 +360,12 @@ def _parse_dependencies_from_doc(
         except (ValueError, ConfigError) as e:
             raise ConfigError(str(e)) from None
 
-    for dep in dependencies:
-        if dep.source and dep.source not in source_names:
-            raise ConfigError(
-                f"Unknown source '{dep.source}' in dependency '{dep.identifier}'"
-            )
+    if source_names is not None:
+        for dep in dependencies:
+            if dep.source and dep.source not in source_names:
+                raise ConfigError(
+                    f"Unknown source '{dep.source}' in dependency '{dep.identifier}'"
+                )
 
     return dependencies
 
@@ -370,6 +376,22 @@ class PackageMetadata:
 
     name: str
     description: str | None = None
+
+
+def _parse_package_from_doc(doc: TOMLDocument) -> PackageMetadata | None:
+    """Parse the optional ``[package]`` section from a TOML document."""
+    pkg_table = doc.get("package")
+    if not pkg_table or not isinstance(pkg_table, dict):
+        return None
+    pkg_name = pkg_table.get("name")
+    if not pkg_name or not isinstance(pkg_name, str):
+        raise ConfigError("[package] section requires a 'name' field")
+    return PackageMetadata(
+        name=str(pkg_name),
+        description=(
+            str(pkg_table["description"]) if pkg_table.get("description") else None
+        ),
+    )
 
 
 @dataclass
@@ -477,20 +499,7 @@ class AgrConfig:
         config.sources, config.default_source = _parse_sources_from_doc(doc)
         source_names = {s.name for s in config.sources}
         config.dependencies = _parse_dependencies_from_doc(doc, source_names)
-
-        pkg_table = doc.get("package")
-        if pkg_table and isinstance(pkg_table, dict):
-            pkg_name = pkg_table.get("name")
-            if not pkg_name or not isinstance(pkg_name, str):
-                raise ConfigError("[package] section requires a 'name' field")
-            config.package = PackageMetadata(
-                name=str(pkg_name),
-                description=(
-                    str(pkg_table["description"])
-                    if pkg_table.get("description")
-                    else None
-                ),
-            )
+        config.package = _parse_package_from_doc(doc)
 
         return config
 
@@ -517,32 +526,8 @@ class AgrConfig:
         config._path = path
 
         # Only parse dependencies and [package] — skip tools, sources, etc.
-        deps_list = doc.get("dependencies", [])
-        dependencies: list[Dependency] = []
-        for item in deps_list:
-            if not isinstance(item, dict):
-                continue
-            if not (item.get("handle") or item.get("path")):
-                continue
-            try:
-                dependencies.append(Dependency.from_toml_dict(item))
-            except (ValueError, ConfigError) as e:
-                raise ConfigError(str(e)) from None
-        config.dependencies = dependencies
-
-        pkg_table = doc.get("package")
-        if pkg_table and isinstance(pkg_table, dict):
-            pkg_name = pkg_table.get("name")
-            if not pkg_name or not isinstance(pkg_name, str):
-                raise ConfigError("[package] section requires a 'name' field")
-            config.package = PackageMetadata(
-                name=str(pkg_name),
-                description=(
-                    str(pkg_table["description"])
-                    if pkg_table.get("description")
-                    else None
-                ),
-            )
+        config.dependencies = _parse_dependencies_from_doc(doc)
+        config.package = _parse_package_from_doc(doc)
 
         return config
 
