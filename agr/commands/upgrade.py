@@ -152,13 +152,29 @@ def _normalize_handle(s: str) -> str:
 
 
 def _transitive_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
-    """Collect all lockfile entry identifiers whose parent is in *package_ids*.
+    """Collect all lockfile entry identifiers whose parent chain includes *package_ids*.
 
     This lets ``agr upgrade <package>`` force-upgrade the entire
     transitive dependency tree, not just the package entry itself.
+    Nested packages are expanded first so that skills/ralphs from
+    sub-packages are included.
     """
+    # Expand package_ids to include nested child packages.
+    all_pkg_ids = set(package_ids)
+    changed = True
+    while changed:
+        changed = False
+        for entry in lockfile.packages:
+            if (
+                entry.parent
+                and entry.parent in all_pkg_ids
+                and entry.identifier not in all_pkg_ids
+            ):
+                all_pkg_ids.add(entry.identifier)
+                changed = True
+
     result: set[str] = set()
     for entry in lockfile.skills + lockfile.ralphs:
-        if entry.parent and entry.parent in package_ids:
+        if entry.parent and entry.parent in all_pkg_ids:
             result.add(entry.identifier)
     return result
