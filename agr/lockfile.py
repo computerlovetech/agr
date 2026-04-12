@@ -40,6 +40,8 @@ class LockedEntry:
     content_hash: str | None = None
     # Local field
     path: str | None = None
+    # Transitive dependency annotation (identifier of the parent package)
+    parent: str | None = None
 
     # TOML key for the required installed-name field.
     _TOML_KEY_INSTALLED_NAME: ClassVar[str] = "installed-name"
@@ -52,6 +54,7 @@ class LockedEntry:
         ("source", "source"),
         ("commit", "commit"),
         ("content_hash", "content-hash"),
+        ("parent", "parent"),
     )
 
     @property
@@ -98,39 +101,79 @@ class Lockfile:
     version: int = LOCKFILE_VERSION
     skills: list[LockedEntry] = field(default_factory=list)
     ralphs: list[LockedEntry] = field(default_factory=list)
+    packages: list[LockedEntry] = field(default_factory=list)
 
-    def _entries(self, ralph: bool) -> list[LockedEntry]:
-        """Return the skill or ralph entries list."""
+    def _entries(
+        self, ralph: bool = False, kind: str | None = None
+    ) -> list[LockedEntry]:
+        """Return the entries list for a given kind.
+
+        The ``kind`` parameter accepts ``"skill"``, ``"ralph"``, or
+        ``"package"``.  When omitted, the legacy ``ralph`` bool is used
+        for backward compatibility.
+        """
+        if kind is not None:
+            if kind == "ralph":
+                return self.ralphs
+            if kind == "package":
+                return self.packages
+            return self.skills
         return self.ralphs if ralph else self.skills
 
-    def _set_entries(self, entries: list[LockedEntry], ralph: bool) -> None:
-        """Replace the skill or ralph entries list."""
+    def _set_entries(
+        self, entries: list[LockedEntry], ralph: bool = False, kind: str | None = None
+    ) -> None:
+        """Replace the entries list for a given kind."""
+        if kind is not None:
+            if kind == "ralph":
+                self.ralphs = entries
+            elif kind == "package":
+                self.packages = entries
+            else:
+                self.skills = entries
+            return
         if ralph:
             self.ralphs = entries
         else:
             self.skills = entries
 
-    def update_entry(self, entry: LockedEntry, *, ralph: bool = False) -> None:
+    def update_entry(
+        self, entry: LockedEntry, *, ralph: bool = False, kind: str | None = None
+    ) -> None:
         """Add or replace an entry by identifier."""
-        filtered = [e for e in self._entries(ralph) if e.identifier != entry.identifier]
+        filtered = [
+            e
+            for e in self._entries(ralph, kind=kind)
+            if e.identifier != entry.identifier
+        ]
         filtered.append(entry)
-        self._set_entries(filtered, ralph)
+        self._set_entries(filtered, ralph, kind=kind)
 
-    def remove_entry(self, identifier: str, *, ralph: bool = False) -> bool:
+    def remove_entry(
+        self, identifier: str, *, ralph: bool = False, kind: str | None = None
+    ) -> bool:
         """Remove an entry by identifier.
 
         Returns True if an entry was removed, False if no match was found.
         """
-        entries = self._entries(ralph)
+        entries = self._entries(ralph, kind=kind)
         filtered = [e for e in entries if e.identifier != identifier]
-        self._set_entries(filtered, ralph)
+        self._set_entries(filtered, ralph, kind=kind)
         return len(filtered) < len(entries)
 
-    def find_entry(self, dep: Dependency) -> LockedEntry | None:
+    def find_entry(
+        self, dep: Dependency, *, kind: str | None = None
+    ) -> LockedEntry | None:
         """Look up a dependency's entry."""
         identifier = dep.identifier
-        ralph = dep.is_ralph
-        for entry in self._entries(ralph):
+        if kind is None:
+            if dep.is_package:
+                kind = "package"
+            elif dep.is_ralph:
+                kind = "ralph"
+            else:
+                kind = "skill"
+        for entry in self._entries(kind=kind):
             if entry.identifier == identifier:
                 return entry
         return None
@@ -143,11 +186,14 @@ class Lockfile:
         """
         lockfile_skill_ids = {s.identifier for s in self.skills}
         lockfile_ralph_ids = {r.identifier for r in self.ralphs}
-        config_skill_ids = {d.identifier for d in dependencies if not d.is_ralph}
+        lockfile_pkg_ids = {p.identifier for p in self.packages}
+        config_skill_ids = {d.identifier for d in dependencies if d.is_skill}
         config_ralph_ids = {d.identifier for d in dependencies if d.is_ralph}
+        config_pkg_ids = {d.identifier for d in dependencies if d.is_package}
         return (
             lockfile_skill_ids == config_skill_ids
             and lockfile_ralph_ids == config_ralph_ids
+            and lockfile_pkg_ids == config_pkg_ids
         )
 
 
@@ -189,8 +235,9 @@ def load_lockfile(path: Path) -> Lockfile | None:
 
     skills = _parse_locked_entries(doc, "skill")
     ralphs = _parse_locked_entries(doc, "ralph")
+    packages = _parse_locked_entries(doc, "package")
 
-    return Lockfile(version=version, skills=skills, ralphs=ralphs)
+    return Lockfile(version=version, skills=skills, ralphs=ralphs, packages=packages)
 
 
 def save_lockfile(lockfile: Lockfile, path: Path) -> None:
@@ -208,4 +255,5 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
 
     doc["skill"] = _build_aot(lockfile.skills)
     doc["ralph"] = _build_aot(lockfile.ralphs)
+    doc["package"] = _build_aot(lockfile.packages)
     path.write_text(tomlkit.dumps(doc))

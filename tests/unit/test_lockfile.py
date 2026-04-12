@@ -458,6 +458,183 @@ class TestLockfileConfigConsistency:
         assert lockfile_with_resolved_path.is_current([dep]) is True
 
 
+class TestPackageLockfileSupport:
+    """Tests for package entries in the lockfile."""
+
+    def test_round_trip_package(self, tmp_path):
+        lockfile = Lockfile(
+            skills=[],
+            ralphs=[],
+            packages=[
+                LockedEntry(
+                    handle="user/repo/bundle",
+                    source="github",
+                    commit="e" * 40,
+                    installed_name="bundle",
+                ),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert len(loaded.packages) == 1
+        assert len(loaded.skills) == 0
+        assert len(loaded.ralphs) == 0
+        p = loaded.packages[0]
+        assert p.handle == "user/repo/bundle"
+        assert p.source == "github"
+        assert p.commit == "e" * 40
+        assert p.installed_name == "bundle"
+
+    def test_round_trip_mixed_all_types(self, tmp_path):
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
+            ],
+            ralphs=[
+                LockedEntry(handle="user/repo/ralph", installed_name="ralph"),
+            ],
+            packages=[
+                LockedEntry(handle="user/repo/bundle", installed_name="bundle"),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert len(loaded.skills) == 1
+        assert len(loaded.ralphs) == 1
+        assert len(loaded.packages) == 1
+
+    def test_update_entry_package(self):
+        lockfile = Lockfile()
+        entry = LockedEntry(handle="user/repo/bundle", installed_name="bundle")
+        lockfile.update_entry(entry, kind="package")
+        assert len(lockfile.packages) == 1
+        assert len(lockfile.skills) == 0
+        assert lockfile.packages[0].handle == "user/repo/bundle"
+
+    def test_remove_entry_package(self):
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="user/repo/a", installed_name="a"),
+                LockedEntry(handle="user/repo/b", installed_name="b"),
+            ],
+        )
+        lockfile.remove_entry("user/repo/a", kind="package")
+        assert len(lockfile.packages) == 1
+        assert lockfile.packages[0].handle == "user/repo/b"
+
+    def test_find_entry_package(self):
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="user/repo/bundle", installed_name="bundle"),
+            ],
+        )
+        dep = Dependency(type="package", handle="user/repo/bundle")
+        result = lockfile.find_entry(dep)
+        assert result is not None
+        assert result.installed_name == "bundle"
+
+    def test_find_entry_package_not_in_skills(self):
+        """Package dep should not match entries in the skills list."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(handle="user/repo/bundle", installed_name="bundle"),
+            ],
+            packages=[],
+        )
+        dep = Dependency(type="package", handle="user/repo/bundle")
+        result = lockfile.find_entry(dep)
+        assert result is None
+
+    def test_is_current_with_packages(self):
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
+            ],
+            packages=[
+                LockedEntry(handle="user/repo/bundle", installed_name="bundle"),
+            ],
+        )
+        deps = [
+            Dependency(type="skill", handle="user/repo/skill"),
+            Dependency(type="package", handle="user/repo/bundle"),
+        ]
+        assert lockfile.is_current(deps) is True
+
+    def test_is_current_missing_package(self):
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(handle="user/repo/skill", installed_name="skill"),
+            ],
+            packages=[],
+        )
+        deps = [
+            Dependency(type="skill", handle="user/repo/skill"),
+            Dependency(type="package", handle="user/repo/bundle"),
+        ]
+        assert lockfile.is_current(deps) is False
+
+
+class TestParentFieldSupport:
+    """Tests for the parent field on LockedEntry."""
+
+    def test_parent_field_round_trip(self, tmp_path):
+        """Parent field serializes and deserializes correctly."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/skill",
+                    installed_name="skill",
+                    parent="user/repo/bundle",
+                ),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert len(loaded.skills) == 1
+        assert loaded.skills[0].parent == "user/repo/bundle"
+
+    def test_parent_field_none_not_serialized(self, tmp_path):
+        """Parent field with None is not written to lockfile."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/skill",
+                    installed_name="skill",
+                    parent=None,
+                ),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        content = path.read_text()
+        assert "parent" not in content
+
+    def test_parent_field_present_in_toml(self, tmp_path):
+        """Parent field is present in TOML output."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/skill",
+                    installed_name="skill",
+                    parent="user/repo/bundle",
+                ),
+            ],
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        content = path.read_text()
+        assert 'parent = "user/repo/bundle"' in content
+
+
 class TestBuildLockfileFromResults:
     """Tests for _build_lockfile_from_results."""
 

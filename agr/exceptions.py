@@ -41,6 +41,10 @@ class RateLimitError(AgrError):
     """Raised when GitHub API rate limit is exceeded."""
 
 
+class PackageConflictError(AgrError):
+    """Raised when transitive dependencies from different packages conflict."""
+
+
 # Exception types commonly caught during install/sync operations.
 # FileExistsError must be listed explicitly so that format_install_error
 # can distinguish it from other OS-level errors.

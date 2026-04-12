@@ -7,6 +7,7 @@ from rich.table import Table
 from agr.commands._tool_helpers import load_existing_config, print_missing_config_hint
 from agr.console import get_console
 from agr.exceptions import AgrError, InvalidHandleError
+from agr.lockfile import build_lockfile_path, load_lockfile
 from agr.metadata import METADATA_TYPE_LOCAL, METADATA_TYPE_REMOTE
 from agr.ralph_installer import is_ralph_installed
 from agr.skill_installer import filter_tools_needing_install
@@ -75,6 +76,15 @@ def run_list(global_install: bool = False) -> None:
         console.print("[dim]Run 'agr add <handle>' to add skills or ralphs.[/dim]")
         return
 
+    # Load lockfile to get parent annotations for transitive deps.
+    lockfile_path = build_lockfile_path(config_path)
+    lockfile = load_lockfile(lockfile_path)
+    parent_map: dict[str, str] = {}
+    if lockfile:
+        for entry in lockfile.skills + lockfile.ralphs:
+            if entry.parent:
+                parent_map[entry.identifier] = entry.parent
+
     # Build table
     table = Table(show_header=True, header_style="bold")
     table.add_column("Name", style="cyan")
@@ -93,6 +103,16 @@ def run_list(global_install: bool = False) -> None:
         # Show dep type alongside local/remote
         dep_type_label = dep.type
         kind_display = f"{kind} ({dep_type_label})"
+
+        parent = parent_map.get(dep.identifier)
+        if parent:
+            display_name = f"{display_name} (via {parent})"
+
+        # Packages are content-less bundles — show as "bundle".
+        if dep.is_package:
+            status = "[dim]bundle[/dim]"
+            table.add_row(display_name, kind_display, status)
+            continue
 
         # Check installation status
         try:

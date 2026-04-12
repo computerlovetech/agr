@@ -5,7 +5,13 @@ from pathlib import Path
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
 from agr.commands.migrations import run_tool_migrations
-from agr.config import DEPENDENCY_TYPE_RALPH, DEPENDENCY_TYPE_SKILL, Dependency
+from agr.config import (
+    DEPENDENCY_TYPE_PACKAGE,
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_SKILL,
+    AgrConfig,
+    Dependency,
+)
 from agr.console import get_console
 from agr.exceptions import (
     INSTALL_ERROR_TYPES,
@@ -15,6 +21,7 @@ from agr.exceptions import (
     format_install_error,
 )
 from agr._install_common import InstallResult
+from agr.package import expand_packages, has_package_section
 from agr.ralph_installer import fetch_and_install_ralph
 from agr.skill_installer import fetch_and_install_to_tools, list_remote_repo_skills
 from agr.handle import ParsedHandle, parse_handle
@@ -32,10 +39,11 @@ from agr.tool import ToolConfig
 
 
 def _detect_local_type(source_path: Path) -> str:
-    """Detect whether a local path is a skill or ralph.
+    """Detect whether a local path is a skill, ralph, or package.
 
-    Checks for RALPH.md and SKILL.md markers. If both exist,
-    raises an error. If neither exists, defaults to skill (existing behaviour).
+    Checks for RALPH.md and SKILL.md markers first (they take priority).
+    If neither marker exists, checks for a [package] section in agr.toml.
+    If nothing matches, defaults to skill (existing behaviour).
     """
     has_ralph = is_valid_ralph_dir(source_path)
     has_skill = is_valid_skill_dir(source_path)
@@ -47,6 +55,10 @@ def _detect_local_type(source_path: Path) -> str:
         )
     if has_ralph:
         return DEPENDENCY_TYPE_RALPH
+    if has_skill:
+        return DEPENDENCY_TYPE_SKILL
+    if has_package_section(source_path):
+        return DEPENDENCY_TYPE_PACKAGE
     return DEPENDENCY_TYPE_SKILL
 
 
@@ -86,15 +98,31 @@ def _install_dependency(
     source: str | None,
     skills_dirs: dict[str, Path] | None,
     default_repo: str | None,
+    *,
+    config: AgrConfig | None = None,
 ) -> tuple[list[str], InstallResult, str]:
     """Install a dependency and return paths, metadata, and resolved type.
 
     For local deps, installs directly as the detected type. For remote deps,
-    tries as skill first then falls back to ralph.
+    tries as skill first then falls back to ralph. For packages, expands
+    transitive deps and installs each leaf.
 
     Returns:
         Tuple of (formatted install paths, install metadata, dependency type).
     """
+    if dep_type == DEPENDENCY_TYPE_PACKAGE:
+        return _install_package(
+            handle,
+            repo_root,
+            tools,
+            overwrite,
+            resolver,
+            source,
+            skills_dirs,
+            default_repo,
+            config=config,
+        )
+
     if handle.is_local and dep_type == DEPENDENCY_TYPE_SKILL:
         installed_paths_dict, install_result = fetch_and_install_to_tools(
             handle,
@@ -157,6 +185,74 @@ def _install_dependency(
         ) from None
 
 
+def _install_package(
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    tools: list[ToolConfig],
+    overwrite: bool,
+    resolver: SourceResolver,
+    source: str | None,
+    skills_dirs: dict[str, Path] | None,
+    default_repo: str | None,
+    *,
+    config: AgrConfig | None = None,
+) -> tuple[list[str], InstallResult, str]:
+    """Expand a package and install its transitive leaf deps."""
+    if config is None:
+        config = AgrConfig()
+
+    pkg_dep = Dependency(
+        type=DEPENDENCY_TYPE_PACKAGE,
+        handle=handle.to_toml_handle() if handle.is_remote else None,
+        path=str(handle.local_path) if handle.is_local else None,
+        source=source,
+    )
+    expanded = expand_packages(
+        [pkg_dep],
+        resolver,
+        config.default_source,
+        config.default_owner,
+        config.default_repo,
+    )
+
+    installed_paths: list[str] = []
+    first_result: InstallResult | None = None
+    for dep in expanded.dependencies:
+        sub_handle = dep.to_parsed_handle(config.default_owner)
+        sub_source = dep.resolve_source_name(config.default_source)
+        if dep.is_ralph:
+            path, result = fetch_and_install_ralph(
+                sub_handle,
+                repo_root,
+                overwrite,
+                resolver=resolver,
+                source=sub_source,
+                default_repo=default_repo,
+            )
+            installed_paths.append(str(path))
+        else:
+            paths_dict, result = fetch_and_install_to_tools(
+                sub_handle,
+                repo_root,
+                tools,
+                overwrite,
+                resolver=resolver,
+                source=sub_source,
+                skills_dirs=skills_dirs,
+                default_repo=default_repo,
+            )
+            installed_paths.extend(
+                f"{name}: {path}" for name, path in paths_dict.items()
+            )
+        if first_result is None:
+            first_result = result
+
+    if first_result is None:
+        first_result = InstallResult()
+
+    return installed_paths, first_result, DEPENDENCY_TYPE_PACKAGE
+
+
 def _update_lockfile_for_adds(
     lockfile_updates: list[tuple[ParsedHandle, str, InstallResult, str]],
     config_path: Path,
@@ -168,10 +264,12 @@ def _update_lockfile_for_adds(
     lockfile = load_lockfile(lockfile_path) or Lockfile()
     for handle, ref, install_result, dep_type in lockfile_updates:
         is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
+        is_package = dep_type == DEPENDENCY_TYPE_PACKAGE
         if handle.is_local:
             lockfile.update_entry(
                 LockedEntry(path=ref, installed_name=handle.name),
                 ralph=is_ralph,
+                kind="package" if is_package else None,
             )
         else:
             lockfile.update_entry(
@@ -183,6 +281,7 @@ def _update_lockfile_for_adds(
                     installed_name=handle.name,
                 ),
                 ralph=is_ralph,
+                kind="package" if is_package else None,
             )
     save_lockfile(lockfile, lockfile_path)
 
@@ -240,6 +339,7 @@ def run_add(
                 source,
                 skills_dirs,
                 config.default_repo,
+                config=config,
             )
 
             # Add to config

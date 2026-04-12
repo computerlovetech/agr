@@ -800,3 +800,94 @@ class TestGetTools:
         assert "# Sync instruction files" in content
         assert "# Which tool's instruction file" in content
         assert "# Primary tool for instruction sync" in content
+
+
+class TestPackageDependency:
+    """Tests for package dependency type."""
+
+    def test_package_remote_dependency(self):
+        """Create a remote package dependency."""
+        dep = Dependency(type="package", handle="user/repo/bundle")
+        assert dep.is_remote
+        assert dep.is_package
+        assert not dep.is_skill
+        assert not dep.is_ralph
+        assert dep.identifier == "user/repo/bundle"
+
+    def test_package_type_in_toml(self, tmp_path):
+        """Package type parses successfully from agr.toml."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            'dependencies = [{handle = "user/repo/bundle", type = "package"}]\n'
+        )
+        config = AgrConfig.load(config_path)
+        assert len(config.dependencies) == 1
+        assert config.dependencies[0].type == "package"
+        assert config.dependencies[0].is_package
+
+    def test_package_type_from_toml_dict(self):
+        """Deserialize a package dependency from TOML dict."""
+        dep = Dependency.from_toml_dict(
+            {"handle": "user/repo/bundle", "type": "package"}
+        )
+        assert dep.type == "package"
+        assert dep.is_package
+
+    def test_package_type_to_toml_dict(self):
+        """Serialize a package dependency to TOML dict."""
+        dep = Dependency(type="package", handle="user/repo/bundle")
+        result = dep.to_toml_dict()
+        assert result == {"handle": "user/repo/bundle", "type": "package"}
+
+    def test_package_type_roundtrip(self):
+        """Serialization and deserialization roundtrip for package type."""
+        original = Dependency(type="package", handle="user/repo/bundle")
+        restored = Dependency.from_toml_dict(original.to_toml_dict())
+        assert restored.type == original.type
+        assert restored.handle == original.handle
+
+    def test_mixed_skill_ralph_package(self, tmp_path):
+        """Config with skill, ralph, and package deps."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            "dependencies = [\n"
+            '    {handle = "user/repo/my-skill", type = "skill"},\n'
+            '    {handle = "user/repo/my-ralph", type = "ralph"},\n'
+            '    {handle = "user/repo/my-bundle", type = "package"},\n'
+            "]\n"
+        )
+        config = AgrConfig.load(config_path)
+        assert len(config.dependencies) == 3
+        assert config.dependencies[0].is_skill
+        assert config.dependencies[1].is_ralph
+        assert config.dependencies[2].is_package
+
+    def test_package_installed_name(self):
+        """Package installed_name returns the last segment."""
+        dep = Dependency(type="package", handle="user/repo/my-bundle")
+        assert dep.installed_name == "my-bundle"
+
+    def test_load_sub_manifest_ignores_tools(self, tmp_path):
+        """load_sub_manifest ignores invalid tool names."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            'tools = ["nonexistent"]\n'
+            'dependencies = [{handle = "a/b/c", type = "skill"}]\n'
+        )
+        # Full load would raise; sub_manifest should succeed
+        config = AgrConfig.load_sub_manifest(config_path)
+        assert len(config.dependencies) == 1
+
+    def test_load_sub_manifest_ignores_sources(self, tmp_path):
+        """load_sub_manifest ignores source blocks."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            'dependencies = [{handle = "a/b/c", type = "skill"}]\n'
+            "[[source]]\n"
+            'name = "custom"\ntype = "git"\n'
+            'url = "https://example.com/{owner}/{repo}.git"\n'
+        )
+        config = AgrConfig.load_sub_manifest(config_path)
+        assert len(config.dependencies) == 1
+        # Should use defaults, not the custom source
+        assert config.sources[0].name == "github"

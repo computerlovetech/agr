@@ -14,7 +14,7 @@ from agr.commands.sync import (
 from agr.config import AgrConfig, find_config, require_repo_root
 from agr.console import error_exit, get_console
 from agr.exceptions import AgrError
-from agr.lockfile import build_lockfile_path, load_lockfile
+from agr.lockfile import Lockfile, build_lockfile_path, load_lockfile
 
 if TYPE_CHECKING:
     from agr.config import Dependency
@@ -43,6 +43,13 @@ def run_upgrade(handles: list[str], global_install: bool = False) -> None:
     if handles:
         matched = _match_handles(handles, config.dependencies, scope_label="agr.toml")
         force_identifiers = {dep.identifier for dep in matched}
+
+        # When upgrading a package, also force-upgrade its transitive deps.
+        lockfile_path = build_lockfile_path(config_path)
+        existing_lf = load_lockfile(lockfile_path)
+        pkg_ids = {dep.identifier for dep in matched if dep.is_package}
+        if pkg_ids and existing_lf:
+            force_identifiers |= _transitive_closure(existing_lf, pkg_ids)
 
     # Instruction sync + migrations run before the empty-deps check, matching
     # `run_sync`, so an empty-deps upgrade still refreshes instruction files.
@@ -142,3 +149,16 @@ def _normalize_handle(s: str) -> str:
     if s.startswith((".", "~", "/")):
         return Path(s).expanduser().as_posix().strip("/")
     return s.strip("/")
+
+
+def _transitive_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
+    """Collect all lockfile entry identifiers whose parent is in *package_ids*.
+
+    This lets ``agr upgrade <package>`` force-upgrade the entire
+    transitive dependency tree, not just the package entry itself.
+    """
+    result: set[str] = set()
+    for entry in lockfile.skills + lockfile.ralphs:
+        if entry.parent and entry.parent in package_ids:
+            result.add(entry.identifier)
+    return result

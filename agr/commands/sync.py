@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 
@@ -18,6 +18,7 @@ from agr.config import (
     find_config,
     require_repo_root,
 )
+from agr.package import ExpandedDeps, detect_conflicts, expand_packages
 from agr.console import error_exit, get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, AgrError, format_install_error
 from agr._install_common import InstallResult
@@ -488,6 +489,12 @@ def _run_global_sync(
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
+            if dep.is_package:
+                console.print(
+                    f"[yellow]Skipped:[/yellow] {dep.identifier} "
+                    "(packages are not supported in global installs)"
+                )
+                continue
             if dep.is_ralph:
                 # Ralphs are project-level only; skip in global mode.
                 console.print(
@@ -537,6 +544,13 @@ def _classify_dependencies(
 
     for index, dep in enumerate(config.dependencies):
         try:
+            # Packages are content-less bundles — their transitive deps
+            # have already been expanded into the deps list, so we mark
+            # the package itself as up-to-date and skip installation.
+            if dep.is_package:
+                results[index] = SyncResult.up_to_date()
+                continue
+
             handle, source_name = dep.resolve(
                 config.default_source, config.default_owner
             )
@@ -692,6 +706,23 @@ def _run_install_pipeline(
     force_identifiers: set[str] | None = None,
 ) -> None:
     """Shared by `run_sync` and `run_upgrade`: classify → install → lockfile → report."""
+    # --- Phase 0: Expand packages into flat deps ---
+    expanded: ExpandedDeps | None = None
+    pkg_deps = [d for d in config.dependencies if d.is_package]
+    if pkg_deps:
+        expanded = expand_packages(
+            config.dependencies,
+            resolver,
+            config.default_source,
+            config.default_owner,
+            config.default_repo,
+        )
+        direct_ids = {d.identifier for d in config.dependencies}
+        expanded.dependencies = detect_conflicts(
+            expanded.dependencies, expanded.parents, direct_ids
+        )
+        config = replace(config, dependencies=expanded.dependencies)
+
     # --- Phase 1: Classify dependencies ---
     classified = _classify_dependencies(
         config,
@@ -757,14 +788,21 @@ def _run_install_pipeline(
     )
 
     # --- Phase 3: Update lockfile ---
-    new_lockfile = _build_lockfile_from_results(config, results, existing_lockfile)
+    package_entries = expanded.package_entries if expanded else []
+    new_lockfile = _build_lockfile_from_results(
+        config, results, existing_lockfile, package_entries=package_entries
+    )
     save_lockfile(new_lockfile, lockfile_path)
 
     # --- Phase 4: Report ---
-    labeled_results = [
-        (dep.identifier, results[index])
-        for index, dep in enumerate(config.dependencies)
-    ]
+    parents = expanded.parents if expanded else {}
+    labeled_results = []
+    for index, dep in enumerate(config.dependencies):
+        label = dep.identifier
+        parent = parents.get(dep.identifier)
+        if parent:
+            label = f"{label} (via {parent})"
+        labeled_results.append((label, results[index]))
     _print_results_and_summary(labeled_results)
 
 
@@ -874,6 +912,11 @@ def _sync_from_lockfile(
     results: list[tuple[str, SyncResult]] = []
 
     for dep in config.dependencies:
+        # Packages are content-less bundles — in frozen/locked mode
+        # their transitive deps must already be in the dependency list.
+        if dep.is_package:
+            results.append((dep.identifier, SyncResult.up_to_date()))
+            continue
         try:
             result = _sync_dep_from_lockfile(
                 dep, lockfile, config, repo_root, tools, resolver
@@ -889,6 +932,9 @@ def _build_lockfile_from_results(
     config: AgrConfig,
     results: list[SyncResult],
     existing_lockfile: Lockfile | None,
+    *,
+    package_entries: list[LockedEntry] | None = None,
+    parents: dict[str, str] | None = None,
 ) -> Lockfile:
     """Build a new lockfile from sync results.
 
@@ -896,18 +942,24 @@ def _build_lockfile_from_results(
     For up-to-date entries, carries forward existing lockfile entries.
     """
     lockfile = Lockfile()
+    parent_map = parents or {}
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
         is_ralph = dep.is_ralph
         name = dep.installed_name
+        parent = parent_map.get(dep.identifier)
+
+        # Packages are content-less bundles — skip them in skill/ralph lists.
+        if dep.is_package:
+            continue
 
         # Local deps: record path only (no commit to pin).
         if dep.is_local:
             if result.status == SyncStatus.ERROR:
                 continue
             lockfile.update_entry(
-                LockedEntry(path=dep.path, installed_name=name),
+                LockedEntry(path=dep.path, installed_name=name, parent=parent),
                 ralph=is_ralph,
             )
             continue
@@ -923,6 +975,7 @@ def _build_lockfile_from_results(
                     commit=result.commit,
                     content_hash=result.content_hash,
                     installed_name=name,
+                    parent=parent,
                 ),
                 ralph=is_ralph,
             )
@@ -947,8 +1000,13 @@ def _build_lockfile_from_results(
                 handle=dep.handle,
                 source=dep.resolve_source_name(config.default_source),
                 installed_name=name,
+                parent=parent,
             ),
             ralph=is_ralph,
         )
+
+    # Append package entries from expansion.
+    for entry in package_entries or []:
+        lockfile.update_entry(entry, kind="package")
 
     return lockfile

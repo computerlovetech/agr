@@ -37,7 +37,12 @@ from agr.tool import (
 CONFIG_FILENAME = "agr.toml"
 DEPENDENCY_TYPE_SKILL = "skill"
 DEPENDENCY_TYPE_RALPH = "ralph"
-VALID_DEPENDENCY_TYPES = {DEPENDENCY_TYPE_SKILL, DEPENDENCY_TYPE_RALPH}
+DEPENDENCY_TYPE_PACKAGE = "package"
+VALID_DEPENDENCY_TYPES = {
+    DEPENDENCY_TYPE_SKILL,
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_PACKAGE,
+}
 
 
 def validate_canonical_instructions(value: str) -> None:
@@ -215,6 +220,11 @@ class Dependency:
         return self.type == DEPENDENCY_TYPE_RALPH
 
     @property
+    def is_package(self) -> bool:
+        """True if this is a package (bundle) dependency."""
+        return self.type == DEPENDENCY_TYPE_PACKAGE
+
+    @property
     def identifier(self) -> str:
         """Unique identifier (path or handle)."""
         return self.path or self.handle or ""
@@ -355,6 +365,14 @@ def _parse_dependencies_from_doc(
 
 
 @dataclass
+class PackageMetadata:
+    """Metadata from the [package] section of a bundle's agr.toml."""
+
+    name: str
+    description: str | None = None
+
+
+@dataclass
 class AgrConfig:
     """Configuration loaded from agr.toml.
 
@@ -386,6 +404,7 @@ class AgrConfig:
     default_repo: str | None = DEFAULT_REPO_NAME
     sync_instructions: bool | None = None
     canonical_instructions: str | None = None
+    package: PackageMetadata | None = None
     _path: Path | None = field(default=None, repr=False)
 
     def get_tools(self) -> list[ToolConfig]:
@@ -458,6 +477,72 @@ class AgrConfig:
         config.sources, config.default_source = _parse_sources_from_doc(doc)
         source_names = {s.name for s in config.sources}
         config.dependencies = _parse_dependencies_from_doc(doc, source_names)
+
+        pkg_table = doc.get("package")
+        if pkg_table and isinstance(pkg_table, dict):
+            pkg_name = pkg_table.get("name")
+            if not pkg_name or not isinstance(pkg_name, str):
+                raise ConfigError("[package] section requires a 'name' field")
+            config.package = PackageMetadata(
+                name=str(pkg_name),
+                description=(
+                    str(pkg_table["description"])
+                    if pkg_table.get("description")
+                    else None
+                ),
+            )
+
+        return config
+
+    @classmethod
+    def load_sub_manifest(cls, path: Path) -> "AgrConfig":
+        """Load only public sections (dependencies, [package]) from an agr.toml.
+
+        Used when reading a transitive dependency's agr.toml. Ignores
+        consumer-only fields like tools, sources, default_tool, etc.
+        so that bundles don't need to declare them.
+        """
+        if not path.exists():
+            config = cls()
+            config._path = path
+            return config
+
+        try:
+            content = path.read_text()
+            doc = tomlkit.parse(content)
+        except TOMLKitError as e:
+            raise ConfigError(f"Invalid TOML in {path}: {e}") from e
+
+        config = cls()
+        config._path = path
+
+        # Only parse dependencies and [package] — skip tools, sources, etc.
+        deps_list = doc.get("dependencies", [])
+        dependencies: list[Dependency] = []
+        for item in deps_list:
+            if not isinstance(item, dict):
+                continue
+            if not (item.get("handle") or item.get("path")):
+                continue
+            try:
+                dependencies.append(Dependency.from_toml_dict(item))
+            except (ValueError, ConfigError) as e:
+                raise ConfigError(str(e)) from None
+        config.dependencies = dependencies
+
+        pkg_table = doc.get("package")
+        if pkg_table and isinstance(pkg_table, dict):
+            pkg_name = pkg_table.get("name")
+            if not pkg_name or not isinstance(pkg_name, str):
+                raise ConfigError("[package] section requires a 'name' field")
+            config.package = PackageMetadata(
+                name=str(pkg_name),
+                description=(
+                    str(pkg_table["description"])
+                    if pkg_table.get("description")
+                    else None
+                ),
+            )
 
         return config
 
