@@ -323,7 +323,7 @@ class TestRalphLockfileSupport:
     def test_update_lockfile_entry_ralph(self):
         lockfile = Lockfile(skills=[], ralphs=[])
         entry = LockedEntry(handle="user/repo/ralph", installed_name="ralph")
-        lockfile.update_entry(entry, ralph=True)
+        lockfile.update_entry(entry, kind="ralph")
         assert len(lockfile.ralphs) == 1
         assert len(lockfile.skills) == 0
         assert lockfile.ralphs[0].handle == "user/repo/ralph"
@@ -336,7 +336,7 @@ class TestRalphLockfileSupport:
                 LockedEntry(handle="user/repo/b", installed_name="b"),
             ],
         )
-        lockfile.remove_entry("user/repo/a", ralph=True)
+        lockfile.remove_entry("user/repo/a", kind="ralph")
         assert len(lockfile.ralphs) == 1
         assert lockfile.ralphs[0].handle == "user/repo/b"
 
@@ -414,14 +414,14 @@ class TestRemoveLockfileEntryReturnValue:
         lockfile = Lockfile(
             ralphs=[LockedEntry(handle="user/repo/r", installed_name="r")]
         )
-        assert lockfile.remove_entry("user/repo/r", ralph=True) is True
+        assert lockfile.remove_entry("user/repo/r", kind="ralph") is True
         assert len(lockfile.ralphs) == 0
 
     def test_returns_false_on_ralph_miss(self):
         lockfile = Lockfile(
             ralphs=[LockedEntry(handle="user/repo/r", installed_name="r")]
         )
-        assert lockfile.remove_entry("user/repo/x", ralph=True) is False
+        assert lockfile.remove_entry("user/repo/x", kind="ralph") is False
         assert len(lockfile.ralphs) == 1
 
 

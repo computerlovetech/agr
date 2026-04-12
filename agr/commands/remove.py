@@ -65,7 +65,7 @@ def _uninstall_from_filesystem(
 def _update_lockfile_after_remove(
     config_path: Path,
     removed_candidates: list[list[str]],
-    removed_ralph_flags: list[bool],
+    removed_kinds: list[str],
 ) -> None:
     """Remove entries from the lockfile for successfully removed deps."""
     if not removed_candidates:
@@ -74,9 +74,9 @@ def _update_lockfile_after_remove(
     lockfile = load_lockfile(lockfile_path)
     if lockfile is None:
         return
-    for candidates, is_ralph in zip(removed_candidates, removed_ralph_flags):
+    for candidates, dep_kind in zip(removed_candidates, removed_kinds):
         for identifier in candidates:
-            if lockfile.remove_entry(identifier, ralph=is_ralph):
+            if lockfile.remove_entry(identifier, kind=dep_kind):
                 break
     save_lockfile(lockfile, lockfile_path)
 
@@ -118,7 +118,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     # removal so we can update the lockfile without re-parsing handles.
     results: list[CommandResult] = []
     removed_candidates: list[list[str]] = []
-    removed_ralph_flags: list[bool] = []
+    removed_kinds: list[str] = []
 
     for ref in refs:
         try:
@@ -143,6 +143,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                 source_name = dep.source or config.default_source
 
             is_ralph = dep is not None and dep.is_ralph
+            dep_kind = dep.type if dep is not None else "skill"
 
             # Remove from filesystem
             removed_fs = _uninstall_from_filesystem(
@@ -159,7 +160,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             if removed_fs or removed_config:
                 results.append(CommandResult(ref, True, "Removed"))
                 removed_candidates.append(candidates)
-                removed_ralph_flags.append(is_ralph)
+                removed_kinds.append(dep_kind)
             else:
                 results.append(CommandResult(ref, False, "Not found"))
 
@@ -176,4 +177,4 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
         exit_on_failure=False,
     )
 
-    _update_lockfile_after_remove(config_path, removed_candidates, removed_ralph_flags)
+    _update_lockfile_after_remove(config_path, removed_candidates, removed_kinds)

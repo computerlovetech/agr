@@ -950,7 +950,7 @@ def _build_lockfile_from_results(
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
-        is_ralph = dep.is_ralph
+        dep_kind = dep.type
         name = dep.installed_name
         parent = parent_map.get(dep.identifier)
 
@@ -964,7 +964,7 @@ def _build_lockfile_from_results(
                 continue
             lockfile.update_entry(
                 LockedEntry(path=dep.path, installed_name=name, parent=parent),
-                ralph=is_ralph,
+                kind=dep_kind,
             )
             continue
 
@@ -981,7 +981,7 @@ def _build_lockfile_from_results(
                     installed_name=name,
                     parent=parent,
                 ),
-                ralph=is_ralph,
+                kind=dep_kind,
             )
             continue
 
@@ -990,7 +990,7 @@ def _build_lockfile_from_results(
             existing_lockfile.find_entry(dep) if existing_lockfile is not None else None
         )
         if existing is not None:
-            lockfile.update_entry(existing, ralph=is_ralph)
+            lockfile.update_entry(existing, kind=dep_kind)
             continue
 
         # No existing entry for a failed dep — nothing to record.
@@ -1006,7 +1006,7 @@ def _build_lockfile_from_results(
                 installed_name=name,
                 parent=parent,
             ),
-            ralph=is_ralph,
+            kind=dep_kind,
         )
 
     # Append package entries from expansion.

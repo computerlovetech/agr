@@ -263,13 +263,10 @@ def _update_lockfile_for_adds(
     lockfile_path = build_lockfile_path(config_path)
     lockfile = load_lockfile(lockfile_path) or Lockfile()
     for handle, ref, install_result, dep_type in lockfile_updates:
-        is_ralph = dep_type == DEPENDENCY_TYPE_RALPH
-        is_package = dep_type == DEPENDENCY_TYPE_PACKAGE
         if handle.is_local:
             lockfile.update_entry(
                 LockedEntry(path=ref, installed_name=handle.name),
-                ralph=is_ralph,
-                kind="package" if is_package else None,
+                kind=dep_type,
             )
         else:
             lockfile.update_entry(
@@ -280,8 +277,7 @@ def _update_lockfile_for_adds(
                     content_hash=install_result.content_hash,
                     installed_name=handle.name,
                 ),
-                ralph=is_ralph,
-                kind="package" if is_package else None,
+                kind=dep_type,
             )
     save_lockfile(lockfile, lockfile_path)
 

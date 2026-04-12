@@ -103,77 +103,55 @@ class Lockfile:
     ralphs: list[LockedEntry] = field(default_factory=list)
     packages: list[LockedEntry] = field(default_factory=list)
 
-    def _entries(
-        self, ralph: bool = False, kind: str | None = None
-    ) -> list[LockedEntry]:
+    def _entries(self, kind: str = "skill") -> list[LockedEntry]:
         """Return the entries list for a given kind.
 
-        The ``kind`` parameter accepts ``"skill"``, ``"ralph"``, or
-        ``"package"``.  When omitted, the legacy ``ralph`` bool is used
-        for backward compatibility.
+        Args:
+            kind: ``"skill"``, ``"ralph"``, or ``"package"``.
         """
-        if kind is not None:
-            if kind == "ralph":
-                return self.ralphs
-            if kind == "package":
-                return self.packages
-            return self.skills
-        return self.ralphs if ralph else self.skills
+        if kind == "ralph":
+            return self.ralphs
+        if kind == "package":
+            return self.packages
+        return self.skills
 
-    def _set_entries(
-        self, entries: list[LockedEntry], ralph: bool = False, kind: str | None = None
-    ) -> None:
+    def _set_entries(self, entries: list[LockedEntry], kind: str = "skill") -> None:
         """Replace the entries list for a given kind."""
-        if kind is not None:
-            if kind == "ralph":
-                self.ralphs = entries
-            elif kind == "package":
-                self.packages = entries
-            else:
-                self.skills = entries
-            return
-        if ralph:
+        if kind == "ralph":
             self.ralphs = entries
+        elif kind == "package":
+            self.packages = entries
         else:
             self.skills = entries
 
-    def update_entry(
-        self, entry: LockedEntry, *, ralph: bool = False, kind: str | None = None
-    ) -> None:
+    def update_entry(self, entry: LockedEntry, *, kind: str = "skill") -> None:
         """Add or replace an entry by identifier."""
         filtered = [
-            e
-            for e in self._entries(ralph, kind=kind)
-            if e.identifier != entry.identifier
+            e for e in self._entries(kind) if e.identifier != entry.identifier
         ]
         filtered.append(entry)
-        self._set_entries(filtered, ralph, kind=kind)
+        self._set_entries(filtered, kind)
 
-    def remove_entry(
-        self, identifier: str, *, ralph: bool = False, kind: str | None = None
-    ) -> bool:
+    def remove_entry(self, identifier: str, *, kind: str = "skill") -> bool:
         """Remove an entry by identifier.
 
         Returns True if an entry was removed, False if no match was found.
         """
-        entries = self._entries(ralph, kind=kind)
+        entries = self._entries(kind)
         filtered = [e for e in entries if e.identifier != identifier]
-        self._set_entries(filtered, ralph, kind=kind)
+        self._set_entries(filtered, kind)
         return len(filtered) < len(entries)
 
-    def find_entry(
-        self, dep: Dependency, *, kind: str | None = None
-    ) -> LockedEntry | None:
+    def find_entry(self, dep: Dependency) -> LockedEntry | None:
         """Look up a dependency's entry."""
         identifier = dep.identifier
-        if kind is None:
-            if dep.is_package:
-                kind = "package"
-            elif dep.is_ralph:
-                kind = "ralph"
-            else:
-                kind = "skill"
-        for entry in self._entries(kind=kind):
+        if dep.is_package:
+            kind = "package"
+        elif dep.is_ralph:
+            kind = "ralph"
+        else:
+            kind = "skill"
+        for entry in self._entries(kind):
             if entry.identifier == identifier:
                 return entry
         return None
