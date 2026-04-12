@@ -20,8 +20,13 @@ class SourceConfig:
     url: str
 
     def build_repo_url(self, owner: str, repo: str) -> str:
-        """Build the repository URL for this source."""
-        return self.url.format(owner=owner, repo=repo)
+        """Build the repository URL for this source.
+
+        Uses literal string replacement instead of str.format() to prevent
+        format string injection via crafted URL templates (e.g. attribute
+        access like ``{owner.__class__}``).
+        """
+        return self.url.replace("{owner}", owner).replace("{repo}", repo)
 
 
 def default_sources() -> list[SourceConfig]:

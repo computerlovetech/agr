@@ -143,7 +143,15 @@ def _parse_source_entry(item: Any) -> SourceConfig:
         raise ConfigError(f"Unsupported source type '{source_type}' for '{name}'")
     if not url:
         raise ConfigError(f"Source '{name}' missing url")
-    return SourceConfig(name=name, type=source_type, url=str(url))
+    url_str = str(url)
+    if not url_str.startswith(
+        ("https://", "http://", "ssh://", "git://", "file://", "/")
+    ):
+        raise ConfigError(
+            f"Source '{name}' url must be an absolute path or start with"
+            " https://, http://, ssh://, git://, or file://"
+        )
+    return SourceConfig(name=name, type=source_type, url=url_str)
 
 
 def _parse_sources_from_doc(

@@ -41,6 +41,29 @@ class TestSourceConfig:
             "https://example.com/user/repo"
         )
 
+    def test_build_repo_url_rejects_format_string_attribute_access(self) -> None:
+        """Malicious URL templates with attribute access must not be evaluated."""
+        source = SourceConfig(
+            name="evil",
+            type="git",
+            url="https://evil.com/{owner.__class__}/{repo}",
+        )
+        # str.replace only matches literal {owner}, so the dotted placeholder
+        # is left untouched instead of leaking Python internals.
+        result = source.build_repo_url("alice", "skills")
+        assert result == "https://evil.com/{owner.__class__}/skills"
+        assert "str" not in result  # no Python type leak
+
+    def test_build_repo_url_rejects_format_string_conversion(self) -> None:
+        """Format conversion specifiers like {owner!r} must not be evaluated."""
+        source = SourceConfig(
+            name="evil",
+            type="git",
+            url="https://evil.com/{owner!r}/{repo}",
+        )
+        result = source.build_repo_url("alice", "skills")
+        assert result == "https://evil.com/{owner!r}/skills"
+
 
 class TestDefaultSources:
     """Tests for default_sources helper."""

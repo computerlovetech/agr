@@ -478,6 +478,49 @@ url = "https://github.com/{owner}/{repo}.git"
         dep = config.get_by_identifier("user/skill")
         assert dep is None
 
+    def test_load_source_rejects_unsupported_scheme(self, tmp_path):
+        """Source URLs with unsupported schemes are rejected."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            "dependencies = []\n"
+            "[[source]]\n"
+            'name = "ftp"\n'
+            'type = "git"\n'
+            'url = "ftp://evil.com/{owner}/{repo}"\n'
+        )
+        with pytest.raises(
+            ConfigError, match="url must be an absolute path or start with"
+        ):
+            AgrConfig.load(config_path)
+
+    def test_load_source_rejects_relative_path(self, tmp_path):
+        """Relative path source URLs are rejected."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            "dependencies = []\n"
+            "[[source]]\n"
+            'name = "evil"\n'
+            'type = "git"\n'
+            'url = "../../../etc/passwd"\n'
+        )
+        with pytest.raises(
+            ConfigError, match="url must be an absolute path or start with"
+        ):
+            AgrConfig.load(config_path)
+
+    def test_load_source_accepts_https_url(self, tmp_path):
+        """HTTPS source URLs are accepted."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text(
+            "dependencies = []\n"
+            "[[source]]\n"
+            'name = "custom"\n'
+            'type = "git"\n'
+            'url = "https://gitlab.com/{owner}/{repo}.git"\n'
+        )
+        config = AgrConfig.load(config_path)
+        assert config.sources[0].url == "https://gitlab.com/{owner}/{repo}.git"
+
 
 class TestFindConfig:
     """Tests for find_config function."""
