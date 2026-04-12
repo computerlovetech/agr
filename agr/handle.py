@@ -260,10 +260,8 @@ def parse_handle(
         # Simple name like "commit" — resolve with default_owner if available
         if default_owner is not None:
             skill_name = parts[0]
-            _validate_no_separator(ref, "skill name", skill_name)
-            _validate_no_path_traversal(ref, "skill name", skill_name)
-            _validate_no_separator(ref, "default owner", default_owner)
-            _validate_no_path_traversal(ref, "default owner", default_owner)
+            _validate_component(ref, "skill name", skill_name)
+            _validate_component(ref, "default owner", default_owner)
             return ParsedHandle(username=default_owner, name=skill_name)
         raise InvalidHandleError(
             f"Invalid handle '{ref}': remote handles require username/name format"
@@ -272,10 +270,8 @@ def parse_handle(
     if len(parts) == 2:
         # user/name format
         username, skill_name = parts[0], parts[1]
-        _validate_no_separator(ref, "username", username)
-        _validate_no_path_traversal(ref, "username", username)
-        _validate_no_separator(ref, "skill name", skill_name)
-        _validate_no_path_traversal(ref, "skill name", skill_name)
+        _validate_component(ref, "username", username)
+        _validate_component(ref, "skill name", skill_name)
         return ParsedHandle(
             username=username,
             name=skill_name,
@@ -284,12 +280,9 @@ def parse_handle(
     if len(parts) == 3:
         # user/repo/name format
         username, repo, skill_name = parts[0], parts[1], parts[2]
-        _validate_no_separator(ref, "username", username)
-        _validate_no_path_traversal(ref, "username", username)
-        _validate_no_separator(ref, "repo", repo)
-        _validate_no_path_traversal(ref, "repo", repo)
-        _validate_no_separator(ref, "skill name", skill_name)
-        _validate_no_path_traversal(ref, "skill name", skill_name)
+        _validate_component(ref, "username", username)
+        _validate_component(ref, "repo", repo)
+        _validate_component(ref, "skill name", skill_name)
         return ParsedHandle(
             username=username,
             repo=repo,
@@ -371,3 +364,22 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
             f"Invalid handle '{ref}': {label} '{value}' "
             f"is a path traversal component"
         )
+
+
+def _validate_component(ref: str, label: str, value: str) -> None:
+    """Validate a remote handle component against all safety rules.
+
+    Combines the reserved-separator check and the path-traversal check
+    into a single call so they cannot be accidentally separated.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component (e.g. "username", "repo").
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value contains the separator or is a
+            path traversal component.
+    """
+    _validate_no_separator(ref, label, value)
+    _validate_no_path_traversal(ref, label, value)
