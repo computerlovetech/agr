@@ -362,6 +362,72 @@ class TestExpandPackages:
             with pytest.raises(ConfigError, match="not found"):
                 expand_packages(deps, resolver, "github", None, "skills")
 
+    def test_rejects_local_skill_in_remote_package(self):
+        """Local path skill in remote package is rejected."""
+        deps = [
+            Dependency(type="package", handle="owner/repo/bundle"),
+        ]
+        toml = 'dependencies = [{path = "../../sensitive-dir", type = "skill"}]\n'
+        resolver = self._make_resolver()
+
+        with self._mock_downloaded_repo({"bundle": toml}):
+            with pytest.raises(ConfigError, match="Local path dependencies are not allowed"):
+                expand_packages(deps, resolver, "github", None, "skills")
+
+    def test_rejects_local_ralph_in_remote_package(self):
+        """Local path ralph in remote package is rejected."""
+        deps = [
+            Dependency(type="package", handle="owner/repo/bundle"),
+        ]
+        toml = 'dependencies = [{path = "./my-ralph", type = "ralph"}]\n'
+        resolver = self._make_resolver()
+
+        with self._mock_downloaded_repo({"bundle": toml}):
+            with pytest.raises(ConfigError, match="Local path dependencies are not allowed"):
+                expand_packages(deps, resolver, "github", None, "skills")
+
+    def test_rejects_local_dep_with_traversal_in_remote_package(self):
+        """Local path with traversal in remote package is rejected."""
+        deps = [
+            Dependency(type="package", handle="owner/repo/bundle"),
+        ]
+        toml = 'dependencies = [{path = "../../../.ssh", type = "skill"}]\n'
+        resolver = self._make_resolver()
+
+        with self._mock_downloaded_repo({"bundle": toml}):
+            with pytest.raises(ConfigError, match="Local path dependencies are not allowed"):
+                expand_packages(deps, resolver, "github", None, "skills")
+
+    def test_rejects_local_dep_in_nested_remote_package(self):
+        """Local path dep in a transitively-expanded nested package is rejected."""
+        deps = [
+            Dependency(type="package", handle="owner/repo/outer"),
+        ]
+        outer_toml = (
+            'dependencies = [{handle = "owner/repo/inner", type = "package"}]\n'
+        )
+        inner_toml = 'dependencies = [{path = "../secret", type = "skill"}]\n'
+        resolver = self._make_resolver()
+
+        with self._mock_downloaded_repo({"outer": outer_toml, "inner": inner_toml}):
+            with pytest.raises(ConfigError, match="Local path dependencies are not allowed"):
+                expand_packages(deps, resolver, "github", None, "skills")
+
+    def test_error_message_includes_package_identifier(self):
+        """Error message names both the local dep and the parent package."""
+        deps = [
+            Dependency(type="package", handle="evil/repo/malicious"),
+        ]
+        toml = 'dependencies = [{path = "../../.env", type = "skill"}]\n'
+        resolver = self._make_resolver()
+
+        with self._mock_downloaded_repo({"malicious": toml}):
+            with pytest.raises(
+                ConfigError,
+                match=r"'../../\.env' in package 'evil/repo/malicious'",
+            ):
+                expand_packages(deps, resolver, "github", None, "skills")
+
 
 class TestDependencyIsPackage:
     """Tests for the is_package property on Dependency."""

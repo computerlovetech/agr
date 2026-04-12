@@ -135,6 +135,12 @@ def expand_packages(
             )
 
             for sub_dep in sub_deps:
+                if sub_dep.is_local:
+                    raise ConfigError(
+                        f"Local path dependencies are not allowed in remote "
+                        f"packages: '{sub_dep.identifier}' in package "
+                        f"'{dep.identifier}'"
+                    )
                 sub_id = sub_dep.identifier
                 if sub_dep.is_package:
                     if sub_id in visited:
