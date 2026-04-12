@@ -9,6 +9,11 @@ from agr.exceptions import AgrError
 DEFAULT_SOURCE_NAME = "github"
 DEFAULT_GITHUB_URL = "https://github.com/{owner}/{repo}.git"
 SOURCE_TYPE_GIT = "git"
+VALID_SOURCE_URL_PREFIXES = ("https://", "http://", "ssh://", "git://", "file://", "/")
+INVALID_SOURCE_URL_MSG = (
+    "url must be an absolute path or start with"
+    " https://, http://, ssh://, git://, or file://"
+)
 
 
 @dataclass(frozen=True)

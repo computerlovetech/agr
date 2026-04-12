@@ -25,7 +25,13 @@ from agr.commands._tool_helpers import (
 )
 from agr.console import error_exit, get_console
 from agr.exceptions import ConfigError
-from agr.source import DEFAULT_SOURCE_NAME, SOURCE_TYPE_GIT, SourceConfig
+from agr.source import (
+    DEFAULT_SOURCE_NAME,
+    INVALID_SOURCE_URL_MSG,
+    SOURCE_TYPE_GIT,
+    VALID_SOURCE_URL_PREFIXES,
+    SourceConfig,
+)
 from agr.tool import DEFAULT_TOOL_NAMES
 
 SCALAR_KEYS = {
@@ -315,13 +321,8 @@ def run_config_add(
             )
         if source_url is None:
             error_exit("--url is required when adding a source.")
-        if not source_url.startswith(
-            ("https://", "http://", "ssh://", "git://", "file://", "/")
-        ):
-            error_exit(
-                "Source url must be an absolute path or start with"
-                " https://, http://, ssh://, git://, or file://"
-            )
+        if not source_url.startswith(VALID_SOURCE_URL_PREFIXES):
+            error_exit(f"Source {INVALID_SOURCE_URL_MSG}")
 
         existing_names = {s.name for s in config.sources}
         if name in existing_names:
