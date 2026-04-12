@@ -92,6 +92,10 @@ def expand_packages(
         else:
             result.dependencies.append(dep)
 
+    # Track seen dependency identifiers to avoid duplicates without
+    # rebuilding a set from result.dependencies on every iteration.
+    seen_dep_ids: set[str] = {d.identifier for d in result.dependencies}
+
     while queue:
         item = queue.popleft()
         dep = item.dep
@@ -140,7 +144,8 @@ def expand_packages(
                         continue
                     queue.append(_QueueItem(dep=sub_dep, parent_identifier=identifier))
                 else:
-                    if sub_id not in {d.identifier for d in result.dependencies}:
+                    if sub_id not in seen_dep_ids:
+                        seen_dep_ids.add(sub_id)
                         result.dependencies.append(sub_dep)
                         result.parents[sub_id] = identifier
 
