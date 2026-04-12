@@ -10,13 +10,14 @@ from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
 from agr.console import error_exit
-from agr.exceptions import ConfigError, InvalidHandleError
+from agr.exceptions import ConfigError
 from agr.handle import (
     DEFAULT_OWNER,
     DEFAULT_REPO_NAME,
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
     parse_handle,
+    parse_local_handle,
 )
 from agr.instructions import INSTRUCTION_FILES
 from agr.source import (
@@ -253,20 +254,7 @@ class Dependency:
         """Parse this dependency's reference into a ParsedHandle."""
         ref = self.path or self.handle or ""
         if self.is_local:
-            path = Path(ref)
-            name = path.name
-            if not name or name == "..":
-                raise InvalidHandleError(
-                    f"Invalid local path '{ref}': empty resource name "
-                    "(path must point to a named directory, not '.' or '..')"
-                )
-            if INSTALLED_NAME_SEPARATOR in name:
-                raise InvalidHandleError(
-                    f"Invalid local path '{ref}': name '{name}' "
-                    f"contains reserved sequence "
-                    f"'{INSTALLED_NAME_SEPARATOR}'"
-                )
-            return ParsedHandle(is_local=True, name=name, local_path=path)
+            return parse_local_handle(ref)
         return parse_handle(ref, prefer_local=False, default_owner=default_owner)
 
     def resolve_source_name(self, default_source: str | None = None) -> str | None:

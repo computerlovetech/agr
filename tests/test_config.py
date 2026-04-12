@@ -166,12 +166,7 @@ class TestDependency:
             dep.to_parsed_handle()
 
     def test_to_parsed_handle_local_rejects_separator_in_name(self):
-        """Local path with '--' in name must be rejected by to_parsed_handle.
-
-        parse_handle() validates this, but Dependency.to_parsed_handle() must
-        also reject names containing the reserved '--' separator to prevent
-        ambiguous installed directory names.
-        """
+        """Local path with '--' in name must be rejected by to_parsed_handle."""
         dep = Dependency(type="skill", path="./my--skill")
         with pytest.raises(AgrError, match="reserved sequence"):
             dep.to_parsed_handle()

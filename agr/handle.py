@@ -60,6 +60,38 @@ def is_local_path_ref(ref: str) -> bool:
     return ref.startswith(LOCAL_PATH_PREFIXES)
 
 
+def parse_local_handle(ref: str) -> "ParsedHandle":
+    """Parse a reference known to be a local filesystem path.
+
+    Validates the path name (non-empty, not ``..``, no reserved separator)
+    and returns a ``ParsedHandle`` with ``is_local=True``.
+
+    This is the single source of truth for local handle validation, used
+    by both :func:`parse_handle` (when a local path is detected) and
+    ``Dependency.to_parsed_handle`` (when the dependency is already
+    known to be local).
+
+    Args:
+        ref: Filesystem path string (e.g. ``"./my-skill"``, ``"../other"``).
+
+    Returns:
+        A local ``ParsedHandle``.
+
+    Raises:
+        InvalidHandleError: If the path name is empty, ``..``, or
+            contains the reserved separator.
+    """
+    path = Path(ref)
+    name = path.name
+    if not name or name == "..":
+        raise InvalidHandleError(
+            f"Invalid handle '{ref}': empty resource name "
+            "(path must point to a named directory, not '.' or '..')"
+        )
+    _validate_no_separator(ref, "name", name)
+    return ParsedHandle(is_local=True, name=name, local_path=path)
+
+
 def iter_repo_candidates(
     repo: str | None, default_repo: str | None = None
 ) -> list[tuple[str, bool]]:
@@ -231,21 +263,9 @@ def parse_handle(
         ref = ref.rstrip("/")
 
     if prefer_local:
-        path = Path(ref)
         # Local path detection: starts with ./ ../ / or exists on disk
-        if is_local_path_ref(ref) or path.exists():
-            name = path.name
-            if not name or name == "..":
-                raise InvalidHandleError(
-                    f"Invalid handle '{ref}': empty resource name "
-                    "(path must point to a named directory, not '.' or '..')"
-                )
-            _validate_no_separator(ref, "name", name)
-            return ParsedHandle(
-                is_local=True,
-                name=name,
-                local_path=path,
-            )
+        if is_local_path_ref(ref) or Path(ref).exists():
+            return parse_local_handle(ref)
 
     # Remote handle: split by /
     parts = ref.split("/")
@@ -361,8 +381,7 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
     """
     if value in (".", ".."):
         raise InvalidHandleError(
-            f"Invalid handle '{ref}': {label} '{value}' "
-            f"is a path traversal component"
+            f"Invalid handle '{ref}': {label} '{value}' is a path traversal component"
         )
 
 
