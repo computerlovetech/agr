@@ -115,22 +115,11 @@ class Lockfile:
             return self.packages
         return self.skills
 
-    def _set_entries(self, entries: list[LockedEntry], kind: str = "skill") -> None:
-        """Replace the entries list for a given kind."""
-        if kind == "ralph":
-            self.ralphs = entries
-        elif kind == "package":
-            self.packages = entries
-        else:
-            self.skills = entries
-
     def update_entry(self, entry: LockedEntry, *, kind: str = "skill") -> None:
         """Add or replace an entry by identifier."""
-        filtered = [
-            e for e in self._entries(kind) if e.identifier != entry.identifier
-        ]
-        filtered.append(entry)
-        self._set_entries(filtered, kind)
+        entries = self._entries(kind)
+        entries[:] = [e for e in entries if e.identifier != entry.identifier]
+        entries.append(entry)
 
     def remove_entry(self, identifier: str, *, kind: str = "skill") -> bool:
         """Remove an entry by identifier.
@@ -138,20 +127,14 @@ class Lockfile:
         Returns True if an entry was removed, False if no match was found.
         """
         entries = self._entries(kind)
-        filtered = [e for e in entries if e.identifier != identifier]
-        self._set_entries(filtered, kind)
-        return len(filtered) < len(entries)
+        original_len = len(entries)
+        entries[:] = [e for e in entries if e.identifier != identifier]
+        return len(entries) < original_len
 
     def find_entry(self, dep: Dependency) -> LockedEntry | None:
         """Look up a dependency's entry."""
         identifier = dep.identifier
-        if dep.is_package:
-            kind = "package"
-        elif dep.is_ralph:
-            kind = "ralph"
-        else:
-            kind = "skill"
-        for entry in self._entries(kind):
+        for entry in self._entries(dep.type):
             if entry.identifier == identifier:
                 return entry
         return None

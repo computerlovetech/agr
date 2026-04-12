@@ -8,7 +8,6 @@ ralphs), and detects conflicts.
 
 from __future__ import annotations
 
-import logging
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,8 +21,6 @@ from agr.exceptions import ConfigError, PackageConflictError
 from agr.git import downloaded_repo, get_head_commit_full
 from agr.lockfile import LockedEntry
 from agr.source import SourceResolver
-
-logger = logging.getLogger(__name__)
 
 
 def load_sub_deps(resource_dir: Path) -> list[Dependency]:
