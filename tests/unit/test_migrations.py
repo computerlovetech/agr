@@ -316,6 +316,33 @@ class TestMigrateFlatInstalledNames:
         assert not (skills_dir / full_name).exists()
         assert (skills_dir / "helper" / SKILL_MARKER).exists()
 
+    def test_package_dep_does_not_block_skill_rename(self, tmp_path):
+        """A package dep with the same name should not prevent skill rename.
+
+        Package dependencies are content-less bundles that don't install
+        to the skills directory, so they must not count as ambiguous names
+        during skill migration.
+        """
+        skills_dir = tmp_path / "skills"
+        full_name = (
+            f"user{INSTALLED_NAME_SEPARATOR}repo{INSTALLED_NAME_SEPARATOR}widget"
+        )
+        _make_skill(skills_dir / full_name)
+
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="skill", handle="user/repo/widget"),
+                Dependency(type="package", handle="other/bundles/widget"),
+            ]
+        )
+
+        migrate_flat_installed_names(skills_dir, CLAUDE, config, tmp_path)
+
+        # The skill should be renamed to the plain name because it's the
+        # only *skill* dep with that name (the package is irrelevant).
+        assert not (skills_dir / full_name).exists()
+        assert (skills_dir / "widget" / SKILL_MARKER).exists()
+
 
 class TestFlattenNestedSkills:
     """Tests for _flatten_nested_skills."""

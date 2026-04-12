@@ -315,15 +315,16 @@ def _build_handles_by_name(
 ) -> dict[str, list[tuple[ParsedHandle, str | None]]]:
     """Index skill dependencies by their plain name.
 
-    Ralph deps are excluded because they install to ``.agents/ralphs/``,
-    not the skills directory, so they cannot cause name collisions.
+    Ralph and package deps are excluded because they don't install to the
+    skills directory (ralphs go to ``.agents/ralphs/``; packages are
+    content-less bundles), so they cannot cause name collisions.
     A name with more than one handle is ambiguous.
     """
     handles_by_name: dict[str, list[tuple[ParsedHandle, str | None]]] = {}
     for dep in config.dependencies:
         if not (dep.path or dep.handle):
             continue
-        if dep.is_ralph:
+        if dep.is_ralph or dep.is_package:
             continue
         try:
             handle, source_name = dep.resolve(
