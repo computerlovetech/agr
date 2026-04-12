@@ -174,7 +174,7 @@ def _transitive_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
                 changed = True
 
     result: set[str] = set()
-    for entry in lockfile.skills + lockfile.ralphs:
+    for entry in lockfile.installed_entries():
         if entry.parent and entry.parent in all_pkg_ids:
             result.add(entry.identifier)
     return result

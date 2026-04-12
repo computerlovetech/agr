@@ -869,3 +869,43 @@ class TestBuildLockfileFromResults:
             "Carried-forward lockfile entries must update the parent field "
             "when a dep transitions from transitive to direct."
         )
+
+
+class TestInstalledEntries:
+    """Tests for Lockfile.installed_entries()."""
+
+    def test_empty_lockfile(self):
+        lockfile = Lockfile()
+        assert list(lockfile.installed_entries()) == []
+
+    def test_skills_only(self):
+        skill = LockedEntry(handle="user/repo/skill", installed_name="skill")
+        lockfile = Lockfile(skills=[skill])
+        assert list(lockfile.installed_entries()) == [skill]
+
+    def test_ralphs_only(self):
+        ralph = LockedEntry(handle="user/repo/ralph", installed_name="ralph")
+        lockfile = Lockfile(ralphs=[ralph])
+        assert list(lockfile.installed_entries()) == [ralph]
+
+    def test_skills_and_ralphs(self):
+        skill = LockedEntry(handle="user/repo/skill", installed_name="skill")
+        ralph = LockedEntry(handle="user/repo/ralph", installed_name="ralph")
+        lockfile = Lockfile(skills=[skill], ralphs=[ralph])
+        assert list(lockfile.installed_entries()) == [skill, ralph]
+
+    def test_excludes_packages(self):
+        skill = LockedEntry(handle="user/repo/skill", installed_name="skill")
+        ralph = LockedEntry(handle="user/repo/ralph", installed_name="ralph")
+        package = LockedEntry(handle="user/repo/bundle", installed_name="bundle")
+        lockfile = Lockfile(skills=[skill], ralphs=[ralph], packages=[package])
+        result = list(lockfile.installed_entries())
+        assert result == [skill, ralph]
+        assert package not in result
+
+    def test_preserves_order_skills_then_ralphs(self):
+        s1 = LockedEntry(handle="user/repo/s1", installed_name="s1")
+        s2 = LockedEntry(handle="user/repo/s2", installed_name="s2")
+        r1 = LockedEntry(handle="user/repo/r1", installed_name="r1")
+        lockfile = Lockfile(skills=[s1, s2], ralphs=[r1])
+        assert list(lockfile.installed_entries()) == [s1, s2, r1]

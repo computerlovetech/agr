@@ -7,6 +7,7 @@ machines and over time.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -122,6 +123,16 @@ class Lockfile:
         if kind == "package":
             return self.packages
         raise ValueError(f"Unknown lockfile entry kind: {kind!r}")
+
+    def installed_entries(self) -> Iterator[LockedEntry]:
+        """Iterate over all entries representing installed resources.
+
+        Yields skill and ralph entries — the resource types that are
+        actually installed on disk.  Packages are excluded because they
+        are virtual bundles (content-less parents in the dependency tree).
+        """
+        yield from self.skills
+        yield from self.ralphs
 
     def update_entry(self, entry: LockedEntry, *, kind: str = "skill") -> None:
         """Add or replace an entry by identifier."""

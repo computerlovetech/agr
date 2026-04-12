@@ -81,7 +81,7 @@ def run_list(global_install: bool = False) -> None:
     lockfile = load_lockfile(lockfile_path)
     parent_map: dict[str, str] = {}
     if lockfile:
-        for entry in lockfile.skills + lockfile.ralphs:
+        for entry in lockfile.installed_entries():
             if entry.parent:
                 parent_map[entry.identifier] = entry.parent
 
