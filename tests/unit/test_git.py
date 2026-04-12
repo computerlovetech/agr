@@ -11,7 +11,6 @@ from agr.exceptions import AgrError, AuthenticationError, RepoNotFoundError
 from agr.git import fetch_and_checkout_commit, get_github_token, validate_commit_sha
 from agr.git import _is_github_source as is_github_source
 from agr.git import _partial_clone_unsupported as partial_clone_unsupported
-from agr.git import _apply_github_token as apply_github_token
 from agr.git import _build_github_auth_env as build_github_auth_env
 from agr.git import _raise_clone_error as raise_clone_error
 from agr.source import DEFAULT_GITHUB_URL, SourceConfig
@@ -102,69 +101,6 @@ class TestPartialCloneUnsupported:
 
     def test_case_insensitive(self):
         assert partial_clone_unsupported("ERROR: Unknown Option `--filter'") is True
-
-
-class TestApplyGithubToken:
-    """Tests for _apply_github_token()."""
-
-    def test_no_token_returns_original_url(self):
-        url = "https://github.com/owner/repo.git"
-        with patch.dict(os.environ, {}, clear=True):
-            assert apply_github_token(url) == url
-
-    def test_injects_token_into_github_url(self):
-        url = "https://github.com/owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
-            result = apply_github_token(url)
-            assert "my-token" in result
-            assert result.startswith("https://")
-            assert "github.com" in result
-
-    def test_non_https_url_unchanged(self):
-        url = "git@github.com:owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
-            assert apply_github_token(url) == url
-
-    def test_non_github_url_unchanged(self):
-        url = "https://gitlab.com/owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
-            assert apply_github_token(url) == url
-
-    def test_url_with_existing_auth_unchanged(self):
-        url = "https://user@github.com/owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
-            assert apply_github_token(url) == url
-
-    def test_special_chars_in_token_are_encoded(self):
-        url = "https://github.com/owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "tok/en@val"}, clear=True):
-            result = apply_github_token(url)
-            # '/' and '@' should be percent-encoded
-            assert "tok%2Fen%40val" in result
-
-    def test_lookalike_domain_does_not_get_token(self):
-        """Domains like 'evilgithub.com' must not receive the token.
-
-        Regression: endswith('github.com') matched any domain ending
-        in those characters, potentially leaking the token to a
-        third-party server.
-        """
-        for url in [
-            "https://evilgithub.com/owner/repo.git",
-            "https://notgithub.com/owner/repo.git",
-            "https://my-github.com/owner/repo.git",
-        ]:
-            with patch.dict(os.environ, {"GITHUB_TOKEN": "secret"}, clear=True):
-                assert apply_github_token(url) == url, (
-                    f"Token was injected into non-GitHub URL: {url}"
-                )
-
-    def test_github_subdomain_gets_token(self):
-        """Legitimate GitHub subdomains (e.g. api.github.com) should get the token."""
-        url = "https://api.github.com/owner/repo.git"
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "my-token"}, clear=True):
-            result = apply_github_token(url)
-            assert "my-token" in result
 
 
 class TestRaiseCloneError:

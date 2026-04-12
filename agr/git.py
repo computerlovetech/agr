@@ -10,8 +10,6 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from collections.abc import Generator
-from urllib.parse import quote, urlparse, urlunparse
-
 from agr.exceptions import (
     AgrError,
     AuthenticationError,
@@ -245,41 +243,6 @@ def _get_default_branch(repo_url: str) -> str | None:
         if ref.startswith("refs/heads/"):
             return ref.replace("refs/heads/", "", 1)
     return None
-
-
-def _apply_github_token(repo_url: str) -> str:
-    """Inject GitHub token into HTTPS URL if available.
-
-    .. deprecated::
-        Retained only for backward-compatible tests.  Production code
-        no longer embeds the token in the URL — authentication is
-        handled via ``_build_github_auth_env`` which passes the token
-        through environment-based git config so it never appears in
-        process command-line arguments.
-    """
-    token = get_github_token()
-    if not token:
-        return repo_url
-    parsed = urlparse(repo_url)
-    if parsed.scheme != "https":
-        return repo_url
-    netloc_lower = parsed.netloc.lower()
-    if not (netloc_lower == "github.com" or netloc_lower.endswith(".github.com")):
-        return repo_url
-    if "@" in parsed.netloc:
-        return repo_url
-    encoded = quote(token, safe="")
-    netloc = f"{encoded}:x-oauth-basic@{parsed.netloc}"
-    return urlunparse(
-        (
-            parsed.scheme,
-            netloc,
-            parsed.path,
-            parsed.params,
-            parsed.query,
-            parsed.fragment,
-        )
-    )
 
 
 def _clone_repo(
