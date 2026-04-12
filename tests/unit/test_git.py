@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from agr.exceptions import AgrError, AuthenticationError, RepoNotFoundError
-from agr.git import fetch_and_checkout_commit, get_github_token
+from agr.git import fetch_and_checkout_commit, get_github_token, validate_commit_sha
 from agr.git import _is_github_source as is_github_source
 from agr.git import _partial_clone_unsupported as partial_clone_unsupported
 from agr.git import _apply_github_token as apply_github_token
@@ -469,3 +469,88 @@ class TestFetchAndCheckoutCommit:
         # After fetch_and_checkout_commit, working tree must be populated
         fetch_and_checkout_commit(clone_dir, commit)
         assert (clone_dir / "SKILL.md").exists()
+
+    def test_rejects_non_sha_commit(self, tmp_path: Path):
+        """fetch_and_checkout_commit must reject non-SHA refs.
+
+        A tampered lockfile could replace a pinned commit SHA with a
+        branch name or tag, defeating --frozen immutability. The function
+        must validate the commit format before passing it to git.
+        """
+        origin, _commit = self._create_origin_repo(tmp_path)
+        clone_dir = tmp_path / "clone"
+        subprocess.run(
+            ["git", "clone", str(origin), str(clone_dir)],
+            capture_output=True,
+            check=True,
+        )
+
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            fetch_and_checkout_commit(clone_dir, "main")
+
+    def test_rejects_tag_ref(self, tmp_path: Path):
+        """Tag names must be rejected as commit refs."""
+        origin, _commit = self._create_origin_repo(tmp_path)
+        clone_dir = tmp_path / "clone"
+        subprocess.run(
+            ["git", "clone", str(origin), str(clone_dir)],
+            capture_output=True,
+            check=True,
+        )
+
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            fetch_and_checkout_commit(clone_dir, "v1.0.0")
+
+    def test_rejects_short_sha(self, tmp_path: Path):
+        """Abbreviated SHAs must be rejected (only full 40-char SHAs allowed)."""
+        origin, commit = self._create_origin_repo(tmp_path)
+        clone_dir = tmp_path / "clone"
+        subprocess.run(
+            ["git", "clone", str(origin), str(clone_dir)],
+            capture_output=True,
+            check=True,
+        )
+
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            fetch_and_checkout_commit(clone_dir, commit[:12])
+
+
+class TestValidateCommitSha:
+    """Tests for validate_commit_sha()."""
+
+    def test_accepts_valid_full_sha(self):
+        """A valid 40-character lowercase hex SHA must pass."""
+        validate_commit_sha("a" * 40)
+        validate_commit_sha("0123456789abcdef" * 2 + "01234567")
+
+    def test_rejects_branch_name(self):
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("main")
+
+    def test_rejects_tag_name(self):
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("v1.0.0")
+
+    def test_rejects_short_sha(self):
+        """Abbreviated SHAs are ambiguous and must be rejected."""
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("abc123")
+
+    def test_rejects_uppercase_hex(self):
+        """Git SHAs are lowercase hex; uppercase must be rejected."""
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("A" * 40)
+
+    def test_rejects_empty_string(self):
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("")
+
+    def test_rejects_sha_with_extra_chars(self):
+        """41-char strings or SHAs with trailing content must be rejected."""
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("a" * 40 + "b")
+
+    def test_rejects_refs_heads_prefix(self):
+        """Full ref paths like refs/heads/main must be rejected."""
+        with pytest.raises(AgrError, match="Invalid commit SHA"):
+            validate_commit_sha("refs/heads/main")

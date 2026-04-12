@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -20,6 +21,9 @@ from agr.source import SourceConfig
 
 SHORT_HASH_LENGTH = 12
 """Number of hex characters used for abbreviated commit hashes."""
+
+_FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+"""Regex matching a full 40-character lowercase hex git commit SHA."""
 
 
 def _git_cmd(repo_dir: Path, *args: str) -> list[str]:
@@ -135,6 +139,26 @@ def get_head_commit_full(repo_dir: Path) -> str:
     return result.stdout.strip()
 
 
+def validate_commit_sha(commit: str) -> None:
+    """Validate that a string is a full 40-character hex git commit SHA.
+
+    Prevents non-SHA refs (branch names, tags, etc.) from being used
+    where a pinned commit is expected.  This is security-critical for
+    ``--frozen`` sync, which trusts the lockfile to specify exact
+    immutable commits — accepting arbitrary refs would allow a
+    tampered lockfile to silently install different code.
+
+    Raises:
+        AgrError: If the string is not a valid full SHA.
+    """
+    if not _FULL_SHA_RE.match(commit):
+        raise AgrError(
+            f"Invalid commit SHA '{short_commit(commit)}': "
+            "expected a 40-character hex hash. "
+            "The lockfile may be corrupted or tampered with."
+        )
+
+
 def fetch_and_checkout_commit(repo_dir: Path, commit: str) -> None:
     """Fetch a specific commit and check it out.
 
@@ -144,7 +168,12 @@ def fetch_and_checkout_commit(repo_dir: Path, commit: str) -> None:
     Always ensures the working tree is populated, even when HEAD
     already matches *commit* — partial clones use ``--no-checkout``
     so the working tree may be empty after the initial clone.
+
+    Raises:
+        AgrError: If *commit* is not a valid full SHA, or if the
+            fetch/checkout fails.
     """
+    validate_commit_sha(commit)
     current = get_head_commit_full(repo_dir)
     if current == commit:
         checkout_full(repo_dir)
