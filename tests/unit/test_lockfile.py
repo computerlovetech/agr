@@ -579,6 +579,39 @@ class TestPackageLockfileSupport:
         ]
         assert lockfile.is_current(deps) is False
 
+    def test_is_current_with_transitive_deps_from_packages(self):
+        """Transitive deps (parent set) in lockfile should not cause
+        is_current to return False when only direct deps are in config."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/direct-skill", installed_name="direct-skill"
+                ),
+                LockedEntry(
+                    handle="pkg-owner/repo/transitive-skill",
+                    installed_name="transitive-skill",
+                    parent="user/repo/bundle",
+                ),
+            ],
+            ralphs=[
+                LockedEntry(
+                    handle="pkg-owner/repo/transitive-ralph",
+                    installed_name="transitive-ralph",
+                    parent="user/repo/bundle",
+                ),
+            ],
+            packages=[
+                LockedEntry(handle="user/repo/bundle", installed_name="bundle"),
+            ],
+        )
+        # Config only has the direct skill and the package — transitive
+        # deps are expanded at sync time and not listed in agr.toml.
+        deps = [
+            Dependency(type="skill", handle="user/repo/direct-skill"),
+            Dependency(type="package", handle="user/repo/bundle"),
+        ]
+        assert lockfile.is_current(deps) is True
+
 
 class TestParentFieldSupport:
     """Tests for the parent field on LockedEntry."""

@@ -183,10 +183,14 @@ class Lockfile:
 
         Returns True only if the lockfile has entries for all dependencies
         and no extra entries. Does not check whether SHAs are stale.
+
+        Transitive entries (those with a ``parent`` field) are excluded
+        from the comparison because they originate from package expansion
+        at sync time and are not listed in agr.toml directly.
         """
-        lockfile_skill_ids = {s.identifier for s in self.skills}
-        lockfile_ralph_ids = {r.identifier for r in self.ralphs}
-        lockfile_pkg_ids = {p.identifier for p in self.packages}
+        lockfile_skill_ids = {s.identifier for s in self.skills if not s.parent}
+        lockfile_ralph_ids = {r.identifier for r in self.ralphs if not r.parent}
+        lockfile_pkg_ids = {p.identifier for p in self.packages if not p.parent}
         config_skill_ids = {d.identifier for d in dependencies if d.is_skill}
         config_ralph_ids = {d.identifier for d in dependencies if d.is_ralph}
         config_pkg_ids = {d.identifier for d in dependencies if d.is_package}
