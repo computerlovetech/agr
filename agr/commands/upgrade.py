@@ -127,7 +127,7 @@ def _match_handle_to_dep(
         if _normalize_handle(dep.identifier) == target:
             matches.append(dep)
             continue
-        if dep.installed_name == arg:
+        if dep.installed_name == arg.rstrip("/"):
             matches.append(dep)
     if len(matches) == 1:
         return matches[0]

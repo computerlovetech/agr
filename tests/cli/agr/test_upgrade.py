@@ -366,6 +366,25 @@ Beta v2
         result = agr("upgrade", "./skills/test-skill/")
         assert_cli(result).succeeded().stdout_contains("Installed:")
 
+    def test_upgrade_bare_name_with_trailing_slash(self, agr, cli_project, cli_skill):
+        """agr upgrade <short-name>/ resolves via installed_name despite trailing slash."""
+        agr("add", "./skills/test-skill")
+
+        (cli_skill / "SKILL.md").write_text("""---
+name: test-skill
+---
+
+# Test Skill
+
+Refreshed via short name with trailing slash.
+""")
+
+        result = agr("upgrade", "test-skill/")
+
+        assert_cli(result).succeeded().stdout_contains("Installed:")
+        installed = cli_project / ".claude" / "skills" / "test-skill" / "SKILL.md"
+        assert "Refreshed via short name with trailing slash" in installed.read_text()
+
 
 class TestAgrUpgradeRalph:
     """Tests for agr upgrade with ralph dependencies."""
