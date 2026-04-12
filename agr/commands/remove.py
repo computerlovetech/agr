@@ -6,6 +6,7 @@ from pathlib import Path
 
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
+from agr.config import Dependency
 from agr.commands.migrations import run_tool_migrations
 from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
@@ -109,6 +110,37 @@ def _identifier_candidates(
     return list(dict.fromkeys(candidates))
 
 
+def _find_dep_by_candidates(
+    candidates: list[str],
+    ref: str,
+    dependencies: list[Dependency],
+) -> Dependency | None:
+    """Find a dependency by identifier candidates, falling back to installed_name.
+
+    First tries each candidate against ``Dependency.identifier`` (exact
+    match).  If no identifier matches, falls back to matching the bare
+    *ref* (with trailing slashes stripped) against
+    ``Dependency.installed_name`` — the last component of the handle.
+
+    This fallback mirrors the behaviour of ``_match_handle_to_dep`` in
+    the upgrade command, so ``agr remove skill`` works the same as
+    ``agr upgrade skill`` for three-part handles like
+    ``owner/repo/skill``.
+    """
+    for identifier in candidates:
+        for dep in dependencies:
+            if dep.identifier == identifier:
+                return dep
+
+    # Fallback: match by installed_name (last segment of the handle).
+    bare = ref.rstrip("/")
+    for dep in dependencies:
+        if dep.installed_name == bare:
+            return dep
+
+    return None
+
+
 def run_remove(refs: list[str], global_install: bool = False) -> None:
     """Run the remove command.
 
@@ -138,11 +170,14 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
 
             candidates = _identifier_candidates(ref, handle, abs_path_str)
 
-            dep = None
-            for identifier in candidates:
-                dep = config.get_by_identifier(identifier)
-                if dep is not None:
-                    break
+            dep = _find_dep_by_candidates(candidates, ref, config.dependencies)
+
+            # When the dep was found by installed_name fallback (not by
+            # any candidate identifier), its actual identifier must be
+            # added to candidates so that config and lockfile removal
+            # can match it.
+            if dep is not None and dep.identifier not in candidates:
+                candidates.append(dep.identifier)
 
             source_name = None
             if dep and dep.is_remote:

@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from agr.commands.remove import _identifier_candidates
+from agr.commands.remove import _identifier_candidates, _find_dep_by_candidates
+from agr.config import Dependency
 from agr.handle import ParsedHandle
 
 
@@ -111,3 +112,47 @@ class TestIdentifierCandidates:
         result = _identifier_candidates("./my-skill", handle, None)
         # Should not contain "././my-skill"
         assert all(not c.startswith("././") for c in result)
+
+
+class TestFindDepByCandidates:
+    """Tests for _find_dep_by_candidates()."""
+
+    def test_matches_by_identifier(self):
+        """Direct identifier match works."""
+        dep = Dependency(handle="owner/repo/skill", type="skill")
+        deps = [dep]
+        candidates = ["owner/repo/skill"]
+        result = _find_dep_by_candidates(candidates, "owner/repo/skill", deps)
+        assert result is dep
+
+    def test_matches_by_installed_name_for_three_part_handle(self):
+        """Bare skill name matches a three-part handle via installed_name.
+
+        Regression: `agr remove skill` failed to find a dependency with
+        handle="owner/repo/skill" because _identifier_candidates only
+        generates identifier strings, never checking dep.installed_name.
+        Meanwhile `agr upgrade skill` succeeded because _match_handle_to_dep
+        also checks dep.installed_name.
+        """
+        dep = Dependency(handle="owner/repo/skill", type="skill")
+        deps = [dep]
+        candidates = ["skill", "computerlovetech/skill", "./skill"]
+        result = _find_dep_by_candidates(candidates, "skill", deps)
+        assert result is dep
+
+    def test_no_match_returns_none(self):
+        """Returns None when nothing matches."""
+        dep = Dependency(handle="owner/repo/skill", type="skill")
+        deps = [dep]
+        candidates = ["other", "computerlovetech/other"]
+        result = _find_dep_by_candidates(candidates, "other", deps)
+        assert result is None
+
+    def test_identifier_match_takes_priority_over_installed_name(self):
+        """Identifier match is preferred over installed_name match."""
+        dep_direct = Dependency(handle="myowner/skill", type="skill")
+        dep_three = Dependency(handle="owner/repo/skill", type="skill")
+        deps = [dep_direct, dep_three]
+        candidates = ["myowner/skill"]
+        result = _find_dep_by_candidates(candidates, "myowner/skill", deps)
+        assert result is dep_direct
