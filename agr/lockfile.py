@@ -98,6 +98,9 @@ class LockedEntry:
 class Lockfile:
     """The full lockfile state."""
 
+    # Valid section keys, matching TOML section names and Dependency.type values.
+    SECTION_KEYS: ClassVar[tuple[str, ...]] = ("skill", "ralph", "package")
+
     version: int = LOCKFILE_VERSION
     skills: list[LockedEntry] = field(default_factory=list)
     ralphs: list[LockedEntry] = field(default_factory=list)
@@ -108,12 +111,17 @@ class Lockfile:
 
         Args:
             kind: ``"skill"``, ``"ralph"``, or ``"package"``.
+
+        Raises:
+            ValueError: If *kind* is not a recognized section key.
         """
+        if kind == "skill":
+            return self.skills
         if kind == "ralph":
             return self.ralphs
         if kind == "package":
             return self.packages
-        return self.skills
+        raise ValueError(f"Unknown lockfile entry kind: {kind!r}")
 
     def update_entry(self, entry: LockedEntry, *, kind: str = "skill") -> None:
         """Add or replace an entry by identifier."""
@@ -149,17 +157,12 @@ class Lockfile:
         from the comparison because they originate from package expansion
         at sync time and are not listed in agr.toml directly.
         """
-        lockfile_skill_ids = {s.identifier for s in self.skills if not s.parent}
-        lockfile_ralph_ids = {r.identifier for r in self.ralphs if not r.parent}
-        lockfile_pkg_ids = {p.identifier for p in self.packages if not p.parent}
-        config_skill_ids = {d.identifier for d in dependencies if d.is_skill}
-        config_ralph_ids = {d.identifier for d in dependencies if d.is_ralph}
-        config_pkg_ids = {d.identifier for d in dependencies if d.is_package}
-        return (
-            lockfile_skill_ids == config_skill_ids
-            and lockfile_ralph_ids == config_ralph_ids
-            and lockfile_pkg_ids == config_pkg_ids
-        )
+        for kind in self.SECTION_KEYS:
+            lockfile_ids = {e.identifier for e in self._entries(kind) if not e.parent}
+            config_ids = {d.identifier for d in dependencies if d.type == kind}
+            if lockfile_ids != config_ids:
+                return False
+        return True
 
 
 def build_lockfile_path(config_path: Path) -> Path:
@@ -218,7 +221,6 @@ def save_lockfile(lockfile: Lockfile, path: Path) -> None:
             aot.append(entry.to_toml_table())
         return aot
 
-    doc["skill"] = _build_aot(lockfile.skills)
-    doc["ralph"] = _build_aot(lockfile.ralphs)
-    doc["package"] = _build_aot(lockfile.packages)
+    for key in Lockfile.SECTION_KEYS:
+        doc[key] = _build_aot(lockfile._entries(key))
     path.write_text(tomlkit.dumps(doc))
