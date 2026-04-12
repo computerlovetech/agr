@@ -100,6 +100,12 @@ def _identifier_candidates(
         candidates.append(abs_path_str)
     if not handle.is_local:
         candidates.append(handle.to_toml_handle())
+    # Local paths may be stored with a "./" prefix in agr.toml (e.g.
+    # ``agr add ./my-skill`` writes ``path = "./my-skill"``).  When the
+    # user omits the prefix (``agr remove my-skill``), add the "./" form
+    # so we can still match the config entry.
+    if not ref.startswith(("./", "../", "/", "~")):
+        candidates.append(f"./{ref}")
     return list(dict.fromkeys(candidates))
 
 
