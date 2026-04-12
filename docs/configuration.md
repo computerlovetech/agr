@@ -39,9 +39,10 @@ see [Core Concepts](concepts.md).
 
 **Key terms used on this page:**
 
-- A **resource** is the unit agr manages. Today there are two resource types: **skills** and **ralphs**. Every `agr.toml` dependency entry has a `type` field set to `"skill"` or `"ralph"`.
+- A **resource** is the unit agr manages. Today there are three resource types: **skills**, **ralphs**, and **packages**. Every `agr.toml` dependency entry has a `type` field set to `"skill"`, `"ralph"`, or `"package"`.
 - A **skill** is a directory containing a `SKILL.md` file with YAML frontmatter (`name`, `description`) and markdown instructions for an AI coding agent.
 - A **ralph** is a directory containing a `RALPH.md` file that defines an autonomous agent loop — executed by a ralph runtime such as [ralphify](https://github.com/kasperjunge/ralphify), not by the AI tools below. See the [Ralph Directory](ralphs.md) for the full format.
+- A **package** is a directory containing an `agr.toml` dependency list. Adding a package installs the transitive skills and ralphs it references and records parent relationships in `agr.lock`.
 - A **handle** identifies a resource: `skill` (from default owner's `skills` repo), `user/skill` (from user's `skills` repo), `user/repo/skill` (from a specific repo), or `./path/to/resource` (local).
 - A **source** is a Git server URL template (e.g., GitHub, GitLab, self-hosted) where agr fetches remote resources from.
 - A **tool** is one of the supported AI coding agents: Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, or Antigravity. Tools consume skills — ralphs are consumed by a separate ralph runtime.
@@ -58,7 +59,7 @@ see [Core Concepts](concepts.md).
 | `sync_instructions` | bool | `false` | Copy the canonical instruction file to other tools on [`agr sync`](reference.md#agr-sync) |
 | `canonical_instructions` | string | auto from `default_tool` | Which [instruction file](#instruction-syncing) is the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`) |
 
-Dependencies and sources are configured separately — see [Full Example](#full-agrtoml-example) below. Each dependency entry carries a `type` field whose value is `"skill"` or `"ralph"`; agr sets this automatically on `agr add` and you rarely need to edit it by hand.
+Dependencies and sources are configured separately — see [Full Example](#full-agrtoml-example) below. Each dependency entry carries a `type` field whose value is `"skill"`, `"ralph"`, or `"package"`; agr sets this automatically on `agr add` and you rarely need to edit it by hand.
 
 !!! note "`tools` does not apply to ralphs"
     The `tools` list only affects where **skills** are installed. **Ralphs**
@@ -363,7 +364,8 @@ each tool's global skills directory (see table above).
         {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
         {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
         {path = "./skills/local-skill", type = "skill"}, # (8)!
-        {handle = "your-username/agent-resources/bug-hunter", type = "ralph"}, # (10)!
+        {handle = "your-username/agent-resources/dev-workflow", type = "package"}, # (10)!
+        {handle = "your-username/agent-resources/bug-hunter", type = "ralph"}, # (11)!
     ]
 
     [[source]] # (9)!
@@ -382,11 +384,12 @@ each tool's global skills directory (see table above).
     3. Tool used by `agrx` and for instruction sync — defaults to the first in `tools`
     4. Copies the canonical instruction file to other tools on `agr sync`
     5. The instruction file treated as the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`)
-    6. Must appear before any `[[source]]` blocks — each entry needs `type = "skill"` or `type = "ralph"` plus either `handle` or `path`
+    6. Must appear before any `[[source]]` blocks — each entry needs `type = "skill"`, `type = "ralph"`, or `type = "package"` plus either `handle` or `path`
     7. Pin a dependency to a specific source instead of using `default_source`
     8. Local path dependencies point to a directory on disk — no Git fetch needed
     9. Each `[[source]]` defines a Git server URL template with `{owner}` and `{repo}` placeholders
-    10. Ralph dependencies install to `.agents/ralphs/<name>/` once per project, ignoring the `tools` list — see the [Ralph Directory](ralphs.md) for details
+    10. Package dependencies expand into their transitive skills and ralphs
+    11. Ralph dependencies install to `.agents/ralphs/<name>/` once per project, ignoring the `tools` list — see the [Ralph Directory](ralphs.md) for details
 
 ## Managing Config
 

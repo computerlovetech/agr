@@ -1,8 +1,14 @@
 """Unit tests for the lockfile module."""
 
 import pytest
+from unittest.mock import MagicMock, patch
 
-from agr.commands.sync import SyncResult, SyncStatus, _build_lockfile_from_results
+from agr.commands.sync import (
+    SyncResult,
+    SyncStatus,
+    _build_lockfile_from_results,
+    _sync_from_lockfile,
+)
 from agr.config import AgrConfig, Dependency
 from agr.exceptions import ConfigError
 from agr.lockfile import (
@@ -488,6 +494,26 @@ class TestPackageLockfileSupport:
         assert p.commit == "e" * 40
         assert p.installed_name == "bundle"
 
+    def test_round_trip_multiple_parents(self, tmp_path):
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/shared",
+                    installed_name="shared",
+                    parents=["user/repo/bundle-a", "user/repo/bundle-b"],
+                )
+            ]
+        )
+        path = tmp_path / "agr.lock"
+        save_lockfile(lockfile, path)
+        loaded = load_lockfile(path)
+
+        assert loaded is not None
+        assert loaded.skills[0].parent_ids == {
+            "user/repo/bundle-a",
+            "user/repo/bundle-b",
+        }
+
     def test_round_trip_mixed_all_types(self, tmp_path):
         lockfile = Lockfile(
             skills=[
@@ -728,15 +754,28 @@ class TestBuildLockfileFromResults:
             "owner/repo/alpha": "owner/repo/bundle",
             "owner/repo/beta": "owner/repo/bundle",
         }
+        parent_sets = {
+            "owner/repo/alpha": {"owner/repo/bundle", "owner/repo/other"},
+            "owner/repo/beta": {"owner/repo/bundle"},
+        }
 
-        lockfile = _build_lockfile_from_results(config, results, None, parents=parents)
+        lockfile = _build_lockfile_from_results(
+            config, results, None, parents=parents, parent_sets=parent_sets
+        )
 
         assert len(lockfile.skills) == 2
-        for entry in lockfile.skills:
-            assert entry.parent == "owner/repo/bundle", (
-                f"Expected parent='owner/repo/bundle' for {entry.handle}, "
-                f"got parent={entry.parent!r}"
-            )
+        alpha = next(
+            entry
+            for entry in lockfile.skills
+            if entry.handle is not None and entry.handle.endswith("alpha")
+        )
+        beta = next(
+            entry
+            for entry in lockfile.skills
+            if entry.handle is not None and entry.handle.endswith("beta")
+        )
+        assert alpha.parent_ids == {"owner/repo/bundle", "owner/repo/other"}
+        assert beta.parent_ids == {"owner/repo/bundle"}
 
     def test_run_install_pipeline_forwards_parents_to_lockfile(self):
         """_run_install_pipeline must forward expanded.parents to lockfile builder.
@@ -909,3 +948,61 @@ class TestInstalledEntries:
         r1 = LockedEntry(handle="user/repo/r1", installed_name="r1")
         lockfile = Lockfile(skills=[s1, s2], ralphs=[r1])
         assert list(lockfile.installed_entries()) == [s1, s2, r1]
+
+
+class TestSyncFromLockfilePackages:
+    """Tests for frozen/locked package installs."""
+
+    def test_sync_from_lockfile_installs_transitive_package_children(self):
+        config = AgrConfig(
+            dependencies=[
+                Dependency(type="package", handle="owner/repo/bundle"),
+            ]
+        )
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(
+                    handle="owner/repo/bundle",
+                    source="github",
+                    commit="c" * 40,
+                    installed_name="bundle",
+                )
+            ],
+            skills=[
+                LockedEntry(
+                    handle="owner/repo/child-skill",
+                    source="github",
+                    commit="a" * 40,
+                    installed_name="child-skill",
+                    parent="owner/repo/bundle",
+                )
+            ],
+            ralphs=[
+                LockedEntry(
+                    handle="owner/repo/child-ralph",
+                    source="github",
+                    commit="b" * 40,
+                    installed_name="child-ralph",
+                    parent="owner/repo/bundle",
+                )
+            ],
+        )
+        synced: list[str] = []
+
+        def fake_sync(dep, *_args):
+            synced.append(dep.identifier)
+            return SyncResult.installed()
+
+        with (
+            patch("agr.commands.sync._sync_dep_from_lockfile", side_effect=fake_sync),
+            patch("agr.commands.sync._print_results_and_summary"),
+        ):
+            _sync_from_lockfile(
+                lockfile,
+                config,
+                MagicMock(),
+                [],
+                MagicMock(),
+            )
+
+        assert synced == ["owner/repo/child-skill", "owner/repo/child-ralph"]

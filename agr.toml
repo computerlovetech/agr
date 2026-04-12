@@ -1,9 +1,33 @@
+# Source to fetch skills from
 default_source = "github"
+
+# Tools to install skills to (e.g. "claude", "cursor", "codex")
 tools = ["claude", "codex", "opencode"]
+
+# Primary tool for instruction sync (must be listed in tools)
+# default_tool = "claude"
+
+# Default GitHub owner for short handles (e.g. "skill" resolves to "computerlovetech/skill")
+default_owner = "computerlovetech"
+
+# Default GitHub repo for two-part handles (e.g. "owner/skill" resolves to "owner/skills/skill")
+default_repo = "skills"
+
+# Sync instruction files across tools
+# sync_instructions = false
+
+# Which tool's instruction file is the source of truth
+# canonical_instructions = "CLAUDE.md"
+
 dependencies = [
     {path = "skills/agr-release", type = "skill"},
     {handle = "maragudk/code-review", type = "skill"},
     {handle = "microsoft/playwright-cli/playwright-cli", type = "skill"},
+    {handle = "computerlovetech/research/conduct-research", type = "ralph"},
+    {handle = "computerlovetech/skills/github-issue-triage", type = "skill"},
+    {handle = "computerlovetech/ralphs/improve-codebase", type = "ralph"},
+    {handle = "computerlovetech/ralphs/bug-hunter", type = "ralph"},
+    {handle = "computerlovetech/ralphs/security", type = "ralph"},
 ]
 
 [[source]]

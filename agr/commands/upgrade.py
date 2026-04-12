@@ -165,16 +165,12 @@ def _transitive_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
     while changed:
         changed = False
         for entry in lockfile.packages:
-            if (
-                entry.parent
-                and entry.parent in all_pkg_ids
-                and entry.identifier not in all_pkg_ids
-            ):
+            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
                 all_pkg_ids.add(entry.identifier)
                 changed = True
 
     result: set[str] = set()
     for entry in lockfile.installed_entries():
-        if entry.parent and entry.parent in all_pkg_ids:
+        if entry.parent_ids & all_pkg_ids:
             result.add(entry.identifier)
     return result

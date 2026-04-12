@@ -14,6 +14,8 @@ from agr.ralph_installer import uninstall_ralph
 from agr.skill_installer import uninstall_skill
 from agr.handle import ParsedHandle, parse_handle
 from agr.lockfile import (
+    Lockfile,
+    LockedEntry,
     build_lockfile_path,
     load_lockfile,
     save_lockfile,
@@ -63,6 +65,65 @@ def _uninstall_from_filesystem(
     return removed
 
 
+def _package_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
+    """Return package ids including nested packages whose parent is included."""
+    all_pkg_ids = set(package_ids)
+    changed = True
+    while changed:
+        changed = False
+        for entry in lockfile.packages:
+            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
+                all_pkg_ids.add(entry.identifier)
+                changed = True
+    return all_pkg_ids
+
+
+def _transitive_leaf_entries_for_packages(
+    lockfile: Lockfile | None,
+    package_ids: set[str],
+) -> list[tuple[str, LockedEntry]]:
+    """Return lockfile leaf entries whose parent chain belongs to packages."""
+    if lockfile is None:
+        return []
+    all_pkg_ids = _package_closure(lockfile, package_ids)
+    entries: list[tuple[str, LockedEntry]] = []
+    for kind, locked_entries in (
+        ("skill", lockfile.skills),
+        ("ralph", lockfile.ralphs),
+    ):
+        for entry in locked_entries:
+            if entry.parent_ids & all_pkg_ids:
+                entries.append((kind, entry))
+    return entries
+
+
+def _nested_package_entries_for_packages(
+    lockfile: Lockfile | None,
+    package_ids: set[str],
+) -> list[tuple[str, LockedEntry]]:
+    """Return nested package entries whose parent chain belongs to packages."""
+    if lockfile is None:
+        return []
+    all_pkg_ids = _package_closure(lockfile, package_ids)
+    return [
+        ("package", entry)
+        for entry in lockfile.packages
+        if entry.identifier not in package_ids and entry.identifier in all_pkg_ids
+    ]
+
+
+def _entry_to_handle(
+    entry: LockedEntry, kind: str, default_owner: str | None
+) -> ParsedHandle:
+    """Convert a lockfile entry into a parsed handle for filesystem removal."""
+    dep = (
+        Dependency(type=kind, path=entry.path)
+        if entry.path is not None
+        else Dependency(type=kind, handle=entry.handle, source=entry.source)
+    )
+    return dep.to_parsed_handle(default_owner)
+
+
 def _update_lockfile_after_remove(
     config_path: Path,
     removed_candidates: list[list[str]],
@@ -75,10 +136,25 @@ def _update_lockfile_after_remove(
     lockfile = load_lockfile(lockfile_path)
     if lockfile is None:
         return
+    removed_package_ids: set[str] = set()
     for candidates, dep_kind in zip(removed_candidates, removed_kinds):
         for identifier in candidates:
             if lockfile.remove_entry(identifier, kind=dep_kind):
+                if dep_kind == "package":
+                    removed_package_ids.add(identifier)
                 break
+    if removed_package_ids:
+        for entry in [*lockfile.packages, *lockfile.skills, *lockfile.ralphs]:
+            parent_ids = entry.parent_ids - removed_package_ids
+            if not parent_ids:
+                entry.parent = None
+                entry.parents = None
+            elif len(parent_ids) == 1:
+                entry.parent = next(iter(parent_ids))
+                entry.parents = None
+            else:
+                entry.parent = None
+                entry.parents = sorted(parent_ids)
     save_lockfile(lockfile, lockfile_path)
 
 
@@ -151,6 +227,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
     config, config_path = loaded.config, loaded.config_path
     tools, repo_root, skills_dirs = loaded.tools, loaded.repo_root, loaded.skills_dirs
     run_tool_migrations(tools, repo_root, global_install=global_install)
+    existing_lockfile = load_lockfile(build_lockfile_path(config_path))
 
     # Track results and the identifier candidates used for each successful
     # removal so we can update the lockfile without re-parsing handles.
@@ -185,11 +262,57 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
 
             is_ralph = dep is not None and dep.is_ralph
             dep_kind = dep.type if dep is not None else "skill"
+            fs_handle = dep.to_parsed_handle(config.default_owner) if dep else handle
 
             # Remove from filesystem
-            removed_fs = _uninstall_from_filesystem(
-                handle, is_ralph, tools, repo_root, source_name, skills_dirs
-            )
+            removed_fs = False
+            if dep is None or not dep.is_package:
+                removed_fs = _uninstall_from_filesystem(
+                    fs_handle, is_ralph, tools, repo_root, source_name, skills_dirs
+                )
+
+            transitive_entries: list[tuple[str, LockedEntry]] = []
+            nested_package_entries: list[tuple[str, LockedEntry]] = []
+            if dep is not None and dep.is_package:
+                direct_leaf_ids = {
+                    (d.type, d.identifier)
+                    for d in config.dependencies
+                    if not d.is_package and d.identifier != dep.identifier
+                }
+                candidate_package_ids = (
+                    _package_closure(existing_lockfile, {dep.identifier})
+                    if existing_lockfile
+                    else {dep.identifier}
+                )
+                nested_package_entries = [
+                    (kind, entry)
+                    for kind, entry in _nested_package_entries_for_packages(
+                        existing_lockfile, {dep.identifier}
+                    )
+                    if not (entry.parent_ids - candidate_package_ids)
+                ]
+                removed_package_ids = {dep.identifier} | {
+                    entry.identifier for _kind, entry in nested_package_entries
+                }
+                transitive_entries = [
+                    (kind, entry)
+                    for kind, entry in _transitive_leaf_entries_for_packages(
+                        existing_lockfile, {dep.identifier}
+                    )
+                    if (kind, entry.identifier) not in direct_leaf_ids
+                    and not (entry.parent_ids - removed_package_ids)
+                ]
+                for kind, entry in transitive_entries:
+                    child_handle = _entry_to_handle(entry, kind, config.default_owner)
+                    if _uninstall_from_filesystem(
+                        child_handle,
+                        kind == "ralph",
+                        tools,
+                        repo_root,
+                        entry.source,
+                        skills_dirs,
+                    ):
+                        removed_fs = True
 
             # Remove from config (try same candidate identifiers)
             removed_config = False
@@ -202,6 +325,12 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                 results.append(CommandResult(ref, True, "Removed"))
                 removed_candidates.append(candidates)
                 removed_kinds.append(dep_kind)
+                for kind, entry in nested_package_entries:
+                    removed_candidates.append([entry.identifier])
+                    removed_kinds.append(kind)
+                for kind, entry in transitive_entries:
+                    removed_candidates.append([entry.identifier])
+                    removed_kinds.append(kind)
             else:
                 results.append(CommandResult(ref, False, "Not found"))
 

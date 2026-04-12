@@ -35,7 +35,7 @@ from agr.skill_installer import (
     prepare_repo_for_skills,
     skill_not_found_message,
 )
-from agr.git import downloaded_repo, fetch_and_checkout_commit, get_head_commit_full
+from agr.git import downloaded_repo, fetch_and_checkout_commit, safe_get_head_commit
 from agr.lockfile import (
     LockedEntry,
     Lockfile,
@@ -309,10 +309,7 @@ def _sync_batched_repo_entries(
             source_config = resolver.get(source_name)
             with downloaded_repo(source_config, owner, repo_name) as repo_dir:
                 # Capture commit SHA for lockfile before installing.
-                try:
-                    commit = get_head_commit_full(repo_dir)
-                except AgrError:
-                    commit = None
+                commit = safe_get_head_commit(repo_dir)
 
                 # Prepare all skills from this repo in one sparse checkout pass.
                 skill_names = [entry.handle.name for entry in group]
@@ -790,12 +787,14 @@ def _run_install_pipeline(
     # --- Phase 3: Update lockfile ---
     package_entries = expanded.package_entries if expanded else []
     parents = expanded.parents if expanded else {}
+    parent_sets = expanded.parent_sets if expanded else {}
     new_lockfile = _build_lockfile_from_results(
         config,
         results,
         existing_lockfile,
         package_entries=package_entries,
         parents=parents,
+        parent_sets=parent_sets,
     )
     save_lockfile(new_lockfile, lockfile_path)
 
@@ -901,6 +900,54 @@ def _sync_dep_from_lockfile(
     return SyncResult.installed()
 
 
+def _dep_from_locked_entry(entry: LockedEntry, kind: str) -> Dependency:
+    """Build a dependency object from a lockfile entry."""
+    if entry.path is not None:
+        return Dependency(type=kind, path=entry.path, source=None)
+    if entry.handle is not None:
+        return Dependency(type=kind, handle=entry.handle, source=entry.source)
+    raise AgrError("Lockfile entry is missing both handle and path")
+
+
+def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
+    if not parent_ids:
+        return None, None
+    sorted_ids = sorted(parent_ids)
+    if len(sorted_ids) == 1:
+        return sorted_ids[0], None
+    return None, sorted_ids
+
+
+def _package_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
+    """Return package ids including nested packages whose parent is included."""
+    all_pkg_ids = set(package_ids)
+    changed = True
+    while changed:
+        changed = False
+        for entry in lockfile.packages:
+            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
+                all_pkg_ids.add(entry.identifier)
+                changed = True
+    return all_pkg_ids
+
+
+def _locked_transitive_deps_for_packages(
+    lockfile: Lockfile,
+    package_ids: set[str],
+) -> list[tuple[Dependency, str]]:
+    """Return locked leaf dependencies whose parent chain belongs to packages."""
+    all_pkg_ids = _package_closure(lockfile, package_ids)
+    deps: list[tuple[Dependency, str]] = []
+    for kind, entries in (("skill", lockfile.skills), ("ralph", lockfile.ralphs)):
+        for entry in entries:
+            matching_parents = entry.parent_ids & all_pkg_ids
+            if matching_parents:
+                deps.append(
+                    (_dep_from_locked_entry(entry, kind), sorted(matching_parents)[0])
+                )
+    return deps
+
+
 def _sync_from_lockfile(
     lockfile: Lockfile,
     config: AgrConfig,
@@ -914,10 +961,14 @@ def _sync_from_lockfile(
     out the exact commit. For local deps, installs from disk as usual.
     """
     results: list[tuple[str, SyncResult]] = []
+    package_ids = {dep.identifier for dep in config.dependencies if dep.is_package}
+    direct_ids = {
+        (dep.type, dep.identifier) for dep in config.dependencies if not dep.is_package
+    }
 
     for dep in config.dependencies:
         # Packages are content-less bundles — in frozen/locked mode
-        # their transitive deps must already be in the dependency list.
+        # their transitive deps are installed from the lockfile below.
         if dep.is_package:
             results.append((dep.identifier, SyncResult.up_to_date()))
             continue
@@ -929,6 +980,18 @@ def _sync_from_lockfile(
             result = SyncResult.from_error(e)
         results.append((dep.identifier, result))
 
+    for dep, parent in _locked_transitive_deps_for_packages(lockfile, package_ids):
+        dep_key = (dep.type, dep.identifier)
+        if dep_key in direct_ids:
+            continue
+        try:
+            result = _sync_dep_from_lockfile(
+                dep, lockfile, config, repo_root, tools, resolver
+            )
+        except INSTALL_ERROR_TYPES as e:
+            result = SyncResult.from_error(e)
+        results.append((f"{dep.identifier} (via {parent})", result))
+
     _print_results_and_summary(results)
 
 
@@ -939,6 +1002,7 @@ def _build_lockfile_from_results(
     *,
     package_entries: list[LockedEntry] | None = None,
     parents: dict[str, str] | None = None,
+    parent_sets: dict[str, set[str]] | None = None,
 ) -> Lockfile:
     """Build a new lockfile from sync results.
 
@@ -947,12 +1011,16 @@ def _build_lockfile_from_results(
     """
     lockfile = Lockfile()
     parent_map = parents or {}
+    parent_set_map = parent_sets or {}
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
         dep_kind = dep.type
         name = dep.installed_name
+        parent_ids = parent_set_map.get(dep.identifier)
         parent = parent_map.get(dep.identifier)
+        current_parent_ids = parent_ids or ({parent} if parent else set())
+        lock_parent, lock_parents = _parent_fields(current_parent_ids)
 
         # Packages are content-less bundles — skip them in skill/ralph lists.
         if dep.is_package:
@@ -963,7 +1031,12 @@ def _build_lockfile_from_results(
             if result.status == SyncStatus.ERROR:
                 continue
             lockfile.update_entry(
-                LockedEntry(path=dep.path, installed_name=name, parent=parent),
+                LockedEntry(
+                    path=dep.path,
+                    installed_name=name,
+                    parent=lock_parent,
+                    parents=lock_parents,
+                ),
                 kind=dep_kind,
             )
             continue
@@ -979,7 +1052,8 @@ def _build_lockfile_from_results(
                     commit=result.commit,
                     content_hash=result.content_hash,
                     installed_name=name,
-                    parent=parent,
+                    parent=lock_parent,
+                    parents=lock_parents,
                 ),
                 kind=dep_kind,
             )
@@ -992,8 +1066,8 @@ def _build_lockfile_from_results(
             existing_lockfile.find_entry(dep) if existing_lockfile is not None else None
         )
         if existing is not None:
-            if existing.parent != parent:
-                existing = replace(existing, parent=parent)
+            if existing.parent_ids != current_parent_ids:
+                existing = replace(existing, parent=lock_parent, parents=lock_parents)
             lockfile.update_entry(existing, kind=dep_kind)
             continue
 
@@ -1008,7 +1082,8 @@ def _build_lockfile_from_results(
                 handle=dep.handle,
                 source=dep.resolve_source_name(config.default_source),
                 installed_name=name,
-                parent=parent,
+                parent=lock_parent,
+                parents=lock_parents,
             ),
             kind=dep_kind,
         )

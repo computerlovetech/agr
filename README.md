@@ -75,6 +75,7 @@ everything with one command:
 dependencies = [
     {handle = "anthropics/skills/frontend-design", type = "skill"},
     {handle = "anthropics/skills/pdf", type = "skill"},
+    {handle = "your-team/agent-resources/dev-workflow", type = "package"},
 ]
 ```
 

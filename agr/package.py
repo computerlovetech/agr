@@ -18,7 +18,7 @@ from agr.config import (
     Dependency,
 )
 from agr.exceptions import ConfigError, PackageConflictError
-from agr.git import downloaded_repo, get_head_commit_full
+from agr.git import downloaded_repo, safe_get_head_commit
 from agr.lockfile import LockedEntry
 from agr.source import SourceResolver
 
@@ -51,6 +51,7 @@ class ExpandedDeps:
 
     dependencies: list[Dependency] = field(default_factory=list)
     parents: dict[str, str] = field(default_factory=dict)
+    parent_sets: dict[str, set[str]] = field(default_factory=dict)
     package_entries: list[LockedEntry] = field(default_factory=list)
 
 
@@ -60,6 +61,78 @@ class _QueueItem:
 
     dep: Dependency
     parent_identifier: str | None
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    """Return True when *path* is inside *parent*."""
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def _remote_dep_from_repo_path(
+    sub_dep: Dependency,
+    repo_dir: Path,
+    owner: str,
+    repo_name: str,
+    source_name: str | None,
+) -> Dependency:
+    """Convert an in-repo local sub-dependency to a same-repo remote handle."""
+    if sub_dep.path is None:
+        raise ConfigError("Local dependency is missing path")
+
+    repo_root = repo_dir.resolve()
+    resolved_path = (repo_root / sub_dep.path).resolve()
+    if not _is_relative_to(resolved_path, repo_root):
+        raise ConfigError(
+            f"Local path dependency '{sub_dep.identifier}' resolves outside "
+            "the downloaded repository"
+        )
+    if resolved_path == repo_root:
+        raise ConfigError(
+            f"Local path dependency '{sub_dep.identifier}' must point to a "
+            "resource directory inside the downloaded repository"
+        )
+    if resolved_path.parent != repo_root:
+        raise ConfigError(
+            f"Local path dependency '{sub_dep.identifier}' resolves to a nested "
+            "directory. In-repo transitive paths must point to a top-level "
+            "resource directory."
+        )
+
+    name = resolved_path.name
+    return Dependency(
+        type=sub_dep.type,
+        handle=f"{owner}/{repo_name}/{name}",
+        source=source_name,
+    )
+
+
+def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
+    """Return lockfile parent fields for one or more parent package ids."""
+    if not parent_ids:
+        return None, None
+    sorted_ids = sorted(parent_ids)
+    if len(sorted_ids) == 1:
+        return sorted_ids[0], None
+    return None, sorted_ids
+
+
+def _apply_parent_ids(entry: LockedEntry, parent_ids: set[str] | None) -> None:
+    """Apply one or more parent package ids to a lockfile entry."""
+    entry.parent, entry.parents = _parent_fields(parent_ids)
+
+
+def _add_package_parent(result: ExpandedDeps, package_id: str, parent_id: str) -> None:
+    """Record an additional parent for an already-seen package entry."""
+    for entry in result.package_entries:
+        if entry.identifier == package_id:
+            parent_ids = entry.parent_ids
+            parent_ids.add(parent_id)
+            _apply_parent_ids(entry, parent_ids)
+            return
 
 
 def expand_packages(
@@ -81,6 +154,7 @@ def expand_packages(
     """
     result = ExpandedDeps()
     visited: set[str] = set()
+    queued_parents: dict[str, set[str]] = {}
     queue: deque[_QueueItem] = deque()
 
     for dep in direct_deps:
@@ -112,7 +186,7 @@ def expand_packages(
         owner, repo_name = handle.get_github_repo(default_repo=default_repo)
 
         with downloaded_repo(source_config, owner, repo_name) as repo_dir:
-            commit = _safe_get_commit(repo_dir)
+            commit = safe_get_head_commit(repo_dir)
 
             sub_dir = repo_dir / handle.name
             if not sub_dir.is_dir():
@@ -136,21 +210,28 @@ def expand_packages(
 
             for sub_dep in sub_deps:
                 if sub_dep.is_local:
-                    raise ConfigError(
-                        f"Local path dependencies are not allowed in remote "
-                        f"packages: '{sub_dep.identifier}' in package "
-                        f"'{dep.identifier}'"
+                    sub_dep = _remote_dep_from_repo_path(
+                        sub_dep, repo_dir, owner, repo_name, source_name
                     )
                 sub_id = sub_dep.identifier
                 if sub_dep.is_package:
+                    queued_parents.setdefault(sub_id, set()).add(identifier)
                     if sub_id in visited:
+                        _add_package_parent(result, sub_id, identifier)
                         continue
                     queue.append(_QueueItem(dep=sub_dep, parent_identifier=identifier))
                 else:
+                    result.parent_sets.setdefault(sub_id, set()).add(identifier)
                     if sub_id not in seen_dep_ids:
                         seen_dep_ids.add(sub_id)
                         result.dependencies.append(sub_dep)
                         result.parents[sub_id] = identifier
+                    else:
+                        result.parents.setdefault(sub_id, identifier)
+
+            package_parent_ids = queued_parents.get(identifier)
+            if package_parent_ids:
+                _apply_parent_ids(result.package_entries[-1], package_parent_ids)
 
     return result
 
@@ -171,12 +252,12 @@ def detect_conflicts(
 
     Returns the (possibly pruned) dependency list.
     """
-    by_name: dict[str, list[Dependency]] = {}
+    by_name: dict[tuple[str, str], list[Dependency]] = {}
     for dep in expanded_deps:
-        by_name.setdefault(dep.installed_name, []).append(dep)
+        by_name.setdefault((dep.type, dep.installed_name), []).append(dep)
 
     remove_ids: set[str] = set()
-    for name, deps in by_name.items():
+    for (_kind, name), deps in by_name.items():
         if len(deps) <= 1:
             continue
 
@@ -214,11 +295,3 @@ def detect_conflicts(
             parents.pop(rid, None)
 
     return expanded_deps
-
-
-def _safe_get_commit(repo_dir: Path) -> str | None:
-    """Get the HEAD commit SHA, returning None on failure."""
-    try:
-        return get_head_commit_full(repo_dir)
-    except Exception:
-        return None

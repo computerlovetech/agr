@@ -18,8 +18,8 @@ from agr.git import (
     checkout_full,
     checkout_sparse_paths,
     downloaded_repo,
-    get_head_commit_full,
     git_list_files,
+    safe_get_head_commit,
 )
 from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.metadata import (
@@ -437,10 +437,7 @@ def locate_remote_dep(
                     dep_source = prepare_fn(repo_dir, handle.name)
                     if dep_source is None:
                         continue
-                    try:
-                        commit = get_head_commit_full(repo_dir)
-                    except AgrError:
-                        commit = None
+                    commit = safe_get_head_commit(repo_dir)
                     yield RemoteDepLocation(
                         repo_dir=repo_dir,
                         source_path=dep_source,

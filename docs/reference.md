@@ -33,15 +33,17 @@ Complete reference for all `agr` and [`agrx`](agrx.md) commands. For guided
 setup, start with the [Tutorial](tutorial.md).
 
 **What is agr?** *agr* stands for **agent resources** — the package manager
-your team uses to manage its coding-agent resources. A **resource** is
-either a **skill** (a folder with a `SKILL.md` file containing instructions
-an AI coding tool loads — see [Creating Skills](creating.md)) or a
+your team uses to manage its coding-agent resources. A **resource** can be
+a **skill** (a folder with a `SKILL.md` file containing instructions an AI
+coding tool loads — see [Creating Skills](creating.md)), a
 **[ralph](ralphs.md)** (a folder with a `RALPH.md` file defining an
 autonomous agent loop, executed by a ralph runtime such as
-[ralphify](https://github.com/kasperjunge/ralphify)). Every `agr` command on
-this page (`add`, `remove`, `sync`, `list`) works transparently with both
-types — the type is detected from the directory's marker file or from the
-remote layout. A **[handle](concepts.md#handles)** like `user/skill` or
+[ralphify](https://github.com/kasperjunge/ralphify)), or a **package** (a
+folder with an `agr.toml` dependency list that expands into transitive skills
+and ralphs). Every `agr` command on this page (`add`, `remove`, `sync`,
+`list`) works transparently with these types — the type is detected from the
+directory marker files or from the remote layout. A
+**[handle](concepts.md#handles)** like `user/skill` or
 `user/repo/skill` points to a resource on GitHub. Browse available skills
 in the [Skill Directory](skills.md). agr installs skills into
 [supported tools](tools.md) including Claude Code, Cursor, Codex, OpenCode,
@@ -497,7 +499,8 @@ dependencies = [ # (6)!
     {handle = "vercel-labs/agent-browser/agent-browser", type = "skill"},
     {handle = "team/internal-tool", type = "skill", source = "my-server"}, # (7)!
     {path = "./local-skill", type = "skill"}, # (8)!
-    {handle = "your-username/agent-resources/bug-hunter", type = "ralph"}, # (10)!
+    {handle = "your-username/agent-resources/dev-workflow", type = "package"}, # (10)!
+    {handle = "your-username/agent-resources/bug-hunter", type = "ralph"}, # (11)!
 ]
 
 [[source]] # (9)!
@@ -511,11 +514,12 @@ url = "https://github.com/{owner}/{repo}.git"
 3. Tool used by `agrx` and for instruction sync — defaults to the first in `tools`
 4. Copies the canonical instruction file to other tools on `agr sync`
 5. The instruction file treated as the source of truth (`CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`)
-6. Must appear before any `[[source]]` blocks — each entry needs `type = "skill"` or `type = "ralph"` plus either `handle` or `path`. `type` is set automatically by `agr add`.
+6. Must appear before any `[[source]]` blocks — each entry needs `type = "skill"`, `type = "ralph"`, or `type = "package"` plus either `handle` or `path`. `type` is set automatically by `agr add`.
 7. Pin a dependency to a specific source instead of using `default_source`
 8. Local path dependencies point to a directory on disk — no Git fetch needed
 9. Each `[[source]]` defines a Git server URL template with `{owner}` and `{repo}` placeholders
-10. Ralph dependencies install once into `.agents/ralphs/<name>/` per project — see the [Ralph Directory](ralphs.md)
+10. Package dependencies expand into their transitive skills and ralphs
+11. Ralph dependencies install once into `.agents/ralphs/<name>/` per project — see the [Ralph Directory](ralphs.md)
 
 ## agr.lock Format
 

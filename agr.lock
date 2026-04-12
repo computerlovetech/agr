@@ -19,3 +19,38 @@ source = "github"
 commit = "a0d5bfd4d9658073029d33f979ac5a027568caec"
 content-hash = "sha256:75e47183c30bc8651e76286680eddac88a3024a7ee5a7f1bc486d4d3fdee34ce"
 installed-name = "playwright-cli"
+
+[[skill]]
+handle = "computerlovetech/skills/github-issue-triage"
+source = "github"
+commit = "8bff044d76f9304cbd4981fb3ce4f837fd4eb5a2"
+content-hash = "sha256:35c62982b1bee8c0164a5cd43264b554f9b37697d6fda23f502107956a0ad889"
+installed-name = "github-issue-triage"
+
+[[ralph]]
+handle = "computerlovetech/research/conduct-research"
+source = "github"
+commit = "637025a5e221264845bff7e6a89aaba7a7bdb919"
+content-hash = "sha256:3a9c1ef64234ccb61d9b681afc4305ffadad5735f0536f77759a41366e75c3a2"
+installed-name = "conduct-research"
+
+[[ralph]]
+handle = "computerlovetech/ralphs/improve-codebase"
+source = "github"
+commit = "70a0dabf5a59ae1a3acaf50a9e619c83e174a35f"
+content-hash = "sha256:0afc55d5b2d4061fa82c270a147c66c8bc21589ab62c47d9747ddb5f382c708d"
+installed-name = "improve-codebase"
+
+[[ralph]]
+handle = "computerlovetech/ralphs/bug-hunter"
+source = "github"
+commit = "70a0dabf5a59ae1a3acaf50a9e619c83e174a35f"
+content-hash = "sha256:ab2e4924cbb999f677523211af9cfda48ce8433b17545854bd770f29d7664c64"
+installed-name = "bug-hunter"
+
+[[ralph]]
+handle = "computerlovetech/ralphs/security"
+source = "github"
+commit = "70a0dabf5a59ae1a3acaf50a9e619c83e174a35f"
+content-hash = "sha256:2b025b4e5546f2a04367a79e5f4201892bc155d22f53a55cfc0cd21071922de1"
+installed-name = "security"

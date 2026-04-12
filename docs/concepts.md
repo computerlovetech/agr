@@ -346,11 +346,13 @@ dependencies = [
     {handle = "anthropics/skills/frontend-design", type = "skill"},
     {handle = "anthropics/skills/pdf", type = "skill"},
     {path = "./skills/internal-review", type = "skill"},
+    {handle = "your-username/agent-resources/dev-workflow", type = "package"},
     {handle = "your-username/agent-resources/bug-hunter", type = "ralph"},
 ]
 ```
 
-Each entry has a `type` field — `"skill"` or `"ralph"`. agr sets this
+Each entry has a `type` field — `"skill"`, `"ralph"`, or `"package"`.
+Packages expand into their transitive skills and ralphs. agr sets this
 automatically on `agr add`; you rarely need to touch it by hand.
 
 **How agr finds it.** agr looks for `agr.toml` starting from the current

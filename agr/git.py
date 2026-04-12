@@ -168,6 +168,19 @@ def get_head_commit_full(repo_dir: Path) -> str:
     return result.stdout.strip()
 
 
+def safe_get_head_commit(repo_dir: Path) -> str | None:
+    """Get the full HEAD commit hash, returning None on failure.
+
+    Convenience wrapper around :func:`get_head_commit_full` for callers
+    that record an optional commit (e.g. lockfile metadata) and can
+    tolerate missing values.
+    """
+    try:
+        return get_head_commit_full(repo_dir)
+    except AgrError:
+        return None
+
+
 def validate_commit_sha(commit: str) -> None:
     """Validate that a string is a full 40-character hex git commit SHA.
 

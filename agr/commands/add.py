@@ -1,5 +1,6 @@
 """agr add command implementation."""
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from agr.commands import CommandResult
@@ -21,7 +22,7 @@ from agr.exceptions import (
     format_install_error,
 )
 from agr._install_common import InstallResult
-from agr.package import expand_packages, has_package_section
+from agr.package import detect_conflicts, expand_packages, has_package_section
 from agr.ralph_installer import fetch_and_install_ralph
 from agr.skill_installer import fetch_and_install_to_tools, list_remote_repo_skills
 from agr.handle import ParsedHandle, parse_handle
@@ -36,6 +37,25 @@ from agr.ralph import is_valid_ralph_dir
 from agr.skill import is_valid_skill_dir
 from agr.source import SourceResolver
 from agr.tool import ToolConfig
+
+
+@dataclass
+class AddInstallResult:
+    """Result of installing one requested dependency."""
+
+    installed_paths: list[str]
+    install_result: InstallResult
+    dep_type: str
+    lock_entries: list[tuple[str, LockedEntry]] | None = None
+
+
+def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
+    if not parent_ids:
+        return None, None
+    sorted_ids = sorted(parent_ids)
+    if len(sorted_ids) == 1:
+        return sorted_ids[0], None
+    return None, sorted_ids
 
 
 def _detect_local_type(source_path: Path) -> str:
@@ -100,7 +120,7 @@ def _install_dependency(
     default_repo: str | None,
     *,
     config: AgrConfig | None = None,
-) -> tuple[list[str], InstallResult, str]:
+) -> AddInstallResult:
     """Install a dependency and return paths, metadata, and resolved type.
 
     For local deps, installs directly as the detected type. For remote deps,
@@ -137,7 +157,7 @@ def _install_dependency(
         installed_paths = [
             f"{name}: {path}" for name, path in installed_paths_dict.items()
         ]
-        return installed_paths, install_result, dep_type
+        return AddInstallResult(installed_paths, install_result, dep_type)
 
     if handle.is_local:
         installed_path, install_result = fetch_and_install_ralph(
@@ -148,7 +168,7 @@ def _install_dependency(
             source=source,
             default_repo=default_repo,
         )
-        return [str(installed_path)], install_result, dep_type
+        return AddInstallResult([str(installed_path)], install_result, dep_type)
 
     # Remote — try as skill first, fall back to ralph.
     try:
@@ -165,7 +185,7 @@ def _install_dependency(
         installed_paths = [
             f"{name}: {path}" for name, path in installed_paths_dict.items()
         ]
-        return installed_paths, install_result, DEPENDENCY_TYPE_SKILL
+        return AddInstallResult(installed_paths, install_result, DEPENDENCY_TYPE_SKILL)
     except SkillNotFoundError:
         pass
 
@@ -178,11 +198,23 @@ def _install_dependency(
             source=source,
             default_repo=default_repo,
         )
-        return [str(installed_path)], install_result, DEPENDENCY_TYPE_RALPH
+        return AddInstallResult(
+            [str(installed_path)], install_result, DEPENDENCY_TYPE_RALPH
+        )
     except RalphNotFoundError:
-        raise SkillNotFoundError(
-            f"'{handle.name}' not found as a skill or ralph in any configured source."
-        ) from None
+        pass
+
+    return _install_package(
+        handle,
+        repo_root,
+        tools,
+        overwrite,
+        resolver,
+        source,
+        skills_dirs,
+        default_repo,
+        config=config,
+    )
 
 
 def _install_package(
@@ -196,7 +228,7 @@ def _install_package(
     default_repo: str | None,
     *,
     config: AgrConfig | None = None,
-) -> tuple[list[str], InstallResult, str]:
+) -> AddInstallResult:
     """Expand a package and install its transitive leaf deps."""
     if config is None:
         config = AgrConfig()
@@ -214,9 +246,26 @@ def _install_package(
         config.default_owner,
         config.default_repo,
     )
+    direct_ids = {dep.identifier for dep in config.dependencies}
+    direct_ids.add(pkg_dep.identifier)
+    direct_leaf_deps = [dep for dep in config.dependencies if not dep.is_package]
+    resolved_deps = detect_conflicts(
+        [*direct_leaf_deps, *expanded.dependencies], expanded.parents, direct_ids
+    )
+    resolved_keys = {(dep.type, dep.identifier) for dep in resolved_deps}
+    direct_leaf_keys = {(dep.type, dep.identifier) for dep in direct_leaf_deps}
+    expanded.dependencies = [
+        dep
+        for dep in expanded.dependencies
+        if (dep.type, dep.identifier) in resolved_keys
+        and (dep.type, dep.identifier) not in direct_leaf_keys
+    ]
 
     installed_paths: list[str] = []
     first_result: InstallResult | None = None
+    lock_entries: list[tuple[str, LockedEntry]] = [
+        ("package", entry) for entry in expanded.package_entries
+    ]
     for dep in expanded.dependencies:
         sub_handle = dep.to_parsed_handle(config.default_owner)
         sub_source = dep.resolve_source_name(config.default_source)
@@ -246,15 +295,56 @@ def _install_package(
             )
         if first_result is None:
             first_result = result
+        parent_id = expanded.parents.get(dep.identifier)
+        parent, parents = _parent_fields(
+            expanded.parent_sets.get(dep.identifier)
+            or ({parent_id} if parent_id else None)
+        )
+        if dep.is_local:
+            lock_entries.append(
+                (
+                    dep.type,
+                    LockedEntry(
+                        path=dep.path,
+                        installed_name=dep.installed_name,
+                        parent=parent,
+                        parents=parents,
+                    ),
+                )
+            )
+        else:
+            lock_entries.append(
+                (
+                    dep.type,
+                    LockedEntry(
+                        handle=dep.handle,
+                        source=result.source_name,
+                        commit=result.commit,
+                        content_hash=result.content_hash,
+                        installed_name=dep.installed_name,
+                        parent=parent,
+                        parents=parents,
+                    ),
+                )
+            )
 
     if first_result is None:
         first_result = InstallResult()
 
-    return installed_paths, first_result, DEPENDENCY_TYPE_PACKAGE
+    return AddInstallResult(
+        installed_paths,
+        first_result,
+        DEPENDENCY_TYPE_PACKAGE,
+        lock_entries=lock_entries,
+    )
 
 
 def _update_lockfile_for_adds(
-    lockfile_updates: list[tuple[ParsedHandle, str, InstallResult, str]],
+    lockfile_updates: list[
+        tuple[
+            ParsedHandle, str, InstallResult, str, list[tuple[str, LockedEntry]] | None
+        ]
+    ],
     config_path: Path,
 ) -> None:
     """Write install results to the lockfile."""
@@ -262,7 +352,11 @@ def _update_lockfile_for_adds(
         return
     lockfile_path = build_lockfile_path(config_path)
     lockfile = load_lockfile(lockfile_path) or Lockfile()
-    for handle, ref, install_result, dep_type in lockfile_updates:
+    for handle, ref, install_result, dep_type, entries in lockfile_updates:
+        if entries is not None:
+            for kind, entry in entries:
+                lockfile.update_entry(entry, kind=kind)
+            continue
         if handle.is_local:
             lockfile.update_entry(
                 LockedEntry(path=ref, installed_name=handle.name),
@@ -305,7 +399,11 @@ def run_add(
     # Track results for summary
     results: list[CommandResult] = []
     # Track install results for lockfile: (handle, ref, install_result, dep_type)
-    lockfile_updates: list[tuple[ParsedHandle, str, InstallResult, str]] = []
+    lockfile_updates: list[
+        tuple[
+            ParsedHandle, str, InstallResult, str, list[tuple[str, LockedEntry]] | None
+        ]
+    ] = []
 
     for ref in refs:
         try:
@@ -325,7 +423,7 @@ def run_add(
                 dep_type = DEPENDENCY_TYPE_SKILL  # default, may change below
 
             # Install
-            installed_paths, install_result, dep_type = _install_dependency(
+            install = _install_dependency(
                 handle,
                 dep_type,
                 repo_root,
@@ -337,6 +435,9 @@ def run_add(
                 config.default_repo,
                 config=config,
             )
+            installed_paths = install.installed_paths
+            install_result = install.install_result
+            dep_type = install.dep_type
 
             # Add to config
             if handle.is_local:
@@ -356,7 +457,9 @@ def run_add(
 
             # Track for lockfile update
             lockfile_ref = path_value if handle.is_local else ref
-            lockfile_updates.append((handle, lockfile_ref, install_result, dep_type))
+            lockfile_updates.append(
+                (handle, lockfile_ref, install_result, dep_type, install.lock_entries)
+            )
             results.append(CommandResult(ref, True, ", ".join(installed_paths)))
 
         except SkillNotFoundError as e:

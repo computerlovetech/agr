@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.8.4b1] - 2026-04-12
+
+### Added
+- Package/bundle dependencies can now expand and install transitive skill and ralph dependencies, including nested packages.
+- `add`, `remove`, `sync`, and `upgrade` now keep package, skill, and ralph lockfile entries in sync across transitive dependency changes.
+
+### Changed
+- Lockfile handling now tracks package parent relationships for entries with one or more parent packages.
+- Package conflict detection now distinguishes resource types with the same installed name.
+- Shared install and lockfile paths were refactored to support package dependency expansion consistently across commands.
+
+### Fixed
+- `remove` now removes package-owned transitive dependencies without removing direct dependencies that share the same installed name.
+- `sync` and `upgrade` now preserve and refresh package parent metadata for transitive lockfile entries.
+- Bare names, trailing slashes, and local dependency paths now match more consistently during remove and upgrade operations.
+- Package expansion now rejects remote package local paths that resolve outside the downloaded repository.
+- Remote package local paths are converted to same-repository remote handles when they point to top-level resource directories.
+- Lockfile commit SHAs and remote handle components receive stricter validation to prevent unsafe substitutions and path traversal.
+
 ## [0.8.3] - 2026-04-12
 
 ### Added

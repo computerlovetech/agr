@@ -7,7 +7,7 @@ machines and over time.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -43,6 +43,8 @@ class LockedEntry:
     path: str | None = None
     # Transitive dependency annotation (identifier of the parent package)
     parent: str | None = None
+    # Multiple parent packages can share the same transitive dependency.
+    parents: list[str] | None = None
 
     # TOML key for the required installed-name field.
     _TOML_KEY_INSTALLED_NAME: ClassVar[str] = "installed-name"
@@ -55,7 +57,6 @@ class LockedEntry:
         ("source", "source"),
         ("commit", "commit"),
         ("content_hash", "content-hash"),
-        ("parent", "parent"),
     )
 
     @property
@@ -66,6 +67,16 @@ class LockedEntry:
     def identifier(self) -> str:
         """Unique identifier matching Dependency.identifier."""
         return self.path or self.handle or ""
+
+    @property
+    def parent_ids(self) -> set[str]:
+        """Return all package parents recorded for this entry."""
+        ids: set[str] = set()
+        if self.parent:
+            ids.add(self.parent)
+        if self.parents:
+            ids.update(self.parents)
+        return ids
 
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> LockedEntry:
@@ -79,8 +90,15 @@ class LockedEntry:
             attr: _get_optional_str(toml_key)
             for attr, toml_key in cls._TOML_OPTIONAL_FIELDS
         }
+        parent = _get_optional_str("parent")
+        raw_parents = data.get("parents")
+        parents: list[str] | None = None
+        if isinstance(raw_parents, Iterable) and not isinstance(raw_parents, str):
+            parents = [str(value) for value in raw_parents]
         return cls(
             installed_name=str(data.get(cls._TOML_KEY_INSTALLED_NAME, "")),
+            parent=parent,
+            parents=parents,
             **kwargs,
         )
 
@@ -91,6 +109,11 @@ class LockedEntry:
             value = getattr(self, attr)
             if value is not None:
                 table[key] = value
+        parent_ids = sorted(self.parent_ids)
+        if len(parent_ids) == 1:
+            table["parent"] = parent_ids[0]
+        elif len(parent_ids) > 1:
+            table["parents"] = parent_ids
         table[self._TOML_KEY_INSTALLED_NAME] = self.installed_name
         return table
 
@@ -169,7 +192,9 @@ class Lockfile:
         at sync time and are not listed in agr.toml directly.
         """
         for kind in self.SECTION_KEYS:
-            lockfile_ids = {e.identifier for e in self._entries(kind) if not e.parent}
+            lockfile_ids = {
+                e.identifier for e in self._entries(kind) if not e.parent_ids
+            }
             config_ids = {d.identifier for d in dependencies if d.type == kind}
             if lockfile_ids != config_ids:
                 return False

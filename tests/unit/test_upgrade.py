@@ -131,3 +131,23 @@ class TestTransitiveClosure:
 
         assert "user/repo/alpha" in result
         assert "user/repo/beta" not in result
+
+    def test_shared_child_with_multiple_parents_included(self):
+        """Shared transitive children are included for any recorded parent."""
+        lockfile = Lockfile(
+            skills=[
+                LockedEntry(
+                    handle="user/repo/shared",
+                    installed_name="shared",
+                    parents=["user/repo/bundle-a", "user/repo/bundle-b"],
+                ),
+            ],
+            packages=[
+                LockedEntry(handle="user/repo/bundle-a", installed_name="bundle-a"),
+                LockedEntry(handle="user/repo/bundle-b", installed_name="bundle-b"),
+            ],
+        )
+
+        result = _transitive_closure(lockfile, {"user/repo/bundle-b"})
+
+        assert "user/repo/shared" in result
