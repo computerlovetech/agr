@@ -2,18 +2,25 @@
 
 ## [Unreleased]
 
-## [0.8.4b1] - 2026-04-12
+## [0.8.4] - 2026-04-15
 
 ### Added
+- `agr run <skill-name>` command — invoke an already-installed skill in the project's configured tool CLI without re-downloading. Mirrors `agrx` for the persistent-skill case.
+- Shared `agr.runner` module housing the tool-CLI invocation logic used by both `agrx` and `agr run`.
 - Package/bundle dependencies can now expand and install transitive skill and ralph dependencies, including nested packages.
 - `add`, `remove`, `sync`, and `upgrade` now keep package, skill, and ralph lockfile entries in sync across transitive dependency changes.
 
 ### Changed
+- `agrx` now delegates to `agr.runner` instead of carrying its own copy of the tool-CLI invocation helpers.
+- `--tool` help text for `agr run` and `agrx` is now sourced from the tool registry so new tools appear automatically.
 - Lockfile handling now tracks package parent relationships for entries with one or more parent packages.
 - Package conflict detection now distinguishes resource types with the same installed name.
 - Shared install and lockfile paths were refactored to support package dependency expansion consistently across commands.
 
 ### Fixed
+- Installed-skill lookup now matches collision-fallback install names (`user--skill`, `user--repo--skill`) so `agr run` works for skills that hit a name conflict at install time.
+- Installed-skill lookup rejects path-traversal inputs (`..`, `/`, `\`) before touching the filesystem.
+- `--interactive` help text for `agr run` and `agrx` now describes the actual behavior (invoking the tool in interactive mode with the skill prompt prefilled).
 - `remove` now removes package-owned transitive dependencies without removing direct dependencies that share the same installed name.
 - `sync` and `upgrade` now preserve and refresh package parent metadata for transitive lockfile entries.
 - Bare names, trailing slashes, and local dependency paths now match more consistently during remove and upgrade operations.
