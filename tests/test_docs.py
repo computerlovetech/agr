@@ -151,6 +151,7 @@ class TestCliCommands:
     KNOWN_COMMANDS = {
         "add",
         "remove",
+        "run",
         "sync",
         "upgrade",
         "list",
