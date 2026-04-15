@@ -9,6 +9,7 @@ from agr.commands.add import run_add
 from agr.commands.init import run_init
 from agr.commands.list import run_list
 from agr.commands.remove import run_remove
+from agr.commands.run import run_run
 from agr.commands.sync import run_sync
 from agr.commands.upgrade import run_upgrade
 from agr.commands.config_cmd import (
@@ -22,6 +23,7 @@ from agr.commands.config_cmd import (
     run_config_unset,
 )
 from agr.console import set_quiet
+from agr.tool import available_tools_string
 
 GlobalScope = Annotated[
     bool,
@@ -314,6 +316,64 @@ def upgrade(
         agr upgrade -g                           # Upgrade globals
     """
     run_upgrade(handles or [], global_install=global_install)
+
+
+@app.command(
+    name="run",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def run_cmd(
+    ctx: typer.Context,
+    skill_name: Annotated[
+        str,
+        typer.Argument(help="Name of an installed skill to run."),
+    ],
+    tool: Annotated[
+        str | None,
+        typer.Option(
+            "--tool",
+            "-t",
+            help=f"Tool CLI to use ({available_tools_string()}).",
+        ),
+    ] = None,
+    interactive: Annotated[
+        bool,
+        typer.Option(
+            "--interactive",
+            "-i",
+            help="Invoke the tool in interactive mode with the skill prompt prefilled.",
+        ),
+    ] = False,
+    prompt: Annotated[
+        str | None,
+        typer.Option(
+            "--prompt",
+            "-p",
+            help="Additional prompt text to append after the skill reference.",
+        ),
+    ] = None,
+    global_install: GlobalScope = False,
+) -> None:
+    """Run an installed skill in the project's configured tool.
+
+    Looks up <skill-name> in the configured tool's skills directory and
+    invokes the tool's CLI with the skill prompt. Anything after ``--`` is
+    appended to the prompt as extra input.
+
+    Examples:
+        agr run pdf
+        agr run pdf -- "summarise report.pdf"
+        agr run pdf --tool cursor
+        agr run pdf -i
+    """
+    run_run(
+        skill_name,
+        tool=tool,
+        interactive=interactive,
+        prompt=prompt,
+        extra_args=list(ctx.args) if ctx.args else None,
+        global_install=global_install,
+    )
 
 
 @app.command(name="list")

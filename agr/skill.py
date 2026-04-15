@@ -8,11 +8,16 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
+from agr.handle import INSTALLED_NAME_SEPARATOR
+
 
 _P = TypeVar("_P", Path, PurePosixPath)
 
 # Marker file for skills
 SKILL_MARKER = "SKILL.md"
+
+# Prefix for temporary skills installed by ``agrx`` (single source of truth).
+AGRX_PREFIX = "_agrx_"
 
 # Regex for detecting a frontmatter ``name:`` line (with or without a value).
 _FRONTMATTER_NAME_LINE_RE = re.compile(r"^\s*name\s*:")
@@ -170,6 +175,58 @@ def is_valid_skill_dir(path: Path) -> bool:
 def find_skill_in_repo(repo_dir: Path, skill_name: str) -> Path | None:
     """Find a skill directory in a downloaded repo."""
     return find_resource_in_repo(repo_dir, skill_name, SKILL_MARKER)
+
+
+def find_installed_skill(skills_dir: Path, skill_name: str) -> Path | None:
+    """Locate an already-installed skill by name in a tool's skills directory.
+
+    Handles both layouts used by the installer:
+
+    - Flat: ``<skills_dir>/<skill_name>/SKILL.md`` — the common case.
+    - Collision fallback: ``<skills_dir>/<user>--<skill_name>/SKILL.md``
+      or ``<user>--<repo>--<skill_name>/SKILL.md``, as produced by
+      :meth:`ParsedHandle.to_installed_name` on name conflicts.
+
+    The exact-name match wins over a collision-fallback match. If multiple
+    collision-fallback directories match (ambiguous short name), returns
+    ``None`` so the caller can surface a clear error.
+
+    Rejects ``skill_name`` values that would escape ``skills_dir`` (path
+    separators or traversal components).
+    """
+    if not skill_name or "/" in skill_name or "\\" in skill_name:
+        return None
+    if skill_name in (".", ".."):
+        return None
+
+    exact = skills_dir / skill_name
+    if is_valid_skill_dir(exact):
+        return exact
+
+    if not skills_dir.is_dir():
+        return None
+
+    suffix = f"{INSTALLED_NAME_SEPARATOR}{skill_name}"
+    fallback_matches = [
+        entry
+        for entry in skills_dir.iterdir()
+        if entry.name.endswith(suffix) and is_valid_skill_dir(entry)
+    ]
+    if len(fallback_matches) == 1:
+        return fallback_matches[0]
+    return None
+
+
+def list_installed_skills(skills_dir: Path) -> list[str]:
+    """List names of installed skills in a tool's skills directory."""
+    if not skills_dir.is_dir():
+        return []
+    names = [
+        entry.name
+        for entry in skills_dir.iterdir()
+        if is_valid_skill_dir(entry) and not entry.name.startswith(AGRX_PREFIX)
+    ]
+    return sorted(names)
 
 
 def find_skill_in_repo_listing(

@@ -74,6 +74,28 @@ agr remove <handle>...
 Options:
 - `--global`, `-g` — remove from global skills directory
 
+### agr run
+
+Run an already-installed skill in the project's configured tool CLI.
+
+```bash
+agr run <skill-name>
+agr run <skill-name> -- "extra prompt text"
+agr run <skill-name> --tool cursor
+agr run <skill-name> -i
+agr run <skill-name> -g
+```
+
+Looks up `<skill-name>` in the chosen tool's skills directory (matches both flat installs and collision-fallback names like `user--repo--skill`) and shells out to the tool's CLI with the skill prompt. No download, no cleanup — use `agrx` when you want a one-shot ephemeral run.
+
+Tool resolution: `--tool` flag → `default_tool` in agr.toml → first entry in `tools` → `claude`.
+
+Options:
+- `--tool`, `-t` — tool CLI to use (claude, cursor, codex, opencode, copilot, antigravity)
+- `--interactive`, `-i` — invoke the tool in interactive mode with the skill prompt prefilled
+- `--prompt`, `-p` — extra prompt text appended after the skill reference
+- `--global`, `-g` — look up the skill in the global skills directory
+
 ### agr sync
 
 Install all dependencies (skills and ralphs) from agr.toml and refresh agr.lock.

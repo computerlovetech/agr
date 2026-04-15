@@ -65,6 +65,7 @@ agr add user/skill user/other-skill    # Install multiple at once
 agr upgrade                            # Update everything to the latest commit
 agr upgrade user/skill                 # Update one resource
 agr remove user/skill                  # Uninstall a skill
+agr run pdf                            # Run an installed skill in the configured tool
 ```
 
 ### Global Skills
@@ -314,6 +315,50 @@ agr upgrade pdf collaboration            # Upgrade several at once
 agr upgrade ./my-skill                   # Re-copy a local skill
 agr upgrade -g                           # Upgrade global dependencies
 ```
+
+### agr run
+
+Invoke an already-installed skill in the project's configured tool. `agr run`
+mirrors [`agrx`](#agrx) for the persistent-skill case: it looks up the skill
+in the tool's skills directory and shells out to the tool CLI with the skill
+prompt — no download, no cleanup.
+
+```bash
+agr run <skill-name> [-- <extra prompt>]
+```
+
+**Arguments:**
+
+- `skill-name` — Short name of an installed skill (e.g., `pdf`). Also matches
+  collision-fallback installs (`user--skill`, `user--repo--skill`) when
+  unambiguous.
+
+**Options:**
+
+- `--tool`, `-t` — Tool CLI to use. Overrides `default_tool` from `agr.toml`.
+- `--interactive`, `-i` — Invoke the tool in interactive mode with the skill
+  prompt prefilled.
+- `--prompt`, `-p` `<text>` — Extra prompt text appended after the skill
+  reference.
+- `--global`, `-g` — Look up the skill in the global skills directory.
+
+Anything after `--` is appended to the prompt as free-form input, after
+`--prompt` (if given).
+
+**Examples:**
+
+```bash
+agr run pdf                              # Run pdf in the default tool
+agr run pdf -- "summarise report.pdf"    # Pass extra prompt text
+agr run pdf --tool cursor                # Pick a specific tool
+agr run pdf -i                           # Start an interactive session
+agr run pdf -g                           # Run a globally-installed skill
+```
+
+Tool resolution order: `--tool` flag → `default_tool` in `agr.toml` → first
+entry in `tools` → `claude`. If the skill is not installed for the chosen
+tool, `agr run` lists the tools' available skills so you can correct the
+name or run `agr sync` first.
 
 ### agr list
 

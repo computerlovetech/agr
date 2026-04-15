@@ -3,13 +3,16 @@
 import pytest
 
 from agr.skill import (
+    AGRX_PREFIX,
     SKILL_MARKER,
     _is_excluded_resource_path,
     create_skill_scaffold,
     discover_skills_in_repo_listing,
+    find_installed_skill,
     find_skill_in_repo,
     find_skills_in_repo_listing,
     is_valid_skill_dir,
+    list_installed_skills,
     update_skill_md_name,
     validate_skill_name,
 )
@@ -40,6 +43,67 @@ class TestIsValidSkillDir:
     def test_nonexistent(self, tmp_path):
         """Nonexistent path is not valid."""
         assert not is_valid_skill_dir(tmp_path / "nonexistent")
+
+
+def _make_skill(parent, name):
+    skill = parent / name
+    skill.mkdir(parents=True)
+    (skill / SKILL_MARKER).write_text(f"---\nname: {name}\n---\n")
+    return skill
+
+
+class TestFindInstalledSkill:
+    """Tests for find_installed_skill lookup."""
+
+    def test_flat_match(self, tmp_path):
+        expected = _make_skill(tmp_path, "pdf")
+        assert find_installed_skill(tmp_path, "pdf") == expected
+
+    def test_collision_fallback_match(self, tmp_path):
+        expected = _make_skill(tmp_path, "alice--repo--pdf")
+        assert find_installed_skill(tmp_path, "pdf") == expected
+
+    def test_flat_preferred_over_fallback(self, tmp_path):
+        flat = _make_skill(tmp_path, "pdf")
+        _make_skill(tmp_path, "alice--pdf")
+        assert find_installed_skill(tmp_path, "pdf") == flat
+
+    def test_ambiguous_fallback_returns_none(self, tmp_path):
+        _make_skill(tmp_path, "alice--pdf")
+        _make_skill(tmp_path, "bob--pdf")
+        assert find_installed_skill(tmp_path, "pdf") is None
+
+    def test_missing_returns_none(self, tmp_path):
+        assert find_installed_skill(tmp_path, "ghost") is None
+
+    def test_path_traversal_rejected(self, tmp_path):
+        sibling = tmp_path.parent / "sneaky"
+        sibling.mkdir(exist_ok=True)
+        (sibling / SKILL_MARKER).write_text("---\nname: sneaky\n---\n")
+        skills_dir = tmp_path / "skills"
+        skills_dir.mkdir()
+        assert find_installed_skill(skills_dir, "../sneaky") is None
+        assert find_installed_skill(skills_dir, "..") is None
+
+    def test_nonexistent_dir_returns_none(self, tmp_path):
+        assert find_installed_skill(tmp_path / "missing", "pdf") is None
+
+
+class TestListInstalledSkills:
+    """Tests for list_installed_skills."""
+
+    def test_lists_valid_skills_sorted(self, tmp_path):
+        _make_skill(tmp_path, "b-skill")
+        _make_skill(tmp_path, "a-skill")
+        assert list_installed_skills(tmp_path) == ["a-skill", "b-skill"]
+
+    def test_excludes_agrx_temp_skills(self, tmp_path):
+        _make_skill(tmp_path, "real")
+        _make_skill(tmp_path, f"{AGRX_PREFIX}temp-abc12345")
+        assert list_installed_skills(tmp_path) == ["real"]
+
+    def test_missing_dir_returns_empty(self, tmp_path):
+        assert list_installed_skills(tmp_path / "nope") == []
 
 
 class TestValidateSkillName:

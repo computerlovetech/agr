@@ -49,6 +49,7 @@ agr add user/repo/skill    # From a specific repo
 agr add ./path/to/skill    # Local path
 agr add user/skill -o      # Update to latest version, re-resolving the lock
 agr remove user/skill      # Uninstall
+agr run <skill-name>       # Run an installed skill in the configured tool
 agr sync                   # Install all dependencies from agr.toml, refresh agr.lock
 agr sync --frozen          # CI deploy: install exactly what agr.lock specifies
 agr sync --locked          # CI PR check: fail if agr.lock is stale vs agr.toml

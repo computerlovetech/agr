@@ -2,7 +2,6 @@
 
 import shutil
 import signal
-import subprocess
 import sys
 import uuid
 import contextlib
@@ -16,11 +15,13 @@ import typer
 from agr.config import AgrConfig, find_config, find_repo_root
 from agr.console import get_console, print_error
 from agr.exceptions import AgrError
+from agr.runner import check_tool_cli, run_skill_command
+from agr.skill import AGRX_PREFIX
 from agr.skill_installer import install_remote_skill
 from agr.handle import parse_handle
 from agr.tool import (
     DEFAULT_TOOL_NAMES,
-    ToolConfig,
+    available_tools_string,
     get_tool,
 )
 
@@ -31,7 +32,6 @@ app = typer.Typer(
     add_completion=False,
 )
 
-AGRX_PREFIX = "_agrx_"  # Prefix for temporary resources
 AGRX_SUFFIX_LEN = 8
 
 
@@ -45,27 +45,6 @@ def _get_default_tool() -> str:
         if config.tools:
             return config.tools[0]
     return DEFAULT_TOOL_NAMES[0]
-
-
-def _check_tool_cli(tool_config: ToolConfig) -> None:
-    """Check if tool's CLI is installed.
-
-    Args:
-        tool_config: ToolConfig for the tool to check
-
-    Raises:
-        typer.Exit: If CLI is not found
-    """
-    console = get_console()
-    cli_cmd = tool_config.cli_command
-    if not cli_cmd:
-        print_error(f"{tool_config.name} has no CLI command configured")
-        raise typer.Exit(1)
-    if shutil.which(cli_cmd) is None:
-        print_error(f"{cli_cmd} CLI not found.")
-        if tool_config.install_hint:
-            console.print(f"[dim]{tool_config.install_hint}[/dim]")
-        raise typer.Exit(1)
 
 
 def _cleanup_skill(skill_path: Path) -> None:
@@ -105,71 +84,6 @@ def _temporary_skill(skill_path: Path) -> Generator[None, None, None]:
             _cleanup_skill(skill_path)
 
 
-def _build_skill_command(
-    tool_config: ToolConfig,
-    skill_prompt: str,
-    *,
-    non_interactive: bool,
-) -> list[str]:
-    """Build the command to run a skill with the selected tool."""
-    # Use cli_exec_command for non-interactive mode, or when interactive mode
-    # has no prompt injection (i.e. no --prompt flag and no positional prompt).
-    has_interactive_prompt = (
-        tool_config.cli_interactive_prompt_flag
-        or tool_config.cli_interactive_prompt_positional
-    )
-    use_exec = tool_config.cli_exec_command and (
-        non_interactive or not has_interactive_prompt
-    )
-    if use_exec:
-        assert tool_config.cli_exec_command is not None
-        cmd = list(tool_config.cli_exec_command)
-    else:
-        assert tool_config.cli_command is not None
-        cmd = [tool_config.cli_command]
-    if not non_interactive and tool_config.cli_interactive_prompt_flag:
-        cmd.extend([tool_config.cli_interactive_prompt_flag, skill_prompt])
-    elif not non_interactive and tool_config.cli_interactive_prompt_positional:
-        cmd.append(skill_prompt)
-    elif tool_config.cli_prompt_flag:
-        cmd.extend([tool_config.cli_prompt_flag, skill_prompt])
-    else:
-        cmd.append(skill_prompt)
-    return cmd
-
-
-def _run_skill_command(
-    tool_config: ToolConfig,
-    skill_prompt: str,
-    *,
-    interactive: bool,
-) -> None:
-    """Build and execute the skill command with the selected tool.
-
-    Handles interactive vs non-interactive modes, force flags, and
-    stderr suppression based on tool configuration.
-    """
-    cmd = _build_skill_command(
-        tool_config,
-        skill_prompt,
-        non_interactive=not interactive,
-    )
-    if interactive and tool_config.cli_force_flag:
-        cmd.append(tool_config.cli_force_flag)
-
-    if not interactive and tool_config.suppress_stderr_non_interactive:
-        result = subprocess.run(
-            cmd,
-            check=False,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if result.returncode != 0 and result.stderr:
-            sys.stderr.write(result.stderr)
-    else:
-        subprocess.run(cmd, check=False)
-
-
 @app.command()
 def main(
     handle: Annotated[
@@ -183,10 +97,7 @@ def main(
         typer.Option(
             "--tool",
             "-t",
-            help=(
-                "Tool CLI to use (claude, cursor, codex, "
-                "opencode, copilot, antigravity)."
-            ),
+            help=f"Tool CLI to use ({available_tools_string()}).",
         ),
     ] = None,
     interactive: Annotated[
@@ -194,7 +105,7 @@ def main(
         typer.Option(
             "--interactive",
             "-i",
-            help="Start interactive session after running the skill.",
+            help="Invoke the tool in interactive mode with the skill prompt prefilled.",
         ),
     ] = False,
     prompt: Annotated[
@@ -273,7 +184,7 @@ def main(
             resolver.get(source)
 
         # Check tool CLI is available
-        _check_tool_cli(tool_config)
+        check_tool_cli(tool_config)
 
         console.print(f"[dim]Downloading {handle}...[/dim]")
 
@@ -310,7 +221,7 @@ def main(
             if prompt:
                 skill_prompt += f" {prompt}"
 
-            _run_skill_command(tool_config, skill_prompt, interactive=interactive)
+            run_skill_command(tool_config, skill_prompt, interactive=interactive)
 
     except AgrError as e:
         print_error(str(e))
