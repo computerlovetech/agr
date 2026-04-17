@@ -394,7 +394,7 @@ def rollback_on_failure() -> Generator[dict[str, Path], None, None]:
     installed: dict[str, Path] = {}
     try:
         yield installed
-    except Exception:
+    except BaseException:
         _rollback_installed(installed)
         raise
 
