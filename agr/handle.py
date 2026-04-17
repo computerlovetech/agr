@@ -379,7 +379,7 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
     Raises:
         InvalidHandleError: If the value is ``.`` or ``..``.
     """
-    if value in (".", ".."):
+    if is_dot_component(value):
         raise InvalidHandleError(
             f"Invalid handle '{ref}': {label} '{value}' is a path traversal component"
         )
@@ -388,6 +388,11 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
 def has_control_or_whitespace(s: str) -> bool:
     """Return True if *s* contains any whitespace or ASCII control character."""
     return any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in s)
+
+
+def is_dot_component(s: str) -> bool:
+    """Return True if *s* is a path-traversal dot component (``"."`` or ``".."``)."""
+    return s in (".", "..")
 
 
 def _validate_no_control_chars(ref: str, label: str, value: str) -> None:
@@ -451,12 +456,51 @@ def _validate_no_yaml_flow_chars(ref: str, label: str, value: str) -> None:
             )
 
 
+def _validate_no_yaml_indicator_chars(ref: str, label: str, value: str) -> None:
+    """Reject YAML indicator characters that alter the semantics of a scalar value.
+
+    When a handle component is written as ``name: <value>`` into SKILL.md
+    frontmatter by ``update_skill_md_name``, certain characters change how
+    YAML parsers interpret the value:
+
+    - ``#`` — comment indicator.  ``name: #foo`` is parsed as ``name: null``
+      because the ``#`` (preceded by the space after ``:``) starts a comment,
+      silently discarding the skill name.
+    - ``*`` — alias indicator.  ``name: *anchor`` tries to dereference an
+      anchor that typically does not exist, causing a YAML parse error.
+    - ``&`` — anchor indicator.  ``name: &anchor`` sets an anchor on a null
+      scalar, so the name field becomes null.
+    - ``!`` — tag indicator.  ``name: !!null`` or ``name: !<tag> value``
+      changes the inferred type of the value, potentially producing a
+      non-string ``name``.
+
+    None of these characters are valid in GitHub usernames, repository names,
+    or conventional skill directory names, so rejecting them is safe.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component.
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value contains ``#``, ``*``, ``&``, or ``!``.
+    """
+    _YAML_INDICATOR_CHARS = frozenset("#*&!")
+    for ch in value:
+        if ch in _YAML_INDICATOR_CHARS:
+            raise InvalidHandleError(
+                f"Invalid handle '{ref}': {label} contains "
+                "YAML indicator characters (#, *, &, !)"
+            )
+
+
 def _validate_component(ref: str, label: str, value: str) -> None:
     """Validate a remote handle component against all safety rules.
 
     Combines the reserved-separator check, the path-traversal check,
-    the control-character check, and the YAML-flow-character check into
-    a single call so they cannot be accidentally separated.
+    the control-character check, the YAML-flow-character check, and the
+    YAML-indicator-character check into a single call so they cannot be
+    accidentally separated.
 
     Args:
         ref: Original handle string for error messages.
@@ -466,9 +510,11 @@ def _validate_component(ref: str, label: str, value: str) -> None:
     Raises:
         InvalidHandleError: If the value contains the separator, is a
             path traversal component, contains whitespace or control
-            characters, or contains YAML flow-structure characters.
+            characters, contains YAML flow-structure characters, or
+            contains YAML indicator characters (#, *, &, !).
     """
     _validate_no_separator(ref, label, value)
     _validate_no_path_traversal(ref, label, value)
     _validate_no_control_chars(ref, label, value)
     _validate_no_yaml_flow_chars(ref, label, value)
+    _validate_no_yaml_indicator_chars(ref, label, value)

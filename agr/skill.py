@@ -8,7 +8,7 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
-from agr.handle import INSTALLED_NAME_SEPARATOR
+from agr.handle import INSTALLED_NAME_SEPARATOR, is_dot_component
 
 
 _P = TypeVar("_P", Path, PurePosixPath)
@@ -196,7 +196,7 @@ def find_installed_skill(skills_dir: Path, skill_name: str) -> Path | None:
     """
     if not skill_name or "/" in skill_name or "\\" in skill_name:
         return None
-    if skill_name in (".", ".."):
+    if is_dot_component(skill_name):
         return None
 
     exact = skills_dir / skill_name

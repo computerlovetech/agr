@@ -17,6 +17,7 @@ from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
     has_control_or_whitespace,
+    is_dot_component,
     parse_handle,
     parse_local_handle,
 )
@@ -101,7 +102,7 @@ def _validate_config_identifier(value: object, key: str, description: str) -> st
         )
     # Reject literal "." and ".." which would produce path-traversal-like
     # segments in the constructed git URL (e.g. github.com/owner/...git).
-    if result in (".", ".."):
+    if is_dot_component(result):
         raise ConfigError(f"{key} cannot be '{result}': use a plain {description}.")
     return result
 
