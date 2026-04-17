@@ -12,7 +12,7 @@ from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
 from agr.ralph_installer import uninstall_ralph
 from agr.skill_installer import uninstall_skill
-from agr.handle import ParsedHandle, parse_handle
+from agr.handle import LOCAL_PATH_PREFIXES, ParsedHandle, parse_handle
 from agr.lockfile import (
     Lockfile,
     LockedEntry,
@@ -161,7 +161,7 @@ def _identifier_candidates(
     # ``agr add ./my-skill`` writes ``path = "./my-skill"``).  When the
     # user omits the prefix (``agr remove my-skill``), add the "./" form
     # so we can still match the config entry.
-    if not ref.startswith(("./", "../", "/", "~")):
+    if not ref.startswith(LOCAL_PATH_PREFIXES + ("~",)):
         candidates.append(f"./{ref}")
     return list(dict.fromkeys(candidates))
 
