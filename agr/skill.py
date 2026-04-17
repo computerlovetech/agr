@@ -22,8 +22,11 @@ AGRX_PREFIX = "_agrx_"
 # Regex for detecting a frontmatter ``name:`` line (with or without a value).
 _FRONTMATTER_NAME_LINE_RE = re.compile(r"^\s*name\s*:")
 
+# Maximum length for a valid skill name per the Agent Skills spec.
+MAX_SKILL_NAME_LENGTH = 64
+
 # Regex for validating a skill name per the Agent Skills spec:
-# 1-64 lowercase alphanumeric chars and hyphens,
+# 1-{MAX_SKILL_NAME_LENGTH} lowercase alphanumeric chars and hyphens,
 # no leading/trailing/consecutive hyphens.
 _VALID_SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
@@ -309,7 +312,7 @@ def update_skill_md_name(skill_dir: Path, new_name: str) -> None:
 def validate_skill_name(name: str) -> bool:
     """Validate a skill name per the Agent Skills specification.
 
-    Valid names: 1-64 lowercase alphanumeric characters and hyphens,
+    Valid names: 1-{MAX_SKILL_NAME_LENGTH} lowercase alphanumeric characters and hyphens,
     must not start/end with a hyphen or contain consecutive hyphens.
 
     Args:
@@ -318,7 +321,7 @@ def validate_skill_name(name: str) -> bool:
     Returns:
         True if valid
     """
-    if not name or len(name) > 64:
+    if not name or len(name) > MAX_SKILL_NAME_LENGTH:
         return False
     return bool(_VALID_SKILL_NAME_RE.match(name))
 
@@ -340,7 +343,7 @@ def create_skill_scaffold(name: str, base_dir: Path | None = None) -> Path:
     if not validate_skill_name(name):
         raise ValueError(
             f"Invalid skill name '{name}': "
-            "must be 1-64 lowercase alphanumeric characters "
+            f"must be 1-{MAX_SKILL_NAME_LENGTH} lowercase alphanumeric characters "
             "and hyphens, cannot start/end with a hyphen"
         )
 
