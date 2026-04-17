@@ -13,6 +13,9 @@ from agr.commands.migrations import (
     run_tool_migrations,
 )
 from agr.config import (
+    DEPENDENCY_TYPE_PACKAGE,
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_SKILL,
     AgrConfig,
     Dependency,
     find_config,
@@ -917,7 +920,10 @@ def _locked_transitive_deps_for_packages(
     """Return locked leaf dependencies whose parent chain belongs to packages."""
     all_pkg_ids = lockfile.package_closure(package_ids)
     deps: list[tuple[Dependency, str]] = []
-    for kind, entries in (("skill", lockfile.skills), ("ralph", lockfile.ralphs)):
+    for kind, entries in (
+        (DEPENDENCY_TYPE_SKILL, lockfile.skills),
+        (DEPENDENCY_TYPE_RALPH, lockfile.ralphs),
+    ):
         for entry in entries:
             matching_parents = entry.parent_ids & all_pkg_ids
             if matching_parents:
@@ -1069,6 +1075,6 @@ def _build_lockfile_from_results(
 
     # Append package entries from expansion.
     for entry in package_entries or []:
-        lockfile.update_entry(entry, kind="package")
+        lockfile.update_entry(entry, kind=DEPENDENCY_TYPE_PACKAGE)
 
     return lockfile
