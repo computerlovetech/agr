@@ -639,6 +639,50 @@ class TestPackageLockfileSupport:
         assert lockfile.is_current(deps) is True
 
 
+class TestPackageClosure:
+    """Tests for Lockfile.package_closure."""
+
+    def test_empty_input_returns_empty_set(self):
+        lockfile = Lockfile()
+        assert lockfile.package_closure(set()) == set()
+
+    def test_no_nested_packages_returns_input(self):
+        lockfile = Lockfile(
+            packages=[LockedEntry(handle="u/r/a", installed_name="a")],
+        )
+        assert lockfile.package_closure({"u/r/a"}) == {"u/r/a"}
+
+    def test_expands_nested_packages(self):
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="u/r/outer", installed_name="outer"),
+                LockedEntry(
+                    handle="u/r/inner",
+                    installed_name="inner",
+                    parent="u/r/outer",
+                ),
+            ],
+        )
+        assert lockfile.package_closure({"u/r/outer"}) == {
+            "u/r/outer",
+            "u/r/inner",
+        }
+
+    def test_expands_multi_level_nesting(self):
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="u/r/a", installed_name="a"),
+                LockedEntry(handle="u/r/b", installed_name="b", parent="u/r/a"),
+                LockedEntry(handle="u/r/c", installed_name="c", parent="u/r/b"),
+            ],
+        )
+        assert lockfile.package_closure({"u/r/a"}) == {
+            "u/r/a",
+            "u/r/b",
+            "u/r/c",
+        }
+
+
 class TestParentFieldSupport:
     """Tests for the parent field on LockedEntry."""
 

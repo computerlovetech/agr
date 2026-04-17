@@ -199,6 +199,26 @@ class Lockfile:
                 return entry
         return None
 
+    def package_closure(self, package_ids: set[str]) -> set[str]:
+        """Return package ids including nested packages whose parent is included.
+
+        Expands *package_ids* by iteratively adding any package entry whose
+        parent chain intersects the current set, until a fixed point is
+        reached.
+        """
+        all_pkg_ids = set(package_ids)
+        changed = True
+        while changed:
+            changed = False
+            for entry in self.packages:
+                if (
+                    entry.parent_ids & all_pkg_ids
+                    and entry.identifier not in all_pkg_ids
+                ):
+                    all_pkg_ids.add(entry.identifier)
+                    changed = True
+        return all_pkg_ids
+
     def is_current(self, dependencies: list[Dependency]) -> bool:
         """Check if the lockfile covers exactly the same deps as agr.toml.
 

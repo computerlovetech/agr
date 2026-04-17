@@ -66,19 +66,6 @@ def _uninstall_from_filesystem(
     return removed
 
 
-def _package_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
-    """Return package ids including nested packages whose parent is included."""
-    all_pkg_ids = set(package_ids)
-    changed = True
-    while changed:
-        changed = False
-        for entry in lockfile.packages:
-            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
-                all_pkg_ids.add(entry.identifier)
-                changed = True
-    return all_pkg_ids
-
-
 def _transitive_leaf_entries_for_packages(
     lockfile: Lockfile | None,
     package_ids: set[str],
@@ -86,7 +73,7 @@ def _transitive_leaf_entries_for_packages(
     """Return lockfile leaf entries whose parent chain belongs to packages."""
     if lockfile is None:
         return []
-    all_pkg_ids = _package_closure(lockfile, package_ids)
+    all_pkg_ids = lockfile.package_closure(package_ids)
     entries: list[tuple[str, LockedEntry]] = []
     for kind, locked_entries in (
         ("skill", lockfile.skills),
@@ -105,7 +92,7 @@ def _nested_package_entries_for_packages(
     """Return nested package entries whose parent chain belongs to packages."""
     if lockfile is None:
         return []
-    all_pkg_ids = _package_closure(lockfile, package_ids)
+    all_pkg_ids = lockfile.package_closure(package_ids)
     return [
         ("package", entry)
         for entry in lockfile.packages
@@ -273,7 +260,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                     if not d.is_package and d.identifier != dep.identifier
                 }
                 candidate_package_ids = (
-                    _package_closure(existing_lockfile, {dep.identifier})
+                    existing_lockfile.package_closure({dep.identifier})
                     if existing_lockfile
                     else {dep.identifier}
                 )

@@ -159,15 +159,7 @@ def _transitive_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
     Nested packages are expanded first so that skills/ralphs from
     sub-packages are included.
     """
-    # Expand package_ids to include nested child packages.
-    all_pkg_ids = set(package_ids)
-    changed = True
-    while changed:
-        changed = False
-        for entry in lockfile.packages:
-            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
-                all_pkg_ids.add(entry.identifier)
-                changed = True
+    all_pkg_ids = lockfile.package_closure(package_ids)
 
     result: set[str] = set()
     for entry in lockfile.installed_entries():

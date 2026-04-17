@@ -910,25 +910,12 @@ def _dep_from_locked_entry(entry: LockedEntry, kind: str) -> Dependency:
     raise AgrError("Lockfile entry is missing both handle and path")
 
 
-def _package_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
-    """Return package ids including nested packages whose parent is included."""
-    all_pkg_ids = set(package_ids)
-    changed = True
-    while changed:
-        changed = False
-        for entry in lockfile.packages:
-            if entry.parent_ids & all_pkg_ids and entry.identifier not in all_pkg_ids:
-                all_pkg_ids.add(entry.identifier)
-                changed = True
-    return all_pkg_ids
-
-
 def _locked_transitive_deps_for_packages(
     lockfile: Lockfile,
     package_ids: set[str],
 ) -> list[tuple[Dependency, str]]:
     """Return locked leaf dependencies whose parent chain belongs to packages."""
-    all_pkg_ids = _package_closure(lockfile, package_ids)
+    all_pkg_ids = lockfile.package_closure(package_ids)
     deps: list[tuple[Dependency, str]] = []
     for kind, entries in (("skill", lockfile.skills), ("ralph", lockfile.ralphs)):
         for entry in entries:
