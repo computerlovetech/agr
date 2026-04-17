@@ -16,6 +16,7 @@ from agr.handle import (
     DEFAULT_REPO_NAME,
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
+    has_control_or_whitespace,
     parse_handle,
     parse_local_handle,
 )
@@ -93,18 +94,15 @@ def _validate_config_identifier(value: object, key: str, description: str) -> st
     # but enforcing the same rule here gives a clearer error at config
     # load time and protects any future code path that uses the value
     # outside handle parsing.
-    for ch in result:
-        if ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F:
-            raise ConfigError(
-                f"{key} contains whitespace or control characters: "
-                f"use a plain {description}."
-            )
+    if has_control_or_whitespace(result):
+        raise ConfigError(
+            f"{key} contains whitespace or control characters: "
+            f"use a plain {description}."
+        )
     # Reject literal "." and ".." which would produce path-traversal-like
     # segments in the constructed git URL (e.g. github.com/owner/...git).
     if result in (".", ".."):
-        raise ConfigError(
-            f"{key} cannot be '{result}': use a plain {description}."
-        )
+        raise ConfigError(f"{key} cannot be '{result}': use a plain {description}.")
     return result
 
 

@@ -385,6 +385,11 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
         )
 
 
+def has_control_or_whitespace(s: str) -> bool:
+    """Return True if *s* contains any whitespace or ASCII control character."""
+    return any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in s)
+
+
 def _validate_no_control_chars(ref: str, label: str, value: str) -> None:
     """Reject whitespace and control characters in a handle component.
 
@@ -408,12 +413,10 @@ def _validate_no_control_chars(ref: str, label: str, value: str) -> None:
         InvalidHandleError: If the value contains whitespace (including
             newlines and tabs) or any ASCII control character.
     """
-    for ch in value:
-        if ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F:
-            raise InvalidHandleError(
-                f"Invalid handle '{ref}': {label} contains "
-                "whitespace or control characters"
-            )
+    if has_control_or_whitespace(value):
+        raise InvalidHandleError(
+            f"Invalid handle '{ref}': {label} contains whitespace or control characters"
+        )
 
 
 def _validate_component(ref: str, label: str, value: str) -> None:
