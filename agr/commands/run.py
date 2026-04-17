@@ -1,13 +1,11 @@
 """agr run command implementation."""
 
-from pathlib import Path
-
 import typer
 
 from agr.commands._tool_helpers import load_existing_config
 from agr.console import get_console, print_error
 from agr.exceptions import AgrError
-from agr.runner import check_tool_cli, run_skill_command
+from agr.runner import build_skill_prompt, check_tool_cli, run_skill_command
 from agr.skill import find_installed_skill, list_installed_skills
 from agr.tool import (
     DEFAULT_TOOL_NAMES,
@@ -29,23 +27,6 @@ def _resolve_tool(
     if configured_tools:
         return get_tool(configured_tools[0])
     return get_tool(DEFAULT_TOOL_NAMES[0])
-
-
-def _build_skill_prompt(
-    tool_config: ToolConfig,
-    skill_dir: Path,
-    skills_dir: Path,
-    extra_prompt: str | None,
-) -> str:
-    """Build the prompt string that invokes the skill in the tool's CLI."""
-    if tool_config.supports_nested:
-        relative = skill_dir.relative_to(skills_dir).as_posix()
-        skill_prompt = f"{tool_config.skill_prompt_prefix}{relative}"
-    else:
-        skill_prompt = f"{tool_config.skill_prompt_prefix}{skill_dir.name}"
-    if extra_prompt:
-        skill_prompt += f" {extra_prompt}"
-    return skill_prompt
 
 
 def run_run(
@@ -102,7 +83,7 @@ def run_run(
             extra_prompt_parts.extend(extra_args)
         extra_prompt = " ".join(extra_prompt_parts) if extra_prompt_parts else None
 
-        skill_prompt = _build_skill_prompt(
+        skill_prompt = build_skill_prompt(
             tool_config, skill_dir, skills_dir, extra_prompt
         )
 

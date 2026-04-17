@@ -14,7 +14,7 @@ import typer
 from agr.config import AgrConfig, find_config, find_repo_root
 from agr.console import get_console, print_error
 from agr.exceptions import AgrError
-from agr.runner import check_tool_cli, run_skill_command
+from agr.runner import build_skill_prompt, check_tool_cli, run_skill_command
 from agr.skill import AGRX_PREFIX
 from agr.skill_installer import install_remote_skill
 from agr.handle import parse_handle
@@ -207,19 +207,9 @@ def main(
                 f"[dim]Running skill '{parsed.name}' with {tool_name}...[/dim]"
             )
 
-            # Build the skill prompt from the actual installed location
-            if tool_config.supports_nested:
-                relative_skill = temp_skill_path.relative_to(skills_dir)
-                skill_prompt = (
-                    f"{tool_config.skill_prompt_prefix}{relative_skill.as_posix()}"
-                )
-            else:
-                skill_prompt = (
-                    f"{tool_config.skill_prompt_prefix}{temp_skill_path.name}"
-                )
-            if prompt:
-                skill_prompt += f" {prompt}"
-
+            skill_prompt = build_skill_prompt(
+                tool_config, temp_skill_path, skills_dir, prompt
+            )
             run_skill_command(tool_config, skill_prompt, interactive=interactive)
 
     except AgrError as e:

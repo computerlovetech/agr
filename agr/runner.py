@@ -13,8 +13,27 @@ import sys
 
 import typer
 
+from pathlib import Path
+
 from agr.console import get_console, print_error
 from agr.tool import ToolConfig
+
+
+def build_skill_prompt(
+    tool_config: ToolConfig,
+    skill_dir: Path,
+    skills_dir: Path,
+    extra_prompt: str | None,
+) -> str:
+    """Build the prompt string that invokes the skill in the tool's CLI."""
+    if tool_config.supports_nested:
+        relative = skill_dir.relative_to(skills_dir).as_posix()
+        skill_prompt = f"{tool_config.skill_prompt_prefix}{relative}"
+    else:
+        skill_prompt = f"{tool_config.skill_prompt_prefix}{skill_dir.name}"
+    if extra_prompt:
+        skill_prompt += f" {extra_prompt}"
+    return skill_prompt
 
 
 def check_tool_cli(tool_config: ToolConfig) -> None:
