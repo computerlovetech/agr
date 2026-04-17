@@ -50,6 +50,17 @@ class AddInstallResult:
     lock_entries: list[tuple[str, LockedEntry]] | None = None
 
 
+def _print_add_result(result: CommandResult) -> None:
+    """Print a styled result line for a single add operation."""
+    console = get_console()
+    if result.success:
+        console.print(f"[green]Added:[/green] {result.ref}")
+        console.print(f"  [dim]Installed to {result.message}[/dim]", soft_wrap=True)
+    else:
+        console.print(f"[red]Failed:[/red] {result.ref}")
+        console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
+
+
 def _detect_local_type(source_path: Path) -> str:
     """Detect whether a local path is a skill, ralph, or package.
 
@@ -380,7 +391,6 @@ def run_add(
         refs: List of handles or paths to add
         overwrite: Whether to overwrite existing skills
     """
-    console = get_console()
     loaded = load_existing_config(global_install, create_if_missing=True)
     config, config_path = loaded.config, loaded.config_path
     tools, repo_root, skills_dirs = loaded.tools, loaded.repo_root, loaded.skills_dirs
@@ -459,14 +469,6 @@ def run_add(
             results.append(CommandResult(ref, False, message or str(e)))
         except INSTALL_ERROR_TYPES as e:
             results.append(CommandResult(ref, False, format_install_error(e)))
-
-    def _print_add_result(result: CommandResult) -> None:
-        if result.success:
-            console.print(f"[green]Added:[/green] {result.ref}")
-            console.print(f"  [dim]Installed to {result.message}[/dim]", soft_wrap=True)
-        else:
-            console.print(f"[red]Failed:[/red] {result.ref}")
-            console.print(f"  [dim]{result.message}[/dim]", soft_wrap=True)
 
     # Update lockfile before save_and_summarize_results because the latter
     # raises SystemExit(1) on partial failure, which would skip the lockfile
