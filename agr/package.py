@@ -63,15 +63,6 @@ class _QueueItem:
     parent_identifier: str | None
 
 
-def _is_relative_to(path: Path, parent: Path) -> bool:
-    """Return True when *path* is inside *parent*."""
-    try:
-        path.relative_to(parent)
-    except ValueError:
-        return False
-    return True
-
-
 def _remote_dep_from_repo_path(
     sub_dep: Dependency,
     repo_dir: Path,
@@ -85,7 +76,7 @@ def _remote_dep_from_repo_path(
 
     repo_root = repo_dir.resolve()
     resolved_path = (repo_root / sub_dep.path).resolve()
-    if not _is_relative_to(resolved_path, repo_root):
+    if not resolved_path.is_relative_to(repo_root):
         raise ConfigError(
             f"Local path dependency '{sub_dep.identifier}' resolves outside "
             "the downloaded repository"
