@@ -1,5 +1,14 @@
 # Security Findings
 
+## SF-012: YAML block-scalar and quoted-scalar characters in handle components corrupt SKILL.md frontmatter
+
+- **Severity**: Low
+- **Location**: `agr/handle.py:_validate_component`, `agr/skill.py:update_skill_md_name`
+- **Description**: `_validate_component` blocked whitespace/control chars (SF-008), YAML flow-collection delimiters `{}[]` (SF-010), and YAML indicator characters `#*&!` (SF-011), but did not block YAML block-scalar indicators `|` and `>` or quoted-scalar start characters `'` and `"`. When these appear in a skill directory name, `update_skill_md_name` writes them directly into the SKILL.md frontmatter as `name: <value>`. In YAML block style, these characters corrupt the `name` field: (1) `|skill` — starts a block literal scalar with `skill` as the block header; because `s` is not a valid chomping/indentation indicator, strict YAML parsers raise a parse error; (2) `>skill` — same mechanism for block folded scalars; (3) `'skill` — opens a single-quoted scalar that is never closed, causing the YAML parser to consume all subsequent frontmatter lines (including `description:`) as part of the name value, suppressing those fields from agents; (4) `"skill` — same swallowing mechanism for double-quoted scalars. The `'` and `"` cases are particularly impactful because they do not cause an immediate parse error — instead they silently hide the `description` and other frontmatter fields that agents rely on for skill discovery. The attack is most effective through transitive package dependencies where the user never reviews the raw handle. None of these characters are valid in GitHub usernames or repository names; they can appear in skill directory names in a Linux-hosted git repository.
+- **Resolution**: Fixed. Added `_YAML_BLOCK_SCALAR_CHARS = frozenset("|>'\\"")` constant and `_validate_no_yaml_block_scalar_chars()` helper in `handle.py`. Wired into `_validate_component` after the existing indicator-char check, so all remote handle parsing branches apply the new check. Added 7 tests covering `|` and `>` in skill name, username, and repo positions; `'` and `"` in skill name; and `|` in the one-part default_owner path.
+- **Status**: Fixed (2026-04-17)
+
+
 ## SF-001: Symlink-following in skill installation allows local file exfiltration
 
 - **Severity**: High

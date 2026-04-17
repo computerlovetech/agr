@@ -35,6 +35,7 @@ DEFAULT_REPO_NAME = "skills"
 DEFAULT_OWNER = "computerlovetech"
 _YAML_FLOW_CHARS = frozenset("{}[]")
 _YAML_INDICATOR_CHARS = frozenset("#*&!")
+_YAML_BLOCK_SCALAR_CHARS = frozenset("|>'\"")
 LEGACY_DEFAULT_REPO_NAME = "agent-resources"
 LEGACY_REPO_DEPRECATION_WARNING = (
     "Deprecated: owner-only handles now default to the 'skills' "
@@ -494,6 +495,44 @@ def _validate_no_yaml_indicator_chars(ref: str, label: str, value: str) -> None:
             )
 
 
+def _validate_no_yaml_block_scalar_chars(ref: str, label: str, value: str) -> None:
+    """Reject YAML block-scalar and quoted-scalar indicator characters.
+
+    When a handle component is written as ``name: <value>`` into SKILL.md
+    frontmatter by ``update_skill_md_name``, these characters change how
+    YAML parsers interpret the value when they appear at the start of the
+    scalar:
+
+    - ``|`` — block literal scalar indicator.  ``name: |skill`` is parsed as
+      a block literal scalar with header ``skill``; because ``s`` is not a
+      valid chomping or indentation indicator, strict YAML parsers raise a
+      parse error.
+    - ``>`` — block folded scalar indicator.  Same parse-error mechanism.
+    - ``'`` — single-quoted scalar start.  ``name: 'skill`` opens a
+      single-quoted scalar that is never closed; a strict YAML parser reads
+      subsequent frontmatter lines as part of the value, suppressing the
+      ``description:`` and other fields from the agent.
+    - ``"`` — double-quoted scalar start.  Same swallowing mechanism as ``'``.
+
+    None of these characters are valid in GitHub usernames, repository names,
+    or conventional skill directory names, so rejecting them is safe.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component.
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value contains ``|``, ``>``, ``'``, or ``"``.
+    """
+    for ch in value:
+        if ch in _YAML_BLOCK_SCALAR_CHARS:
+            raise InvalidHandleError(
+                f"Invalid handle '{ref}': {label} contains "
+                "YAML block/quoted-scalar characters (|, >, ', \")"
+            )
+
+
 def _validate_component(ref: str, label: str, value: str) -> None:
     """Validate a remote handle component against all safety rules.
 
@@ -518,3 +557,4 @@ def _validate_component(ref: str, label: str, value: str) -> None:
     _validate_no_control_chars(ref, label, value)
     _validate_no_yaml_flow_chars(ref, label, value)
     _validate_no_yaml_indicator_chars(ref, label, value)
+    _validate_no_yaml_block_scalar_chars(ref, label, value)

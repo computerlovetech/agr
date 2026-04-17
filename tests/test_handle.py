@@ -383,6 +383,42 @@ class TestParseHandle:
         assert h.repo == "my_repo"
         assert h.name == "my-skill"
 
+    # SF-012: YAML block-scalar and quoted-scalar characters
+    def test_yaml_block_literal_pipe_in_skill_name_rejected(self):
+        """| in skill name produces 'name: |skill' — a YAML parse error (invalid block header)."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("user/repo/|skill", prefer_local=False)
+
+    def test_yaml_block_folded_gt_in_skill_name_rejected(self):
+        """> in skill name produces 'name: >skill' — a YAML parse error (invalid block header)."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("user/repo/>skill", prefer_local=False)
+
+    def test_yaml_single_quote_in_skill_name_rejected(self):
+        """' in skill name starts an unterminated single-quoted scalar, swallowing subsequent frontmatter."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("user/repo/'skill", prefer_local=False)
+
+    def test_yaml_double_quote_in_skill_name_rejected(self):
+        """\" in skill name starts an unterminated double-quoted scalar."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle('user/repo/"skill', prefer_local=False)
+
+    def test_yaml_pipe_in_username_rejected(self):
+        """| in username position blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("|user/repo/skill", prefer_local=False)
+
+    def test_yaml_gt_in_repo_rejected(self):
+        """> in repo position blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("user/>repo/skill", prefer_local=False)
+
+    def test_yaml_pipe_in_default_owner_one_part_rejected(self):
+        """One-part handle resolved via default_owner: | in name blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML block"):
+            parse_handle("|skill", prefer_local=False, default_owner="acme")
+
 
 class TestParsedHandle:
     """Tests for ParsedHandle methods."""
