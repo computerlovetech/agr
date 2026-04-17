@@ -177,7 +177,7 @@ def save_and_summarize_results(
 
     if total > 1:
         console.print()
-        console.print(f"[bold]Summary:[/bold] {len(successes)}/{total} skills {action}")
+        console.print(f"[bold]Summary:[/bold] {len(successes)}/{total} {action}")
 
     if exit_on_failure and any(not r.success for r in results):
         raise SystemExit(1)

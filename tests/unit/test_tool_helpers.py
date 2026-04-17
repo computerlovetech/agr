@@ -344,7 +344,7 @@ class TestSaveAndSummarizeResults:
         )
 
         captured = capsys.readouterr()
-        assert "2/2 skills added" in captured.out
+        assert "2/2 added" in captured.out
 
     def test_no_summary_for_single_ref(self, tmp_path, capsys):
         config_path = tmp_path / "agr.toml"
