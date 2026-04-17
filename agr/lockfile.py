@@ -118,6 +118,21 @@ class LockedEntry:
         parents: list[str] | None = None
         if isinstance(raw_parents, Iterable) and not isinstance(raw_parents, str):
             parents = [str(value) for value in raw_parents]
+
+        # Security: reject local-path entries that claim a package parent.
+        # Legitimate sync never produces these — expand_packages() converts
+        # local sub-deps inside a remote package to same-repo remote handles
+        # (see SF-006). A local path + parent combination can only arise via
+        # lockfile tampering and would install from an arbitrary filesystem
+        # location in --frozen mode, bypassing the SF-006 safeguard.
+        if kwargs.get("path") is not None and (parent or parents):
+            raise ConfigError(
+                f"Lockfile entry has both 'path' and a package parent "
+                f"(path={kwargs.get('path')!r}). Local-path transitive "
+                "dependencies are not allowed; the lockfile may be "
+                "corrupted or tampered with."
+            )
+
         return cls(
             installed_name=str(data.get(cls._TOML_KEY_INSTALLED_NAME, "")),
             parent=parent,

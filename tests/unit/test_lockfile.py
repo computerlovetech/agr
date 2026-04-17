@@ -38,6 +38,47 @@ class TestLockedEntry:
         assert skill.identifier == "./local/skill"
         assert skill.is_local
 
+    def test_from_dict_rejects_local_path_with_parent(self):
+        """A local-path entry with a package parent is a tamper signal."""
+        data = {
+            "path": "/etc/passwd",
+            "installed-name": "evil",
+            "parent": "attacker/repo/pkg",
+        }
+        with pytest.raises(ConfigError, match="Local-path transitive"):
+            LockedEntry.from_dict(data)
+
+    def test_from_dict_rejects_local_path_with_parents_list(self):
+        """A local-path entry with multiple parents is also rejected."""
+        data = {
+            "path": "./victim/skill",
+            "installed-name": "evil",
+            "parents": ["a/b/pkg1", "c/d/pkg2"],
+        }
+        with pytest.raises(ConfigError, match="Local-path transitive"):
+            LockedEntry.from_dict(data)
+
+    def test_from_dict_allows_local_path_without_parent(self):
+        """Direct local-path entries (no parent) remain valid."""
+        data = {"path": "./local/skill", "installed-name": "skill"}
+        entry = LockedEntry.from_dict(data)
+        assert entry.path == "./local/skill"
+        assert entry.parent is None
+        assert entry.parents is None
+
+    def test_from_dict_allows_remote_handle_with_parent(self):
+        """Remote transitive entries (handle + parent) remain valid."""
+        data = {
+            "handle": "user/repo/skill",
+            "source": "github",
+            "commit": "a" * 40,
+            "installed-name": "skill",
+            "parent": "user/repo/pkg",
+        }
+        entry = LockedEntry.from_dict(data)
+        assert entry.handle == "user/repo/skill"
+        assert entry.parent == "user/repo/pkg"
+
 
 class TestBuildLockfilePath:
     def test_returns_sibling_of_config(self, tmp_path):
