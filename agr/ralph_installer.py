@@ -37,6 +37,7 @@ from agr.handle import (
     warn_legacy_repo,
 )
 from agr.metadata import compute_content_hash
+from agr.config import DEPENDENCY_TYPE_RALPH
 from agr.ralph import (
     RALPH_MARKER,
     find_ralph_in_repo,
@@ -129,7 +130,11 @@ def prepare_repo_for_ralph(repo_dir: Path, ralph_name: str) -> Path | None:
 def prepare_repo_for_ralphs(repo_dir: Path, ralph_names: list[str]) -> dict[str, Path]:
     """Prepare a repo so multiple ralph paths are checked out."""
     return prepare_repo_for_deps(
-        repo_dir, ralph_names, find_ralphs_in_repo_listing, find_ralph_in_repo, "ralph"
+        repo_dir,
+        ralph_names,
+        find_ralphs_in_repo_listing,
+        find_ralph_in_repo,
+        DEPENDENCY_TYPE_RALPH,
     )
 
 
@@ -213,7 +218,7 @@ def install_local_ralph(
     conflicts, has_unknown = _find_local_ralph_name_conflicts(
         handle, ralphs_dir, repo_root
     )
-    raise_on_local_name_conflict(conflicts, has_unknown, handle, "ralph")
+    raise_on_local_name_conflict(conflicts, has_unknown, handle, DEPENDENCY_TYPE_RALPH)
 
     ralph_dest = _resolve_ralph_destination(handle, ralphs_dir, repo_root)
 
@@ -289,7 +294,7 @@ def fetch_and_install_ralph(
             install_source=loc.source_config.name,
             ralph_source=loc.source_path,
         )
-        installed["ralph"] = path
+        installed[DEPENDENCY_TYPE_RALPH] = path
         content_hash = compute_content_hash(path)
         install_result = InstallResult(
             commit=loc.commit,

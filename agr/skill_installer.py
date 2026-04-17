@@ -33,6 +33,7 @@ from agr.exceptions import (
     InvalidLocalPathError,
     SkillNotFoundError,
 )
+from agr.config import DEPENDENCY_TYPE_SKILL
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
@@ -136,7 +137,11 @@ def prepare_repo_for_skills(repo_dir: Path, skill_names: list[str]) -> dict[str,
     Missing skills are omitted from the mapping.
     """
     return prepare_repo_for_deps(
-        repo_dir, skill_names, find_skills_in_repo_listing, find_skill_in_repo, "skill"
+        repo_dir,
+        skill_names,
+        find_skills_in_repo_listing,
+        find_skill_in_repo,
+        DEPENDENCY_TYPE_SKILL,
     )
 
 
@@ -344,7 +349,7 @@ def install_local_skill(
     conflicts, has_unknown = _find_local_name_conflicts(
         handle, dest_dir, tool, repo_root
     )
-    raise_on_local_name_conflict(conflicts, has_unknown, handle, "skill")
+    raise_on_local_name_conflict(conflicts, has_unknown, handle, DEPENDENCY_TYPE_SKILL)
 
     skill_dest = _resolve_skill_destination(handle, dest_dir, tool, repo_root)
 
