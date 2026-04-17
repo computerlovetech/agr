@@ -56,7 +56,10 @@ def _build_github_auth_env() -> dict[str, str]:
     if not token:
         return {}
 
-    existing_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    try:
+        existing_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    except ValueError:
+        existing_count = 0
     return {
         "GIT_CONFIG_COUNT": str(existing_count + 1),
         f"GIT_CONFIG_KEY_{existing_count}": ("http.https://github.com/.extraheader"),

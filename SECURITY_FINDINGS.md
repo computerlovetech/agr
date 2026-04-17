@@ -1,5 +1,14 @@
 # Security Findings
 
+## SF-015: Malformed `GIT_CONFIG_COUNT` environment variable causes unhandled `ValueError` in `_build_github_auth_env`
+
+- **Severity**: Low
+- **Location**: `agr/git.py:_build_github_auth_env`
+- **Description**: `_build_github_auth_env()` reads the `GIT_CONFIG_COUNT` environment variable and parses it with `int(os.environ.get("GIT_CONFIG_COUNT", "0"))`. If `GIT_CONFIG_COUNT` is set to a non-numeric string (e.g. by a CI step that misconfigures the environment, or by another tool), this raises an uncaught `ValueError`. The exception is not caught by `_run_git()` (which only catches `OSError`) nor by any upstream caller, so it surfaces to users as a raw Python traceback rather than a friendly `AgrError`. In CI environments with imperfect variable management this causes a confusing, hard-to-diagnose failure. Additionally, an excessively large numeric value (e.g. `GIT_CONFIG_COUNT=999999999`) would produce valid env var names like `GIT_CONFIG_KEY_999999999`, causing git to scan for 10⁹ config entries at startup — a minor DoS on the git subprocess. Git itself silently ignores a malformed `GIT_CONFIG_COUNT`; agr should do the same.
+- **Resolution**: Wrapped the `int()` call in a `try/except ValueError` that falls back to `0`, matching git's own behaviour. Added 1 test: `test_ignores_malformed_git_config_count` — verifies that a non-integer `GIT_CONFIG_COUNT` ("notanumber") is ignored and the auth env is still populated correctly at index 0.
+- **Status**: Fixed (2026-04-17)
+
+
 ## SF-014: `git sparse-checkout set` missing `--` separator allows option injection from repo-supplied paths
 
 - **Severity**: Low

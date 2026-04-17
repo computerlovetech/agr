@@ -553,3 +553,15 @@ class TestBuildGithubAuthEnv:
             key = env["GIT_CONFIG_KEY_0"]
             assert "github.com" in key
             assert key.startswith("http.https://github.com/")
+
+    def test_ignores_malformed_git_config_count(self):
+        """A non-integer GIT_CONFIG_COUNT must not raise ValueError; fall back to 0."""
+        with patch.dict(
+            os.environ,
+            {"GITHUB_TOKEN": "tok", "GIT_CONFIG_COUNT": "notanumber"},
+            clear=True,
+        ):
+            env = build_github_auth_env()
+            assert env["GIT_CONFIG_COUNT"] == "1"
+            assert "GIT_CONFIG_KEY_0" in env
+            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer tok"
