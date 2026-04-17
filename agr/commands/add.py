@@ -267,7 +267,7 @@ def _install_package(
     installed_paths: list[str] = []
     first_result: InstallResult | None = None
     lock_entries: list[tuple[str, LockedEntry]] = [
-        ("package", entry) for entry in expanded.package_entries
+        (DEPENDENCY_TYPE_PACKAGE, entry) for entry in expanded.package_entries
     ]
     for dep in expanded.dependencies:
         sub_handle = dep.to_parsed_handle(config.default_owner)

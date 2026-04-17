@@ -6,7 +6,12 @@ from pathlib import Path
 
 from agr.commands import CommandResult
 from agr.commands._tool_helpers import load_existing_config, save_and_summarize_results
-from agr.config import Dependency
+from agr.config import (
+    DEPENDENCY_TYPE_PACKAGE,
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_SKILL,
+    Dependency,
+)
 from agr.commands.migrations import run_tool_migrations
 from agr.console import get_console, print_error
 from agr.exceptions import INSTALL_ERROR_TYPES, format_install_error
@@ -76,8 +81,8 @@ def _transitive_leaf_entries_for_packages(
     all_pkg_ids = lockfile.package_closure(package_ids)
     entries: list[tuple[str, LockedEntry]] = []
     for kind, locked_entries in (
-        ("skill", lockfile.skills),
-        ("ralph", lockfile.ralphs),
+        (DEPENDENCY_TYPE_SKILL, lockfile.skills),
+        (DEPENDENCY_TYPE_RALPH, lockfile.ralphs),
     ):
         for entry in locked_entries:
             if entry.parent_ids & all_pkg_ids:
@@ -94,7 +99,7 @@ def _nested_package_entries_for_packages(
         return []
     all_pkg_ids = lockfile.package_closure(package_ids)
     return [
-        ("package", entry)
+        (DEPENDENCY_TYPE_PACKAGE, entry)
         for entry in lockfile.packages
         if entry.identifier not in package_ids and entry.identifier in all_pkg_ids
     ]
@@ -128,7 +133,7 @@ def _update_lockfile_after_remove(
     for candidates, dep_kind in zip(removed_candidates, removed_kinds):
         for identifier in candidates:
             if lockfile.remove_entry(identifier, kind=dep_kind):
-                if dep_kind == "package":
+                if dep_kind == DEPENDENCY_TYPE_PACKAGE:
                     removed_package_ids.add(identifier)
                 break
     if removed_package_ids:
@@ -241,7 +246,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                 source_name = dep.source or config.default_source
 
             is_ralph = dep is not None and dep.is_ralph
-            dep_kind = dep.type if dep is not None else "skill"
+            dep_kind = dep.type if dep is not None else DEPENDENCY_TYPE_SKILL
             fs_handle = dep.to_parsed_handle(config.default_owner) if dep else handle
 
             # Remove from filesystem
@@ -286,7 +291,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                     child_handle = _entry_to_handle(entry, kind, config.default_owner)
                     if _uninstall_from_filesystem(
                         child_handle,
-                        kind == "ralph",
+                        kind == DEPENDENCY_TYPE_RALPH,
                         tools,
                         repo_root,
                         entry.source,
