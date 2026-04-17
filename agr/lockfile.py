@@ -17,7 +17,12 @@ import tomlkit.items
 from tomlkit import TOMLDocument
 from tomlkit.exceptions import TOMLKitError
 
-from agr.config import Dependency
+from agr.config import (
+    DEPENDENCY_TYPE_PACKAGE,
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_SKILL,
+    Dependency,
+)
 from agr.exceptions import ConfigError
 
 LOCKFILE_FILENAME = "agr.lock"
@@ -141,14 +146,18 @@ class Lockfile:
     """The full lockfile state."""
 
     # Valid section keys, matching TOML section names and Dependency.type values.
-    SECTION_KEYS: ClassVar[tuple[str, ...]] = ("skill", "ralph", "package")
+    SECTION_KEYS: ClassVar[tuple[str, ...]] = (
+        DEPENDENCY_TYPE_SKILL,
+        DEPENDENCY_TYPE_RALPH,
+        DEPENDENCY_TYPE_PACKAGE,
+    )
 
     version: int = LOCKFILE_VERSION
     skills: list[LockedEntry] = field(default_factory=list)
     ralphs: list[LockedEntry] = field(default_factory=list)
     packages: list[LockedEntry] = field(default_factory=list)
 
-    def _entries(self, kind: str = "skill") -> list[LockedEntry]:
+    def _entries(self, kind: str = DEPENDENCY_TYPE_SKILL) -> list[LockedEntry]:
         """Return the entries list for a given kind.
 
         Args:
@@ -157,11 +166,11 @@ class Lockfile:
         Raises:
             ValueError: If *kind* is not a recognized section key.
         """
-        if kind == "skill":
+        if kind == DEPENDENCY_TYPE_SKILL:
             return self.skills
-        if kind == "ralph":
+        if kind == DEPENDENCY_TYPE_RALPH:
             return self.ralphs
-        if kind == "package":
+        if kind == DEPENDENCY_TYPE_PACKAGE:
             return self.packages
         raise ValueError(f"Unknown lockfile entry kind: {kind!r}")
 
@@ -175,13 +184,17 @@ class Lockfile:
         yield from self.skills
         yield from self.ralphs
 
-    def update_entry(self, entry: LockedEntry, *, kind: str = "skill") -> None:
+    def update_entry(
+        self, entry: LockedEntry, *, kind: str = DEPENDENCY_TYPE_SKILL
+    ) -> None:
         """Add or replace an entry by identifier."""
         entries = self._entries(kind)
         entries[:] = [e for e in entries if e.identifier != entry.identifier]
         entries.append(entry)
 
-    def remove_entry(self, identifier: str, *, kind: str = "skill") -> bool:
+    def remove_entry(
+        self, identifier: str, *, kind: str = DEPENDENCY_TYPE_SKILL
+    ) -> bool:
         """Remove an entry by identifier.
 
         Returns True if an entry was removed, False if no match was found.
@@ -275,9 +288,9 @@ def load_lockfile(path: Path) -> Lockfile | None:
             f"Unsupported lockfile version {version} (expected {LOCKFILE_VERSION})"
         )
 
-    skills = _parse_locked_entries(doc, "skill")
-    ralphs = _parse_locked_entries(doc, "ralph")
-    packages = _parse_locked_entries(doc, "package")
+    skills = _parse_locked_entries(doc, DEPENDENCY_TYPE_SKILL)
+    ralphs = _parse_locked_entries(doc, DEPENDENCY_TYPE_RALPH)
+    packages = _parse_locked_entries(doc, DEPENDENCY_TYPE_PACKAGE)
 
     return Lockfile(version=version, skills=skills, ralphs=ralphs, packages=packages)
 
