@@ -147,11 +147,11 @@ class LockedEntry:
             value = getattr(self, attr)
             if value is not None:
                 table[key] = value
-        parent_ids = sorted(self.parent_ids)
-        if len(parent_ids) == 1:
-            table["parent"] = parent_ids[0]
-        elif len(parent_ids) > 1:
-            table["parents"] = parent_ids
+        parent, parents = normalize_parent_ids(self.parent_ids)
+        if parent is not None:
+            table["parent"] = parent
+        if parents is not None:
+            table["parents"] = parents
         table[self._TOML_KEY_INSTALLED_NAME] = self.installed_name
         return table
 
