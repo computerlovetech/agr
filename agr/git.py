@@ -472,7 +472,7 @@ def checkout_sparse_paths(repo_dir: Path, rel_paths: list[Path]) -> None:
         _git_cmd(repo_dir, "sparse-checkout", "init", "--cone"),
         "Failed to initialize sparse checkout.",
     )
-    cmd = _git_cmd(repo_dir, "sparse-checkout", "set")
+    cmd = _git_cmd(repo_dir, "sparse-checkout", "set", "--")
     cmd.extend([rel_path.as_posix() for rel_path in rel_paths])
     _run_git_checked(cmd, "Failed to set sparse checkout path.")
     checkout_full(repo_dir)

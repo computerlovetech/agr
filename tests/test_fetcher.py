@@ -21,7 +21,7 @@ from agr.skill_installer import (
     list_remote_repo_skills,
     uninstall_skill,
 )
-from agr.git import get_github_token, downloaded_repo
+from agr.git import get_github_token, downloaded_repo, checkout_sparse_paths
 from agr.handle import ParsedHandle
 from agr.metadata import build_handle_id, read_resource_metadata
 from agr.source import SourceConfig
@@ -888,3 +888,61 @@ class TestIsRalphInstalled:
             is_local=True, name="nonexistent", local_path=tmp_path / "nonexistent"
         )
         assert is_ralph_installed(handle, repo_root) is False
+
+
+class TestCheckoutSparsePaths:
+    """Tests for checkout_sparse_paths git option injection protection."""
+
+    def _make_fake_run(self, calls: list[list[str]]):
+        """Return a fake subprocess.run that records calls and succeeds."""
+
+        def fake_run(cmd, **kwargs):
+            calls.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        return fake_run
+
+    def test_double_dash_separator_present(self, monkeypatch, tmp_path):
+        """'--' appears between 'set' and path arguments."""
+        calls: list[list[str]] = []
+        monkeypatch.setattr(subprocess, "run", self._make_fake_run(calls))
+
+        checkout_sparse_paths(tmp_path, [Path("skills/my-skill")])
+
+        set_call = next(c for c in calls if "sparse-checkout" in c and "set" in c)
+        set_idx = set_call.index("set")
+        assert set_call[set_idx + 1] == "--", (
+            "'--' must immediately follow 'set' to prevent option injection"
+        )
+
+    def test_paths_appear_after_double_dash(self, monkeypatch, tmp_path):
+        """Path arguments are placed after the '--' separator."""
+        calls: list[list[str]] = []
+        monkeypatch.setattr(subprocess, "run", self._make_fake_run(calls))
+
+        checkout_sparse_paths(tmp_path, [Path("skills/foo"), Path("skills/bar")])
+
+        set_call = next(c for c in calls if "sparse-checkout" in c and "set" in c)
+        sep_idx = set_call.index("--")
+        paths_after = set_call[sep_idx + 1 :]
+        assert "skills/foo" in paths_after
+        assert "skills/bar" in paths_after
+
+    def test_dash_prefixed_path_not_interpreted_as_option(self, monkeypatch, tmp_path):
+        """A path starting with '-' is placed after '--', not before it."""
+        calls: list[list[str]] = []
+        monkeypatch.setattr(subprocess, "run", self._make_fake_run(calls))
+
+        checkout_sparse_paths(tmp_path, [Path("-dangerous-path")])
+
+        set_call = next(c for c in calls if "sparse-checkout" in c and "set" in c)
+        sep_idx = set_call.index("--")
+        assert set_call[sep_idx + 1] == "-dangerous-path"
+        assert set_call.index("-dangerous-path") > set_call.index("--")
+
+    def test_raises_when_no_paths(self, tmp_path):
+        """AgrError raised when paths list is empty."""
+        from agr.exceptions import AgrError
+
+        with pytest.raises(AgrError, match="No paths provided"):
+            checkout_sparse_paths(tmp_path, [])

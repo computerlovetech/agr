@@ -1,5 +1,14 @@
 # Security Findings
 
+## SF-014: `git sparse-checkout set` missing `--` separator allows option injection from repo-supplied paths
+
+- **Severity**: Low
+- **Location**: `agr/git.py:checkout_sparse_paths`
+- **Description**: `checkout_sparse_paths` built the `git sparse-checkout set` command by appending path arguments (derived from `git ls-tree` output of the remote repository) without inserting a `--` end-of-options separator. Without `--`, git parses every subsequent argument for option flags; a repository that contains a file or directory whose path starts with `-` (e.g., `-C`, `--cone`, `--no-cone`) would cause git to interpret that path as a command-line option rather than a sparse-checkout pattern. A malicious remote repository could craft such a path to alter git's sparse-checkout behaviour — for example, `--no-cone` would silently switch sparse-checkout from cone mode to non-cone mode, potentially causing all files in the repo to be checked out instead of only the requested skill directory, expanding the attack surface for subsequent install steps (including symlink-following, SF-001 mitigated separately). While GitHub does not allow filenames beginning with `-` in repository paths, git hosting services that do permit them, or on-premise gitea/Gitea instances used as custom sources, could serve such paths. The impact is bounded by what git option names are valid for `sparse-checkout set`, but the absence of `--` is an unsafe pattern that violates the principle of treating data separately from commands.
+- **Resolution**: Fixed. Added `"--"` as the argument immediately after `"set"` in the `_git_cmd` call inside `checkout_sparse_paths`, so the final command is `git -C <repo> sparse-checkout set -- <paths...>`. This ensures all subsequent arguments are treated as paths regardless of their content. Added 4 tests: verifying `--` is present and immediately follows `set`; paths appear after `--`; a `-`-prefixed path is placed after `--` rather than being parsed as an option; and the empty-paths guard still raises `AgrError`.
+- **Status**: Fixed (2026-04-17)
+
+
 ## SF-013: SDK `list_skills` bypassed `_validate_component` checks on repo handle components
 
 - **Severity**: Low
