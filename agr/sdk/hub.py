@@ -256,13 +256,22 @@ def list_skills(repo_handle: str) -> list[SkillInfo]:
         >>> for skill in skills:
         ...     print(f"{skill.name}: {skill.description}")
     """
-    # Parse handle to get owner/repo
+    # Parse and validate handle components through the same validation chain
+    # used by skill_info() and the CLI, which blocks control characters,
+    # YAML-special chars, path traversal components, and the reserved
+    # separator (SF-003, SF-008—SF-012).  The raw split used previously
+    # bypassed _validate_component entirely.
     parts = repo_handle.split("/")
     if len(parts) == 1:
-        owner = parts[0]
+        # Validate owner by constructing a dummy full handle.
+        validated = parse_remote_handle(f"{parts[0]}/placeholder")
+        owner = validated.username or parts[0]
         repo_candidates = iter_repo_candidates(None)
     elif len(parts) == 2:
-        owner, repo = parts
+        # Validate owner and repo via a 3-part dummy handle.
+        validated = parse_remote_handle(f"{parts[0]}/{parts[1]}/placeholder")
+        owner = validated.username or parts[0]
+        repo = validated.repo or parts[1]
         repo_candidates = [(repo, False)]
     else:
         raise InvalidHandleError(f"Invalid repo handle: {repo_handle}")

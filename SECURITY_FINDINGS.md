@@ -1,5 +1,14 @@
 # Security Findings
 
+## SF-013: SDK `list_skills` bypassed `_validate_component` checks on repo handle components
+
+- **Severity**: Low
+- **Location**: `agr/sdk/hub.py:list_skills`
+- **Description**: `list_skills(repo_handle)` split the repo handle on `/` and used the resulting components directly in the GitHub API URL (`_github_tree_url`) without passing them through `_validate_component`. This bypassed all the security checks introduced by SF-003, SF-008, SF-009, SF-010, SF-011, and SF-012: control characters, whitespace, YAML flow/indicator/block-scalar characters, path-traversal components (`..`, `.`), and the reserved `--` separator were all accepted. In contrast, `skill_info()` — the other public SDK function — correctly called `parse_remote_handle()` which routes through `_validate_component`. The impact in the SDK context is limited because (1) the base URL is hardcoded to `https://api.github.com`, preventing host-based SSRF, and (2) httpx rejects URLs with embedded control characters at the HTTP layer. However, crafted inputs with `#` (URL fragment delimiter) could silently redirect the API request to a different GitHub API endpoint — e.g., `list_skills("owner#evil/repo")` would request `https://api.github.com/repos/owner` (fragment truncates the path) instead of raising an error. The inconsistency also means developer code relying on `list_skills` for validated input identity (e.g., caching by handle) could be surprised by inputs that `skill_info` would reject.
+- **Resolution**: Fixed. Replaced the raw `split("/")` + direct-use pattern in `list_skills` with calls to `parse_remote_handle` using a dummy skill-name suffix (`/placeholder`) so that `_validate_component` runs on the owner and repo components before they are interpolated into any URL. For the 1-part case (`"owner"`) the call is `parse_remote_handle("owner/placeholder")`; for the 2-part case (`"owner/repo"`) it is `parse_remote_handle("owner/repo/placeholder")`. The validated `username` and `repo` fields from the resulting `ParsedHandle` are then used instead of the raw split parts. Added 10 tests covering control chars, whitespace, YAML special chars, path traversal in owner and repo positions, and positive regression tests confirming valid handles still proceed to the (mocked) network call.
+- **Status**: Fixed (2026-04-17)
+
+
 ## SF-012: YAML block-scalar and quoted-scalar characters in handle components corrupt SKILL.md frontmatter
 
 - **Severity**: Low
