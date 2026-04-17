@@ -33,6 +33,8 @@ LEGACY_SEPARATOR = ":"
 LOCAL_PATH_PREFIXES = ("./", "../", "/")
 DEFAULT_REPO_NAME = "skills"
 DEFAULT_OWNER = "computerlovetech"
+_YAML_FLOW_CHARS = frozenset("{}[]")
+_YAML_INDICATOR_CHARS = frozenset("#*&!")
 LEGACY_DEFAULT_REPO_NAME = "agent-resources"
 LEGACY_REPO_DEPRECATION_WARNING = (
     "Deprecated: owner-only handles now default to the 'skills' "
@@ -447,7 +449,6 @@ def _validate_no_yaml_flow_chars(ref: str, label: str, value: str) -> None:
     Raises:
         InvalidHandleError: If the value contains ``{``, ``}``, ``[``, or ``]``.
     """
-    _YAML_FLOW_CHARS = frozenset("{}[]")
     for ch in value:
         if ch in _YAML_FLOW_CHARS:
             raise InvalidHandleError(
@@ -485,7 +486,6 @@ def _validate_no_yaml_indicator_chars(ref: str, label: str, value: str) -> None:
     Raises:
         InvalidHandleError: If the value contains ``#``, ``*``, ``&``, or ``!``.
     """
-    _YAML_INDICATOR_CHARS = frozenset("#*&!")
     for ch in value:
         if ch in _YAML_INDICATOR_CHARS:
             raise InvalidHandleError(
