@@ -10,6 +10,8 @@ from pathlib import Path
 
 from agr.exceptions import AgrError
 
+DEFAULT_INSTRUCTION_FILE = "AGENTS.md"
+
 
 @dataclass(frozen=True)
 class ToolConfig:
@@ -37,7 +39,7 @@ class ToolConfig:
     skill_prompt_prefix: str = "/"  # Prefix for invoking a skill
     install_hint: str | None = None  # Help text for installation
     detection_signals: tuple[str, ...] = ()  # Paths that indicate tool presence
-    instruction_file: str = "AGENTS.md"  # Canonical instruction file for this tool
+    instruction_file: str = DEFAULT_INSTRUCTION_FILE  # Canonical instruction file for this tool
 
     def get_skills_dir(self, repo_root: Path) -> Path:
         """Get the skills directory for this tool in a repo."""

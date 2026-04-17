@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from agr.tool import TOOLS
+from agr.tool import DEFAULT_INSTRUCTION_FILE, TOOLS
 
 INSTRUCTION_FILES = tuple(sorted({tool.instruction_file for tool in TOOLS.values()}))
 
@@ -12,7 +12,7 @@ def canonical_instruction_file(tool_name: str) -> str:
     tool = TOOLS.get(tool_name)
     if tool is not None:
         return tool.instruction_file
-    return "AGENTS.md"
+    return DEFAULT_INSTRUCTION_FILE
 
 
 def sync_instruction_files(
