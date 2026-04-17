@@ -61,15 +61,15 @@ def build_skill_command(
         tool_config.cli_interactive_prompt_flag
         or tool_config.cli_interactive_prompt_positional
     )
-    use_exec = tool_config.cli_exec_command and (
-        non_interactive or not has_interactive_prompt
-    )
-    if use_exec:
-        assert tool_config.cli_exec_command is not None
-        cmd = list(tool_config.cli_exec_command)
+    exec_cmd = tool_config.cli_exec_command
+    if exec_cmd and (non_interactive or not has_interactive_prompt):
+        cmd = list(exec_cmd)
     else:
-        assert tool_config.cli_command is not None
-        cmd = [tool_config.cli_command]
+        cli_cmd = tool_config.cli_command
+        if cli_cmd is None:
+            print_error(f"{tool_config.name} has no CLI command configured")
+            raise typer.Exit(1)
+        cmd = [cli_cmd]
     if not non_interactive and tool_config.cli_interactive_prompt_flag:
         cmd.extend([tool_config.cli_interactive_prompt_flag, skill_prompt])
     elif not non_interactive and tool_config.cli_interactive_prompt_positional:
