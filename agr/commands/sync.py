@@ -206,6 +206,27 @@ def _is_forced(
     )
 
 
+def _resolve_tools_needing_install(
+    forced: bool,
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    tools: list[ToolConfig],
+    source_name: str | None,
+    skills_dirs: dict[str, Path] | None = None,
+) -> list[ToolConfig]:
+    """Return tools that still need a given skill installed.
+
+    When *forced* is True, every tool is returned (callers use this to
+    overwrite existing installs).  Otherwise, the per-tool install check
+    in ``filter_tools_needing_install`` determines the subset.
+    """
+    if forced:
+        return list(tools)
+    return filter_tools_needing_install(
+        handle, repo_root, tools, source_name, skills_dirs
+    )
+
+
 def _sync_instructions_if_configured(
     repo_root: Path, config: AgrConfig, tools: list[ToolConfig]
 ) -> None:
@@ -404,12 +425,9 @@ def _sync_one_dependency(
     caller can handle errors per-entry.
     """
     if tools_needing_install is None:
-        if overwrite:
-            tools_needing_install = list(tools)
-        else:
-            tools_needing_install = filter_tools_needing_install(
-                handle, repo_root, tools, source_name, skills_dirs
-            )
+        tools_needing_install = _resolve_tools_needing_install(
+            overwrite, handle, repo_root, tools, source_name, skills_dirs
+        )
     if not tools_needing_install:
         return SyncResult.up_to_date()
 
@@ -580,12 +598,9 @@ def _classify_dependencies(
                 )
             else:
                 # Skills: check per-tool install status.
-                if forced:
-                    tools_needing_install = list(tools)
-                else:
-                    tools_needing_install = filter_tools_needing_install(
-                        handle, repo_root, tools, source_name
-                    )
+                tools_needing_install = _resolve_tools_needing_install(
+                    forced, handle, repo_root, tools, source_name
+                )
 
                 if not tools_needing_install:
                     results[index] = SyncResult.up_to_date()

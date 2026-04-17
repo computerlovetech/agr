@@ -40,7 +40,7 @@ class TestLockedEntry:
 
     def test_from_dict_rejects_local_path_with_parent(self):
         """A local-path entry with a package parent is a tamper signal."""
-        data = {
+        data: dict[str, object] = {
             "path": "/etc/passwd",
             "installed-name": "evil",
             "parent": "attacker/repo/pkg",
@@ -50,7 +50,7 @@ class TestLockedEntry:
 
     def test_from_dict_rejects_local_path_with_parents_list(self):
         """A local-path entry with multiple parents is also rejected."""
-        data = {
+        data: dict[str, object] = {
             "path": "./victim/skill",
             "installed-name": "evil",
             "parents": ["a/b/pkg1", "c/d/pkg2"],
@@ -60,7 +60,10 @@ class TestLockedEntry:
 
     def test_from_dict_allows_local_path_without_parent(self):
         """Direct local-path entries (no parent) remain valid."""
-        data = {"path": "./local/skill", "installed-name": "skill"}
+        data: dict[str, object] = {
+            "path": "./local/skill",
+            "installed-name": "skill",
+        }
         entry = LockedEntry.from_dict(data)
         assert entry.path == "./local/skill"
         assert entry.parent is None
@@ -68,7 +71,7 @@ class TestLockedEntry:
 
     def test_from_dict_allows_remote_handle_with_parent(self):
         """Remote transitive entries (handle + parent) remain valid."""
-        data = {
+        data: dict[str, object] = {
             "handle": "user/repo/skill",
             "source": "github",
             "commit": "a" * 40,
