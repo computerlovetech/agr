@@ -385,11 +385,43 @@ def _validate_no_path_traversal(ref: str, label: str, value: str) -> None:
         )
 
 
+def _validate_no_control_chars(ref: str, label: str, value: str) -> None:
+    """Reject whitespace and control characters in a handle component.
+
+    A handle component is used directly as a directory name and, for
+    skills, as the ``name:`` value written into the installed SKILL.md
+    frontmatter. A newline in the name would close the ``name:`` line
+    and let the attacker inject arbitrary YAML keys (e.g. a forged
+    ``description:``) into the frontmatter — a prompt-injection vector
+    that is particularly effective through transitive package
+    dependencies, where the user never sees the raw handle.
+
+    Legitimate GitHub usernames, repo names, and skill names never
+    contain whitespace or control characters, so rejecting them is safe.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component.
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value contains whitespace (including
+            newlines and tabs) or any ASCII control character.
+    """
+    for ch in value:
+        if ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F:
+            raise InvalidHandleError(
+                f"Invalid handle '{ref}': {label} contains "
+                "whitespace or control characters"
+            )
+
+
 def _validate_component(ref: str, label: str, value: str) -> None:
     """Validate a remote handle component against all safety rules.
 
-    Combines the reserved-separator check and the path-traversal check
-    into a single call so they cannot be accidentally separated.
+    Combines the reserved-separator check, the path-traversal check, and
+    the control-character check into a single call so they cannot be
+    accidentally separated.
 
     Args:
         ref: Original handle string for error messages.
@@ -397,8 +429,10 @@ def _validate_component(ref: str, label: str, value: str) -> None:
         value: The component value to validate.
 
     Raises:
-        InvalidHandleError: If the value contains the separator or is a
-            path traversal component.
+        InvalidHandleError: If the value contains the separator, is a
+            path traversal component, or contains whitespace or control
+            characters.
     """
     _validate_no_separator(ref, label, value)
     _validate_no_path_traversal(ref, label, value)
+    _validate_no_control_chars(ref, label, value)

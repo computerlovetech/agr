@@ -250,6 +250,61 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError, match="empty"):
             parse_handle("/skill", prefer_local=False)
 
+    def test_remote_newline_in_skill_name_rejected(self):
+        """Skill name containing a newline must be rejected.
+
+        Without this check, a malicious transitive package dependency
+        could inject YAML frontmatter via the skill name, which is
+        written into the installed SKILL.md by update_skill_md_name.
+        """
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill\ndescription: evil")
+
+    def test_remote_newline_in_repo_rejected(self):
+        """Repo name containing a newline must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo\nx/skill")
+
+    def test_remote_newline_in_username_rejected(self):
+        """Username containing a newline must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user\nx/skill", prefer_local=False)
+
+    def test_remote_tab_in_skill_name_rejected(self):
+        """Skill name containing a tab must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill\tname")
+
+    def test_remote_space_in_skill_name_rejected(self):
+        """Skill name containing an internal space must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill name")
+
+    def test_remote_carriage_return_in_component_rejected(self):
+        """Component with carriage return must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill\rname")
+
+    def test_remote_null_byte_in_component_rejected(self):
+        """Component with null byte must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill\x00name")
+
+    def test_remote_del_character_in_component_rejected(self):
+        """Component with DEL (0x7F) control char must be rejected."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("user/repo/skill\x7fname")
+
+    def test_remote_hyphen_name_still_allowed(self):
+        """Legitimate hyphenated names remain valid."""
+        h = parse_handle("user/repo/my-skill-name")
+        assert h.name == "my-skill-name"
+
+    def test_remote_default_owner_rejects_control_char_in_name(self):
+        """One-part handle with default_owner rejects control chars in skill name."""
+        with pytest.raises(InvalidHandleError, match="whitespace or control"):
+            parse_handle("skill\nx", prefer_local=False, default_owner="acme")
+
 
 class TestParsedHandle:
     """Tests for ParsedHandle methods."""
