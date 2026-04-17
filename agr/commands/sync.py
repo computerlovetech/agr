@@ -56,6 +56,8 @@ from agr.instructions import (
 )
 from agr.tool import ToolConfig
 
+_EMPTY_EXPANDED: ExpandedDeps = ExpandedDeps()
+
 
 class SyncStatus(Enum):
     """Status of a single dependency sync operation."""
@@ -804,20 +806,16 @@ def _run_install_pipeline(
     )
 
     # --- Phase 3: Update lockfile ---
-    package_entries = expanded.package_entries if expanded else []
-    parents = expanded.parents if expanded else {}
-    parent_sets = expanded.parent_sets if expanded else {}
     new_lockfile = _build_lockfile_from_results(
         config,
         results,
         existing_lockfile,
-        package_entries=package_entries,
-        parents=parents,
-        parent_sets=parent_sets,
+        expanded=expanded,
     )
     save_lockfile(new_lockfile, lockfile_path)
 
     # --- Phase 4: Report ---
+    parents = expanded.parents if expanded else {}
     labeled_results = []
     for index, dep in enumerate(config.dependencies):
         label = dep.identifier
@@ -1000,9 +998,7 @@ def _build_lockfile_from_results(
     results: list[SyncResult],
     existing_lockfile: Lockfile | None,
     *,
-    package_entries: list[LockedEntry] | None = None,
-    parents: dict[str, str] | None = None,
-    parent_sets: dict[str, set[str]] | None = None,
+    expanded: ExpandedDeps | None = None,
 ) -> Lockfile:
     """Build a new lockfile from sync results.
 
@@ -1010,16 +1006,13 @@ def _build_lockfile_from_results(
     For up-to-date entries, carries forward existing lockfile entries.
     """
     lockfile = Lockfile()
-    parent_map = parents or {}
-    parent_set_map = parent_sets or {}
+    exp = expanded or _EMPTY_EXPANDED
 
     for index, dep in enumerate(config.dependencies):
         result = results[index]
         dep_kind = dep.type
         name = dep.installed_name
-        parent_ids = parent_set_map.get(dep.identifier)
-        parent = parent_map.get(dep.identifier)
-        current_parent_ids = parent_ids or ({parent} if parent else set())
+        current_parent_ids = exp.parent_ids_for(dep.identifier)
         lock_parent, lock_parents = normalize_parent_ids(current_parent_ids)
 
         # Packages are content-less bundles — skip them in skill/ralph lists.
@@ -1089,7 +1082,7 @@ def _build_lockfile_from_results(
         )
 
     # Append package entries from expansion.
-    for entry in package_entries or []:
+    for entry in exp.package_entries:
         lockfile.update_entry(entry, kind=DEPENDENCY_TYPE_PACKAGE)
 
     return lockfile

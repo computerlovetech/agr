@@ -838,17 +838,21 @@ class TestBuildLockfileFromResults:
                 source_name="github",
             ),
         ]
-        parents = {
-            "owner/repo/alpha": "owner/repo/bundle",
-            "owner/repo/beta": "owner/repo/bundle",
-        }
-        parent_sets = {
-            "owner/repo/alpha": {"owner/repo/bundle", "owner/repo/other"},
-            "owner/repo/beta": {"owner/repo/bundle"},
-        }
+        from agr.package import ExpandedDeps
+
+        expanded = ExpandedDeps(
+            parents={
+                "owner/repo/alpha": "owner/repo/bundle",
+                "owner/repo/beta": "owner/repo/bundle",
+            },
+            parent_sets={
+                "owner/repo/alpha": {"owner/repo/bundle", "owner/repo/other"},
+                "owner/repo/beta": {"owner/repo/bundle"},
+            },
+        )
 
         lockfile = _build_lockfile_from_results(
-            config, results, None, parents=parents, parent_sets=parent_sets
+            config, results, None, expanded=expanded
         )
 
         assert len(lockfile.skills) == 2
@@ -982,10 +986,8 @@ class TestBuildLockfileFromResults:
         # S is already installed — up to date, not freshly installed.
         results = [SyncResult.up_to_date()]
 
-        # No parents dict — S is direct now, not transitive.
-        lockfile = _build_lockfile_from_results(
-            config, results, existing_lockfile, parents={}
-        )
+        # No expanded deps — S is direct now, not transitive.
+        lockfile = _build_lockfile_from_results(config, results, existing_lockfile)
 
         assert len(lockfile.skills) == 1
         entry = lockfile.skills[0]

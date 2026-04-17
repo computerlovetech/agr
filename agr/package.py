@@ -54,6 +54,19 @@ class ExpandedDeps:
     parent_sets: dict[str, set[str]] = field(default_factory=dict)
     package_entries: list[LockedEntry] = field(default_factory=list)
 
+    def parent_ids_for(self, identifier: str) -> set[str]:
+        """Return the set of parent package IDs for a dep identifier.
+
+        Uses ``parent_sets`` when populated, falling back to the single
+        parent in ``parents``.  Direct (non-transitive) deps return an
+        empty set.
+        """
+        parent_set = self.parent_sets.get(identifier)
+        if parent_set:
+            return set(parent_set)
+        parent_id = self.parents.get(identifier)
+        return {parent_id} if parent_id else set()
+
 
 @dataclass
 class _QueueItem:

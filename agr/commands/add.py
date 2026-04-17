@@ -298,11 +298,7 @@ def _install_package(
             )
         if first_result is None:
             first_result = result
-        parent_id = expanded.parents.get(dep.identifier)
-        parent, parents = normalize_parent_ids(
-            expanded.parent_sets.get(dep.identifier)
-            or ({parent_id} if parent_id else None)
-        )
+        parent, parents = normalize_parent_ids(expanded.parent_ids_for(dep.identifier))
         if dep.is_local:
             lock_entries.append(
                 (
