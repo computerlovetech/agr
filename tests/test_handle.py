@@ -340,6 +340,42 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError, match="YAML flow"):
             parse_handle("{skill}", prefer_local=False, default_owner="acme")
 
+    # SF-011: YAML indicator characters
+    def test_yaml_comment_hash_in_skill_name_rejected(self):
+        """# in skill name would produce 'name: #foo' where YAML treats #foo as a comment."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("user/repo/#skill", prefer_local=False)
+
+    def test_yaml_comment_hash_in_username_rejected(self):
+        """# in username position blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("#user/repo/skill", prefer_local=False)
+
+    def test_yaml_comment_hash_in_repo_rejected(self):
+        """# in repo position blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("user/#repo/skill", prefer_local=False)
+
+    def test_yaml_alias_star_in_skill_name_rejected(self):
+        """* in skill name would cause a YAML alias parse error."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("user/repo/*alias", prefer_local=False)
+
+    def test_yaml_anchor_ampersand_in_skill_name_rejected(self):
+        """& in skill name would set an anchor on a null scalar."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("user/repo/&anchor", prefer_local=False)
+
+    def test_yaml_tag_exclamation_in_skill_name_rejected(self):
+        """! in skill name would apply a YAML type tag to the value."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("user/repo/!null", prefer_local=False)
+
+    def test_yaml_hash_in_default_owner_one_part_rejected(self):
+        """One-part handle with #name rejected via default_owner path."""
+        with pytest.raises(InvalidHandleError, match="YAML indicator"):
+            parse_handle("#skill", prefer_local=False, default_owner="acme")
+
     def test_legitimate_names_with_underscores_still_allowed(self):
         """Names with underscores and dots remain valid (common in GitHub repos)."""
         h = parse_handle("user/my_repo/my-skill", prefer_local=False)
