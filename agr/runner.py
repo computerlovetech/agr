@@ -11,11 +11,9 @@ import shutil
 import subprocess
 import sys
 
-import typer
-
 from pathlib import Path
 
-from agr.console import get_console, print_error
+from agr.console import error_exit
 from agr.tool import ToolConfig
 
 
@@ -38,16 +36,11 @@ def build_skill_prompt(
 
 def check_tool_cli(tool_config: ToolConfig) -> None:
     """Verify the tool's CLI is available, exiting with a clear error otherwise."""
-    console = get_console()
     cli_cmd = tool_config.cli_command
     if not cli_cmd:
-        print_error(f"{tool_config.name} has no CLI command configured")
-        raise typer.Exit(1)
+        error_exit(f"{tool_config.name} has no CLI command configured")
     if shutil.which(cli_cmd) is None:
-        print_error(f"{cli_cmd} CLI not found.")
-        if tool_config.install_hint:
-            console.print(f"[dim]{tool_config.install_hint}[/dim]")
-        raise typer.Exit(1)
+        error_exit(f"{cli_cmd} CLI not found.", hint=tool_config.install_hint)
 
 
 def build_skill_command(
@@ -67,8 +60,7 @@ def build_skill_command(
     else:
         cli_cmd = tool_config.cli_command
         if cli_cmd is None:
-            print_error(f"{tool_config.name} has no CLI command configured")
-            raise typer.Exit(1)
+            error_exit(f"{tool_config.name} has no CLI command configured")
         cmd = [cli_cmd]
     if not non_interactive and tool_config.cli_interactive_prompt_flag:
         cmd.extend([tool_config.cli_interactive_prompt_flag, skill_prompt])
