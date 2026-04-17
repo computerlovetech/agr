@@ -419,12 +419,44 @@ def _validate_no_control_chars(ref: str, label: str, value: str) -> None:
         )
 
 
+def _validate_no_yaml_flow_chars(ref: str, label: str, value: str) -> None:
+    """Reject YAML flow-structure characters in a handle component.
+
+    The characters ``{``, ``}``, ``[``, and ``]`` are YAML flow-collection
+    delimiters.  When a skill name containing them is written into the
+    installed SKILL.md frontmatter by ``update_skill_md_name``, the YAML
+    parser sees a flow mapping or sequence as the ``name`` field's value
+    instead of a plain string.  This corrupts the frontmatter type (e.g.
+    ``name: {key}`` is an invalid flow mapping; ``name: [item]`` is a list)
+    and can cause YAML parse errors or ``TypeError`` crashes in agents that
+    expect ``name`` to be a string.
+
+    Legitimate GitHub usernames, repository names, and skill directory names
+    never contain these characters, so rejecting them is safe.
+
+    Args:
+        ref: Original handle string for error messages.
+        label: Human-readable label for the component.
+        value: The component value to validate.
+
+    Raises:
+        InvalidHandleError: If the value contains ``{``, ``}``, ``[``, or ``]``.
+    """
+    _YAML_FLOW_CHARS = frozenset("{}[]")
+    for ch in value:
+        if ch in _YAML_FLOW_CHARS:
+            raise InvalidHandleError(
+                f"Invalid handle '{ref}': {label} contains "
+                "YAML flow-structure characters ({, }, [, ])"
+            )
+
+
 def _validate_component(ref: str, label: str, value: str) -> None:
     """Validate a remote handle component against all safety rules.
 
-    Combines the reserved-separator check, the path-traversal check, and
-    the control-character check into a single call so they cannot be
-    accidentally separated.
+    Combines the reserved-separator check, the path-traversal check,
+    the control-character check, and the YAML-flow-character check into
+    a single call so they cannot be accidentally separated.
 
     Args:
         ref: Original handle string for error messages.
@@ -433,9 +465,10 @@ def _validate_component(ref: str, label: str, value: str) -> None:
 
     Raises:
         InvalidHandleError: If the value contains the separator, is a
-            path traversal component, or contains whitespace or control
-            characters.
+            path traversal component, contains whitespace or control
+            characters, or contains YAML flow-structure characters.
     """
     _validate_no_separator(ref, label, value)
     _validate_no_path_traversal(ref, label, value)
     _validate_no_control_chars(ref, label, value)
+    _validate_no_yaml_flow_chars(ref, label, value)

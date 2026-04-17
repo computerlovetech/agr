@@ -305,6 +305,48 @@ class TestParseHandle:
         with pytest.raises(InvalidHandleError, match="whitespace or control"):
             parse_handle("skill\nx", prefer_local=False, default_owner="acme")
 
+    def test_yaml_flow_open_brace_in_skill_name_rejected(self):
+        """{} in skill name would produce a YAML flow mapping for the name field."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("user/repo/{skill}", prefer_local=False)
+
+    def test_yaml_flow_close_brace_in_skill_name_rejected(self):
+        """Closing brace alone also rejected."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("user/repo/skill}", prefer_local=False)
+
+    def test_yaml_flow_open_bracket_in_skill_name_rejected(self):
+        """[ in skill name would produce a YAML flow sequence for the name field."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("user/repo/[skill]", prefer_local=False)
+
+    def test_yaml_flow_close_bracket_in_skill_name_rejected(self):
+        """Closing bracket alone also rejected."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("user/repo/skill]", prefer_local=False)
+
+    def test_yaml_flow_brace_in_username_rejected(self):
+        """{} in username position also blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("{user}/repo/skill", prefer_local=False)
+
+    def test_yaml_flow_bracket_in_repo_rejected(self):
+        """[] in repo position also blocked."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("user/[repo]/skill", prefer_local=False)
+
+    def test_yaml_flow_chars_in_default_owner_one_part_rejected(self):
+        """One-part handle with {name} rejected via default_owner path."""
+        with pytest.raises(InvalidHandleError, match="YAML flow"):
+            parse_handle("{skill}", prefer_local=False, default_owner="acme")
+
+    def test_legitimate_names_with_underscores_still_allowed(self):
+        """Names with underscores and dots remain valid (common in GitHub repos)."""
+        h = parse_handle("user/my_repo/my-skill", prefer_local=False)
+        assert h.username == "user"
+        assert h.repo == "my_repo"
+        assert h.name == "my-skill"
+
 
 class TestParsedHandle:
     """Tests for ParsedHandle methods."""

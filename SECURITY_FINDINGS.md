@@ -72,6 +72,15 @@
 - **Status**: Fixed (2026-04-17)
 
 
+## SF-010: YAML flow-structure characters in handle components corrupt SKILL.md frontmatter value type
+
+- **Severity**: Low
+- **Location**: `agr/handle.py:_validate_component`, `agr/skill.py:update_skill_md_name`
+- **Description**: `_validate_component` rejected `--`, `.`/`..`, whitespace, and control characters, but allowed YAML flow-collection delimiters: `{`, `}`, `[`, `]`. A git repository can contain a skill directory named with these characters (e.g., `{skill}` or `[item]`). When agr installs such a skill, `update_skill_md_name` writes the handle's skill name directly into the installed SKILL.md frontmatter as `name: {skill}` or `name: [item]`. In YAML, `{skill}` is an invalid flow mapping (the `skill` key has no value, causing a parse error in strict parsers), while `[item]` is a valid flow sequence — meaning the `name` field's type becomes a list instead of a string. This corrupts the frontmatter in a way that can: (1) cause YAML parse errors in strict agents, (2) produce `TypeError` crashes in agents that assume `name` is always a string, and (3) mislead skill-routing logic that matches against the `name` field. While these characters cannot inject new top-level YAML keys (line breaks required — blocked by SF-008) or enable YAML deserialization exploits (complex payloads require spaces — also blocked by SF-008), they do corrupt the existing `name` field's type. The attack is particularly effective through transitive package dependencies: a malicious remote package can include a sub-dependency whose directory name contains `{` or `[`, and the user never sees the raw handle. Legitimate GitHub usernames, repository names, and skill directory names never contain these characters, so rejecting them is safe.
+- **Resolution**: Fixed. Added `_validate_no_yaml_flow_chars()` helper in `handle.py` that rejects any component containing `{`, `}`, `[`, or `]`. Wired into `_validate_component` alongside the existing checks, so all remote handle parsing branches apply the new check. Added 9 tests covering brace/bracket characters in each component position (username, repo, skill name, one-part with default_owner) and a positive test confirming underscore/hyphen names still parse.
+- **Status**: Fixed (2026-04-17)
+
+
 ## SF-009: `default_repo` config field accepts control chars and `.`/`..`, embedding them in git URLs
 
 - **Severity**: Low
