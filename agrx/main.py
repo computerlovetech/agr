@@ -4,8 +4,7 @@ import shutil
 import signal
 import sys
 import uuid
-import contextlib
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from collections.abc import Generator
 from typing import Annotated
@@ -50,7 +49,7 @@ def _get_default_tool() -> str:
 def _cleanup_skill(skill_path: Path) -> None:
     """Clean up a temporary skill."""
     if skill_path.exists():
-        with contextlib.suppress(OSError):
+        with suppress(OSError):
             shutil.rmtree(skill_path)
 
 
