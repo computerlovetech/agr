@@ -824,6 +824,85 @@ class TestGetTools:
         with pytest.raises(ConfigError, match="cannot contain '--'"):
             AgrConfig.load(config_path)
 
+    def test_load_default_repo_with_newline_raises(self, tmp_path):
+        """default_repo containing a newline raises ConfigError.
+
+        A newline in default_repo would be embedded in the git clone URL
+        as a control character, with potential for malformed HTTP requests.
+        """
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo\\nbar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="whitespace or control characters"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_with_internal_space_raises(self, tmp_path):
+        """default_repo containing an internal space raises ConfigError.
+
+        Trailing/leading spaces are stripped, but internal whitespace
+        produces a malformed git URL.
+        """
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo bar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="whitespace or control characters"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_with_tab_raises(self, tmp_path):
+        """default_repo containing a tab raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo\\tbar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="whitespace or control characters"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_dot_raises(self, tmp_path):
+        """default_repo set to '.' raises ConfigError.
+
+        A literal '.' produces a git URL with traversal-like segments
+        such as github.com/owner/..git.
+        """
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "."\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot be '\\.'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_dotdot_raises(self, tmp_path):
+        """default_repo set to '..' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = ".."\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot be '\\.\\.'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_owner_with_newline_raises(self, tmp_path):
+        """default_owner containing a newline raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = "foo\\nbar"\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="whitespace or control characters"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_owner_dot_raises(self, tmp_path):
+        """default_owner set to '.' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = "."\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot be '\\.'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_owner_dotdot_raises(self, tmp_path):
+        """default_owner set to '..' raises ConfigError."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_owner = ".."\ndependencies = []\n')
+        with pytest.raises(ConfigError, match="cannot be '\\.\\.'"):
+            AgrConfig.load(config_path)
+
+    def test_load_default_repo_legitimate_dot_in_name(self, tmp_path):
+        """default_repo with internal dots (e.g. 'foo.bar') is allowed.
+
+        GitHub repo names allow dots (e.g. 'website.github.io'). Only the
+        bare '.' and '..' values are rejected.
+        """
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text('default_repo = "foo.bar"\ndependencies = []\n')
+        config = AgrConfig.load(config_path)
+        assert config.default_repo == "foo.bar"
+
     def test_save_writes_comments(self, tmp_path):
         """Save writes explanatory comments for all config options."""
         config = AgrConfig()

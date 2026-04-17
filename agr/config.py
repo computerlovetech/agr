@@ -84,6 +84,27 @@ def _validate_config_identifier(value: object, key: str, description: str) -> st
             f"got '{result}'. "
             f"Use a plain {description}."
         )
+    # default_repo flows directly into the git clone URL via
+    # source.build_repo_url() without passing through handle parsing,
+    # so any whitespace or control characters here would be embedded in
+    # the URL passed to git/curl. Block them here as defense-in-depth
+    # alongside curl's own URL validation. default_owner is also
+    # validated through _validate_component when used in 1-part handles,
+    # but enforcing the same rule here gives a clearer error at config
+    # load time and protects any future code path that uses the value
+    # outside handle parsing.
+    for ch in result:
+        if ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F:
+            raise ConfigError(
+                f"{key} contains whitespace or control characters: "
+                f"use a plain {description}."
+            )
+    # Reject literal "." and ".." which would produce path-traversal-like
+    # segments in the constructed git URL (e.g. github.com/owner/...git).
+    if result in (".", ".."):
+        raise ConfigError(
+            f"{key} cannot be '{result}': use a plain {description}."
+        )
     return result
 
 
