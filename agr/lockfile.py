@@ -24,6 +24,24 @@ LOCKFILE_FILENAME = "agr.lock"
 LOCKFILE_VERSION = 1
 
 
+def normalize_parent_ids(
+    parent_ids: set[str] | None,
+) -> tuple[str | None, list[str] | None]:
+    """Normalize a set of parent package ids into ``(parent, parents)`` fields.
+
+    Returns ``(None, None)`` for no parents, ``(id, None)`` for exactly one,
+    and ``(None, sorted_ids)`` for multiple — matching the ``LockedEntry``
+    TOML schema where a single parent uses the scalar ``parent`` key and
+    multiple parents use the ``parents`` array.
+    """
+    if not parent_ids:
+        return None, None
+    sorted_ids = sorted(parent_ids)
+    if len(sorted_ids) == 1:
+        return sorted_ids[0], None
+    return None, sorted_ids
+
+
 @dataclass
 class LockedEntry:
     """A single locked dependency entry.

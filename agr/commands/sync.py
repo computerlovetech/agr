@@ -41,6 +41,7 @@ from agr.lockfile import (
     Lockfile,
     build_lockfile_path,
     load_lockfile,
+    normalize_parent_ids,
     save_lockfile,
 )
 from agr.handle import ParsedHandle
@@ -909,15 +910,6 @@ def _dep_from_locked_entry(entry: LockedEntry, kind: str) -> Dependency:
     raise AgrError("Lockfile entry is missing both handle and path")
 
 
-def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
-    if not parent_ids:
-        return None, None
-    sorted_ids = sorted(parent_ids)
-    if len(sorted_ids) == 1:
-        return sorted_ids[0], None
-    return None, sorted_ids
-
-
 def _package_closure(lockfile: Lockfile, package_ids: set[str]) -> set[str]:
     """Return package ids including nested packages whose parent is included."""
     all_pkg_ids = set(package_ids)
@@ -1020,7 +1012,7 @@ def _build_lockfile_from_results(
         parent_ids = parent_set_map.get(dep.identifier)
         parent = parent_map.get(dep.identifier)
         current_parent_ids = parent_ids or ({parent} if parent else set())
-        lock_parent, lock_parents = _parent_fields(current_parent_ids)
+        lock_parent, lock_parents = normalize_parent_ids(current_parent_ids)
 
         # Packages are content-less bundles — skip them in skill/ralph lists.
         if dep.is_package:

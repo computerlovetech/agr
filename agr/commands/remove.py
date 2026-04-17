@@ -18,6 +18,7 @@ from agr.lockfile import (
     LockedEntry,
     build_lockfile_path,
     load_lockfile,
+    normalize_parent_ids,
     save_lockfile,
 )
 from agr.tool import ToolConfig, lookup_skills_dir
@@ -146,15 +147,7 @@ def _update_lockfile_after_remove(
     if removed_package_ids:
         for entry in [*lockfile.packages, *lockfile.skills, *lockfile.ralphs]:
             parent_ids = entry.parent_ids - removed_package_ids
-            if not parent_ids:
-                entry.parent = None
-                entry.parents = None
-            elif len(parent_ids) == 1:
-                entry.parent = next(iter(parent_ids))
-                entry.parents = None
-            else:
-                entry.parent = None
-                entry.parents = sorted(parent_ids)
+            entry.parent, entry.parents = normalize_parent_ids(parent_ids)
     save_lockfile(lockfile, lockfile_path)
 
 

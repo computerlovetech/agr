@@ -31,6 +31,7 @@ from agr.lockfile import (
     Lockfile,
     build_lockfile_path,
     load_lockfile,
+    normalize_parent_ids,
     save_lockfile,
 )
 from agr.ralph import is_valid_ralph_dir
@@ -47,15 +48,6 @@ class AddInstallResult:
     install_result: InstallResult
     dep_type: str
     lock_entries: list[tuple[str, LockedEntry]] | None = None
-
-
-def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
-    if not parent_ids:
-        return None, None
-    sorted_ids = sorted(parent_ids)
-    if len(sorted_ids) == 1:
-        return sorted_ids[0], None
-    return None, sorted_ids
 
 
 def _detect_local_type(source_path: Path) -> str:
@@ -296,7 +288,7 @@ def _install_package(
         if first_result is None:
             first_result = result
         parent_id = expanded.parents.get(dep.identifier)
-        parent, parents = _parent_fields(
+        parent, parents = normalize_parent_ids(
             expanded.parent_sets.get(dep.identifier)
             or ({parent_id} if parent_id else None)
         )

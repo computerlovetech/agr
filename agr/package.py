@@ -19,7 +19,7 @@ from agr.config import (
 )
 from agr.exceptions import ConfigError, PackageConflictError
 from agr.git import downloaded_repo, safe_get_head_commit
-from agr.lockfile import LockedEntry
+from agr.lockfile import LockedEntry, normalize_parent_ids
 from agr.source import SourceResolver
 
 
@@ -110,28 +110,13 @@ def _remote_dep_from_repo_path(
     )
 
 
-def _parent_fields(parent_ids: set[str] | None) -> tuple[str | None, list[str] | None]:
-    """Return lockfile parent fields for one or more parent package ids."""
-    if not parent_ids:
-        return None, None
-    sorted_ids = sorted(parent_ids)
-    if len(sorted_ids) == 1:
-        return sorted_ids[0], None
-    return None, sorted_ids
-
-
-def _apply_parent_ids(entry: LockedEntry, parent_ids: set[str] | None) -> None:
-    """Apply one or more parent package ids to a lockfile entry."""
-    entry.parent, entry.parents = _parent_fields(parent_ids)
-
-
 def _add_package_parent(result: ExpandedDeps, package_id: str, parent_id: str) -> None:
     """Record an additional parent for an already-seen package entry."""
     for entry in result.package_entries:
         if entry.identifier == package_id:
             parent_ids = entry.parent_ids
             parent_ids.add(parent_id)
-            _apply_parent_ids(entry, parent_ids)
+            entry.parent, entry.parents = normalize_parent_ids(parent_ids)
             return
 
 
@@ -231,7 +216,8 @@ def expand_packages(
 
             package_parent_ids = queued_parents.get(identifier)
             if package_parent_ids:
-                _apply_parent_ids(result.package_entries[-1], package_parent_ids)
+                entry = result.package_entries[-1]
+                entry.parent, entry.parents = normalize_parent_ids(package_parent_ids)
 
     return result
 
