@@ -100,6 +100,7 @@ class TestFetchAndInstallRalphRollback:
                     "source_config": type("SC", (), {"name": "github"})(),
                     "is_legacy": False,
                     "commit": "abc123",
+                    "resolved_repo": "skills",
                 },
             )()
             mock_locate.return_value.__exit__ = lambda self, *args: False

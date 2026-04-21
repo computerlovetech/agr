@@ -58,6 +58,11 @@ class InstallResult:
     commit: str | None = None
     content_hash: str | None = None
     source_name: str | None = None
+    # Name of the repository that actually satisfied the install. Surfaces
+    # the choice made by iter_repo_candidates so persist sites (agr.toml,
+    # lockfile, metadata) can record the fully-resolved handle rather
+    # than a shorthand that re-resolves against live defaults.
+    resolved_repo: str | None = None
 
 
 class RemoteDepLocation(NamedTuple):
@@ -68,6 +73,7 @@ class RemoteDepLocation(NamedTuple):
     source_config: SourceConfig
     is_legacy: bool
     commit: str | None = None
+    resolved_repo: str | None = None
 
 
 def copy_resource_to_destination(
@@ -136,6 +142,7 @@ def find_existing_flat_dir(
     repo_root: Path | None,
     source: str | None,
     is_valid_dir: Callable[[Path], bool],
+    default_repo: str | None = None,
 ) -> Path | None:
     """Find an existing installed dependency directory (flat layout).
 
@@ -150,11 +157,14 @@ def find_existing_flat_dir(
         repo_root: Repository root for metadata resolution.
         source: Source name for metadata matching.
         is_valid_dir: Callable to check if a directory is a valid dependency.
+        default_repo: Configured default repo name, forwarded to
+            ``build_handle_ids`` so the ID variants cover a user's
+            custom default repo.
 
     Returns:
         Path to existing directory, or None if not found.
     """
-    handle_ids = build_handle_ids(handle, repo_root, source)
+    handle_ids = build_handle_ids(handle, repo_root, source, default_repo=default_repo)
     name_path = parent_dir / handle.name
     full_path = parent_dir / handle.to_installed_name()
 
@@ -249,6 +259,7 @@ def resolve_flat_destination(
     repo_root: Path | None,
     source: str | None,
     is_valid_dir: Callable[[Path], bool],
+    default_repo: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a dependency (flat layout).
 
@@ -264,12 +275,14 @@ def resolve_flat_destination(
         repo_root: Repository root for metadata resolution.
         source: Source name for metadata matching.
         is_valid_dir: Callable to check if a directory is a valid dependency.
+        default_repo: Configured default repo name, forwarded to the
+            existing-install lookup.
 
     Returns:
         Resolved destination path.
     """
     existing = find_existing_flat_dir(
-        handle, parent_dir, repo_root, source, is_valid_dir
+        handle, parent_dir, repo_root, source, is_valid_dir, default_repo=default_repo
     )
     if existing:
         return existing
@@ -444,6 +457,7 @@ def locate_remote_dep(
                         source_config=source_config,
                         is_legacy=is_legacy,
                         commit=commit,
+                        resolved_repo=repo_name,
                     )
                     return
             except RepoNotFoundError:

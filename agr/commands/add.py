@@ -312,11 +312,12 @@ def _install_package(
                 )
             )
         else:
+            resolved_sub_handle = sub_handle.with_repo(result.resolved_repo)
             lock_entries.append(
                 (
                     dep.type,
                     LockedEntry(
-                        handle=dep.handle,
+                        handle=resolved_sub_handle.to_toml_handle(),
                         source=result.source_name,
                         commit=result.commit,
                         content_hash=result.content_hash,
@@ -362,9 +363,17 @@ def _update_lockfile_for_adds(
                 kind=dep_type,
             )
         else:
+            # Skip repo promotion for packages — install_result here is
+            # a transitive sub-dep's result, not the package's own.
+            if dep_type == DEPENDENCY_TYPE_PACKAGE:
+                toml_handle = handle.to_toml_handle()
+            else:
+                toml_handle = handle.with_repo(
+                    install_result.resolved_repo
+                ).to_toml_handle()
             lockfile.update_entry(
                 LockedEntry(
-                    handle=handle.to_toml_handle(),
+                    handle=toml_handle,
                     source=install_result.source_name,
                     commit=install_result.commit,
                     content_hash=install_result.content_hash,
@@ -444,13 +453,25 @@ def run_add(
                     path_value = str(handle.resolve_local_path())
                 config.add_dependency(Dependency(type=dep_type, path=path_value))
             else:
+                # install_result.resolved_repo holds the repo that satisfied
+                # the skill/ralph lookup. For packages it refers to the
+                # first transitive sub-dep's repo (see _install_package's
+                # first_result), NOT the package's own repo, so promoting
+                # the package handle would write a reference to the wrong
+                # location. Leave packages at whatever the user typed.
+                if dep_type == DEPENDENCY_TYPE_PACKAGE:
+                    toml_handle = handle.to_toml_handle()
+                else:
+                    toml_handle = handle.with_repo(
+                        install_result.resolved_repo
+                    ).to_toml_handle()
                 config.add_dependency(
                     Dependency(
                         type=dep_type,
-                        handle=handle.to_toml_handle(),
+                        handle=toml_handle,
                         source=source,
                     ),
-                    also_matches=[ref],
+                    also_matches=[ref, handle.to_toml_handle()],
                 )
 
             # Track for lockfile update

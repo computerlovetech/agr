@@ -67,10 +67,16 @@ def _find_existing_ralph_dir(
     ralphs_dir: Path,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> Path | None:
     """Find an existing installed ralph directory for this handle."""
     return find_existing_flat_dir(
-        handle, ralphs_dir, repo_root, source, is_valid_ralph_dir
+        handle,
+        ralphs_dir,
+        repo_root,
+        source,
+        is_valid_ralph_dir,
+        default_repo=default_repo,
     )
 
 
@@ -79,10 +85,16 @@ def _resolve_ralph_destination(
     ralphs_dir: Path,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a ralph."""
     return resolve_flat_destination(
-        handle, ralphs_dir, repo_root, source, is_valid_ralph_dir
+        handle,
+        ralphs_dir,
+        repo_root,
+        source,
+        is_valid_ralph_dir,
+        default_repo=default_repo,
     )
 
 
@@ -152,6 +164,7 @@ def install_ralph_from_repo(
     overwrite: bool = False,
     install_source: str | None = None,
     ralph_source: Path | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Install a ralph from a downloaded repository."""
     if ralph_source is None:
@@ -160,7 +173,7 @@ def install_ralph_from_repo(
         raise RalphNotFoundError(ralph_not_found_message(ralph_name))
 
     ralph_dest = _resolve_ralph_destination(
-        handle, ralphs_dir, repo_root, install_source
+        handle, ralphs_dir, repo_root, install_source, default_repo=default_repo
     )
 
     return _copy_ralph_to_destination(
@@ -284,15 +297,17 @@ def fetch_and_install_ralph(
     ):
         if loc.is_legacy:
             warn_legacy_repo()
+        resolved_handle = handle.with_repo(loc.resolved_repo)
         path = install_ralph_from_repo(
             loc.repo_dir,
-            handle.name,
-            handle,
+            resolved_handle.name,
+            resolved_handle,
             ralphs_dir,
             repo_root,
             overwrite,
             install_source=loc.source_config.name,
             ralph_source=loc.source_path,
+            default_repo=default_repo,
         )
         installed[DEPENDENCY_TYPE_RALPH] = path
         content_hash = compute_content_hash(path)
@@ -300,6 +315,7 @@ def fetch_and_install_ralph(
             commit=loc.commit,
             content_hash=content_hash,
             source_name=loc.source_config.name,
+            resolved_repo=loc.resolved_repo,
         )
     return path, install_result
 
@@ -313,12 +329,15 @@ def uninstall_ralph(
     handle: ParsedHandle,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> bool:
     """Uninstall a ralph from the project-level ralphs directory."""
     if repo_root is None:
         return False
     ralphs_dir = get_ralphs_dir(repo_root)
-    ralph_path = _find_existing_ralph_dir(handle, ralphs_dir, repo_root, source)
+    ralph_path = _find_existing_ralph_dir(
+        handle, ralphs_dir, repo_root, source, default_repo=default_repo
+    )
     if not ralph_path:
         return False
     shutil.rmtree(ralph_path)
@@ -329,9 +348,15 @@ def is_ralph_installed(
     handle: ParsedHandle,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> bool:
     """Check if a ralph is installed."""
     if repo_root is None:
         return False
     ralphs_dir = get_ralphs_dir(repo_root)
-    return _find_existing_ralph_dir(handle, ralphs_dir, repo_root, source) is not None
+    return (
+        _find_existing_ralph_dir(
+            handle, ralphs_dir, repo_root, source, default_repo=default_repo
+        )
+        is not None
+    )

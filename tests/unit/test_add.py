@@ -230,3 +230,73 @@ class TestUpdateLockfileForAdds:
         assert lockfile.packages[0].commit == "c" * 40
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].parent == "owner/repo/bundle"
+
+    def test_package_handle_not_rewritten_with_subdep_repo(self, tmp_path):
+        """Package handles must not be promoted using a sub-dep's repo.
+
+        When a package pulls in transitive skills from a different repo,
+        ``install_result.resolved_repo`` holds the sub-dep's repo — NOT the
+        package's own. Applying ``with_repo(resolved_repo)`` to the package
+        handle would write a reference to a repo that doesn't contain the
+        package.
+        """
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text("dependencies = []\n")
+
+        # No lock_entries supplied — triggers the direct-add branch in
+        # _update_lockfile_for_adds where the handle rewrite happens.
+        _update_lockfile_for_adds(
+            [
+                (
+                    # User typed "owner/bundle" (shorthand, repo=None).
+                    ParsedHandle(username="owner", name="bundle"),
+                    "owner/bundle",
+                    # InstallResult carries the first sub-dep's resolved_repo,
+                    # which is "skills" — the sub-dep lives there but the
+                    # package does not.
+                    InstallResult(
+                        commit="c" * 40,
+                        content_hash="sha256:ccc",
+                        source_name="github",
+                        resolved_repo="skills",
+                    ),
+                    "package",
+                    None,
+                )
+            ],
+            config_path,
+        )
+
+        lockfile = load_lockfile(tmp_path / "agr.lock")
+        assert lockfile is not None
+        assert len(lockfile.packages) == 1
+        # Must not be "owner/skills/bundle" (that would be the sub-dep's repo).
+        assert lockfile.packages[0].handle == "owner/bundle"
+
+    def test_skill_handle_rewritten_with_resolved_repo(self, tmp_path):
+        """Direct skill adds persist the 3-part resolved handle."""
+        config_path = tmp_path / "agr.toml"
+        config_path.write_text("dependencies = []\n")
+
+        _update_lockfile_for_adds(
+            [
+                (
+                    ParsedHandle(username="owner", name="my-skill"),
+                    "owner/my-skill",
+                    InstallResult(
+                        commit="c" * 40,
+                        content_hash="sha256:ccc",
+                        source_name="github",
+                        resolved_repo="skills",
+                    ),
+                    "skill",
+                    None,
+                )
+            ],
+            config_path,
+        )
+
+        lockfile = load_lockfile(tmp_path / "agr.lock")
+        assert lockfile is not None
+        assert len(lockfile.skills) == 1
+        assert lockfile.skills[0].handle == "owner/skills/my-skill"

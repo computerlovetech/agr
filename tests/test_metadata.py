@@ -295,9 +295,15 @@ class TestBuildHandleIds:
 
         ids = build_handle_ids(handle, None, source=None)
 
-        assert len(ids) == 2
+        # Primary ID (matches install-time stamp) must come first so lookup
+        # priority doesn't silently regress to a legacy variant.
         assert ids[0] == "remote:user/skill"
-        assert ids[1] == f"remote:{DEFAULT_SOURCE_NAME}:user/skill"
+        # Source dimension: both sourceless and DEFAULT_SOURCE_NAME forms.
+        assert f"remote:{DEFAULT_SOURCE_NAME}:user/skill" in ids
+        # Repo dimension: shorthand is promoted to default + legacy repos
+        # so old installs that stamped the 2-part form stay matchable.
+        assert "remote:user/skills/skill" in ids
+        assert "remote:user/agent-resources/skill" in ids
 
     def test_remote_default_source_includes_no_source_variant(self):
         """Remote handle with source=DEFAULT_SOURCE_NAME also generates sourceless variant."""
@@ -305,28 +311,80 @@ class TestBuildHandleIds:
 
         ids = build_handle_ids(handle, None, source=DEFAULT_SOURCE_NAME)
 
-        assert len(ids) == 2
         assert ids[0] == f"remote:{DEFAULT_SOURCE_NAME}:user/skill"
-        assert ids[1] == "remote:user/skill"
+        assert "remote:user/skill" in ids
 
     def test_remote_custom_source_returns_single_id(self):
-        """Remote handle with a custom source produces exactly one ID."""
+        """Remote handle with a custom source and explicit repo produces a single ID."""
         handle = ParsedHandle(username="user", repo="repo", name="skill")
 
         ids = build_handle_ids(handle, None, source="gitlab")
 
-        assert len(ids) == 1
-        assert ids[0] == "remote:gitlab:user/repo/skill"
+        assert ids == ["remote:gitlab:user/repo/skill"]
 
     def test_three_part_handle_no_source(self):
-        """Three-part remote handle with source=None includes default variant."""
+        """Three-part remote handle with source=None includes default source variant."""
         handle = ParsedHandle(username="user", repo="myrepo", name="skill")
 
         ids = build_handle_ids(handle, None, source=None)
 
-        assert len(ids) == 2
-        assert ids[0] == "remote:user/myrepo/skill"
-        assert ids[1] == f"remote:{DEFAULT_SOURCE_NAME}:user/myrepo/skill"
+        assert ids == [
+            "remote:user/myrepo/skill",
+            f"remote:{DEFAULT_SOURCE_NAME}:user/myrepo/skill",
+        ]
+
+    def test_three_part_default_repo_emits_shorthand_variant(self):
+        """Three-part handle with a default-candidate repo also emits 2-part.
+
+        After sync rewrites agr.toml from ``owner/name`` to ``owner/skills/name``,
+        lookups of the 3-part handle must still match metadata stamped by
+        pre-fix installs with the 2-part form. Without the shorthand variant
+        in the ID set, sync would trigger a spurious reinstall.
+        """
+        handle = ParsedHandle(username="user", repo="skills", name="skill")
+
+        ids = build_handle_ids(handle, None, source=None)
+
+        assert ids[0] == "remote:user/skills/skill"
+        assert "remote:user/skill" in ids
+
+    def test_three_part_legacy_repo_emits_shorthand_variant(self):
+        """Same shorthand-back-off for the legacy ``agent-resources`` repo."""
+        handle = ParsedHandle(username="user", repo="agent-resources", name="skill")
+
+        ids = build_handle_ids(handle, None, source=None)
+
+        assert ids[0] == "remote:user/agent-resources/skill"
+        assert "remote:user/skill" in ids
+
+    def test_three_part_custom_default_repo_emits_shorthand_variant(self):
+        """Custom ``default_repo`` participates in the shorthand back-off.
+
+        When a user configures ``default_repo = "my-org-skills"``, the
+        3-part handle ``owner/my-org-skills/skill`` must also emit the
+        2-part variant ``owner/skill`` so pre-fix installs match without
+        a spurious reinstall on the first post-migration sync.
+        """
+        handle = ParsedHandle(username="user", repo="my-org-skills", name="skill")
+
+        ids = build_handle_ids(handle, None, source=None, default_repo="my-org-skills")
+
+        assert ids[0] == "remote:user/my-org-skills/skill"
+        assert "remote:user/skill" in ids
+
+    def test_three_part_nondefault_repo_does_not_emit_shorthand(self):
+        """Explicit non-default repos don't emit a shorthand variant.
+
+        ``owner/my-org-skills/name`` and ``owner/name`` are meaningfully
+        different references — stripping the repo would cross-match unrelated
+        skills.
+        """
+        handle = ParsedHandle(username="user", repo="my-org-skills", name="skill")
+
+        ids = build_handle_ids(handle, None, source=None)
+
+        assert "remote:user/my-org-skills/skill" in ids
+        assert "remote:user/skill" not in ids
 
     def test_three_part_handle_default_source(self):
         """Three-part remote handle with DEFAULT_SOURCE_NAME includes sourceless variant."""
@@ -334,9 +392,10 @@ class TestBuildHandleIds:
 
         ids = build_handle_ids(handle, None, source=DEFAULT_SOURCE_NAME)
 
-        assert len(ids) == 2
-        assert ids[0] == f"remote:{DEFAULT_SOURCE_NAME}:user/myrepo/skill"
-        assert ids[1] == "remote:user/myrepo/skill"
+        assert ids == [
+            f"remote:{DEFAULT_SOURCE_NAME}:user/myrepo/skill",
+            "remote:user/myrepo/skill",
+        ]
 
 
 class TestStampResourceMetadata:

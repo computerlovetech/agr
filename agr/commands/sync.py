@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
+
+import tomlkit
 
 from agr.commands._tool_helpers import load_existing_config, print_missing_config_hint
 from agr.commands.migrations import (
@@ -23,7 +27,12 @@ from agr.config import (
 )
 from agr.package import ExpandedDeps, detect_conflicts, expand_packages
 from agr.console import error_exit, get_console, print_error
-from agr.exceptions import INSTALL_ERROR_TYPES, AgrError, format_install_error
+from agr.exceptions import (
+    INSTALL_ERROR_TYPES,
+    AgrError,
+    InvalidHandleError,
+    format_install_error,
+)
 from agr._install_common import InstallResult
 from agr.ralph_installer import (
     fetch_and_install_ralph,
@@ -47,7 +56,7 @@ from agr.lockfile import (
     normalize_parent_ids,
     save_lockfile,
 )
-from agr.handle import ParsedHandle
+from agr.handle import ParsedHandle, parse_remote_handle
 from agr.metadata import compute_content_hash
 from agr.source import SourceResolver
 from agr.instructions import (
@@ -215,6 +224,7 @@ def _resolve_tools_needing_install(
     tools: list[ToolConfig],
     source_name: str | None,
     skills_dirs: dict[str, Path] | None = None,
+    default_repo: str | None = None,
 ) -> list[ToolConfig]:
     """Return tools that still need a given skill installed.
 
@@ -225,7 +235,7 @@ def _resolve_tools_needing_install(
     if forced:
         return list(tools)
     return filter_tools_needing_install(
-        handle, repo_root, tools, source_name, skills_dirs
+        handle, repo_root, tools, source_name, skills_dirs, default_repo=default_repo
     )
 
 
@@ -352,6 +362,7 @@ def _sync_batched_repo_entries(
                         source_name,
                         commit=commit,
                         overwrite=entry.overwrite,
+                        default_repo=default_repo,
                     )
         except INSTALL_ERROR_TYPES as e:
             # If the repo-level operation fails (clone, checkout), mark
@@ -370,6 +381,7 @@ def _install_one_from_repo(
     source_name: str,
     commit: str | None = None,
     overwrite: bool = False,
+    default_repo: str | None = None,
 ) -> None:
     """Install a single skill from an already-downloaded repo."""
     handle = entry.handle
@@ -397,6 +409,7 @@ def _install_one_from_repo(
             overwrite=overwrite,
             install_source=source_name,
             skill_source=skill_source,
+            default_repo=default_repo,
         )
         first_path = next(iter(installed_paths.values()), None)
         content_hash = compute_content_hash(first_path) if first_path else None
@@ -428,7 +441,13 @@ def _sync_one_dependency(
     """
     if tools_needing_install is None:
         tools_needing_install = _resolve_tools_needing_install(
-            overwrite, handle, repo_root, tools, source_name, skills_dirs
+            overwrite,
+            handle,
+            repo_root,
+            tools,
+            source_name,
+            skills_dirs,
+            default_repo=default_repo,
         )
     if not tools_needing_install:
         return SyncResult.up_to_date()
@@ -587,7 +606,9 @@ def _classify_dependencies(
 
             if dep.is_ralph:
                 # Ralphs are tool-agnostic: check project-level ralphs dir.
-                if not forced and is_ralph_installed(handle, repo_root, source_name):
+                if not forced and is_ralph_installed(
+                    handle, repo_root, source_name, default_repo=config.default_repo
+                ):
                     results[index] = SyncResult.up_to_date()
                     continue
                 pending_ralph.append(
@@ -601,7 +622,12 @@ def _classify_dependencies(
             else:
                 # Skills: check per-tool install status.
                 tools_needing_install = _resolve_tools_needing_install(
-                    forced, handle, repo_root, tools, source_name
+                    forced,
+                    handle,
+                    repo_root,
+                    tools,
+                    source_name,
+                    default_repo=config.default_repo,
                 )
 
                 if not tools_needing_install:
@@ -709,6 +735,7 @@ def run_sync(
         tools,
         resolver,
         existing_lockfile,
+        config_path=config_path,
     )
 
 
@@ -722,8 +749,14 @@ def _run_install_pipeline(
     *,
     force_all: bool = False,
     force_identifiers: set[str] | None = None,
+    config_path: Path | None = None,
 ) -> None:
     """Shared by `run_sync` and `run_upgrade`: classify → install → lockfile → report."""
+    # Snapshot the user-written (pre-expansion) deps before package expansion
+    # mutates ``config.dependencies``. The agr.toml rewrite in phase 3b only
+    # touches entries the user wrote — transitive deps live in the lockfile.
+    direct_dep_ids = {d.identifier for d in config.dependencies}
+
     # --- Phase 0: Expand packages into flat deps ---
     expanded: ExpandedDeps | None = None
     pkg_deps = [d for d in config.dependencies if d.is_package]
@@ -805,7 +838,24 @@ def _run_install_pipeline(
         config.default_repo,
     )
 
-    # --- Phase 3: Update lockfile ---
+    # --- Phase 3: Rewrite shorthand handles in agr.toml ---
+    # Done before saving the lockfile so the two files stay consistent: if
+    # rewriting fails, we leave the lockfile untouched rather than pinning
+    # resolved handles the config still refers to by their shorthand form.
+    # Skipped on any per-dep error so a user who inspects the file after a
+    # failed sync doesn't find their handles silently rewritten.
+    if config_path is not None and not any(
+        r.status == SyncStatus.ERROR for r in results
+    ):
+        resolved_repos = _collect_resolved_repos(
+            direct_dep_ids, config.dependencies, results
+        )
+        if resolved_repos:
+            _rewrite_shorthand_handles_in_config(
+                config_path, resolved_repos, config.default_owner
+            )
+
+    # --- Phase 3b: Update lockfile ---
     new_lockfile = _build_lockfile_from_results(
         config,
         results,
@@ -848,11 +898,17 @@ def _sync_dep_from_lockfile(
     tools_needing_install: list[ToolConfig] = []
 
     if is_ralph_dep:
-        if is_ralph_installed(handle, repo_root, source_name):
+        if is_ralph_installed(
+            handle, repo_root, source_name, default_repo=config.default_repo
+        ):
             return SyncResult.up_to_date()
     else:
         tools_needing_install = filter_tools_needing_install(
-            handle, repo_root, tools, source_name
+            handle,
+            repo_root,
+            tools,
+            source_name,
+            default_repo=config.default_repo,
         )
         if not tools_needing_install:
             return SyncResult.up_to_date()
@@ -903,6 +959,7 @@ def _sync_dep_from_lockfile(
                 repo_root,
                 overwrite=False,
                 install_source=source_name,
+                default_repo=config.default_repo,
             )
         else:
             install_skill_from_repo_to_tools(
@@ -913,6 +970,7 @@ def _sync_dep_from_lockfile(
                 repo_root,
                 overwrite=False,
                 install_source=source_name,
+                default_repo=config.default_repo,
             )
     return SyncResult.installed()
 
@@ -993,6 +1051,146 @@ def _sync_from_lockfile(
     _print_results_and_summary(results)
 
 
+def _resolved_handle_for_dep(
+    dep: Dependency,
+    result: SyncResult,
+    default_owner: str | None,
+) -> str | None:
+    """Return the fully-resolved handle string for a freshly-installed remote dep.
+
+    Falls back to ``dep.handle`` when there is no resolved_repo to promote
+    (e.g. the dep already specified a repo, or the install result didn't
+    carry one through) or when the handle can't be re-parsed (so a
+    malformed entry doesn't take down the lockfile build).
+    """
+    if dep.handle is None:
+        return None
+    resolved_repo = result.install.resolved_repo if result.install else None
+    if not resolved_repo:
+        return dep.handle
+    # 1-part shorthands like ``handle = "my-skill"`` use ``default_owner`` for
+    # resolution but the user explicitly chose the bare form — don't promote
+    # them to the fully-qualified 3-part string. 2-part handles are the only
+    # ones we rewrite.
+    if "/" not in dep.handle:
+        return dep.handle
+    try:
+        parsed = parse_remote_handle(dep.handle, default_owner=default_owner)
+    except InvalidHandleError:
+        return dep.handle
+    if parsed.repo is not None:
+        return dep.handle
+    return parsed.with_repo(resolved_repo).to_toml_handle()
+
+
+def _collect_resolved_repos(
+    direct_dep_ids: set[str],
+    deps: list[Dependency],
+    results: list[SyncResult],
+) -> dict[str, str]:
+    """Build ``{dep_identifier: resolved_repo}`` for direct-dep rewrites.
+
+    Restricts to identifiers that appear in the user-written (pre-package-
+    expansion) deps, so a transitive dep resolved during sync can't shadow
+    or rewrite an unrelated direct entry with the same identifier.
+    """
+    resolved: dict[str, str] = {}
+    for dep, result in zip(deps, results):
+        if dep.identifier not in direct_dep_ids:
+            continue
+        if dep.is_local or dep.is_package:
+            continue
+        if result.install is None or result.install.resolved_repo is None:
+            continue
+        resolved[dep.identifier] = result.install.resolved_repo
+    return resolved
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Write *content* to *path* via a same-directory temp file + rename.
+
+    The rename is atomic on POSIX, so readers never see a partially-written
+    file. Keeps the temp file in the same directory so the rename stays on
+    one filesystem (cross-device renames fall back to copy + unlink, which
+    is not atomic).
+    """
+    parent = path.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", dir=parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        os.replace(tmp_path, path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def _rewrite_shorthand_handles_in_config(
+    config_path: Path,
+    resolved_repos: dict[str, str],
+    default_owner: str | None,
+) -> None:
+    """Rewrite 2-part remote handles in agr.toml to fully-resolved 3-part form.
+
+    The stored shorthand ``owner/name`` re-resolves against whatever default
+    repo is configured at sync time, which drifts if ``DEFAULT_REPO_NAME``
+    changes or the legacy ``agent-resources`` fallback fires. Persisting the
+    repo that actually satisfied the install pins the reference to a stable
+    location.
+
+    Uses a tomlkit round-trip edit so user comments, blank lines, and
+    custom ordering in agr.toml are preserved — a full ``AgrConfig.save()``
+    would reformat the file. Writes atomically via a same-directory temp
+    file so a crash mid-write can't corrupt agr.toml.
+    """
+    raw = config_path.read_text()
+    doc = tomlkit.parse(raw)
+    deps_array = doc.get("dependencies")
+    if deps_array is None:
+        return
+
+    changed = False
+    for item in deps_array:
+        # Each item is an inline table. Skip local deps and packages; for
+        # packages the resolved_repo in results refers to a sub-dep, not
+        # the package itself.
+        if "path" in item:
+            continue
+        if item.get("type") == DEPENDENCY_TYPE_PACKAGE:
+            continue
+        handle_value = item.get("handle")
+        if handle_value is None:
+            continue
+        handle_str = str(handle_value)
+        # Preserve 1-part shorthand — the user chose the bare form
+        # intentionally. Only 2-part handles get promoted.
+        if "/" not in handle_str:
+            continue
+        try:
+            parsed = parse_remote_handle(handle_str, default_owner=default_owner)
+        except InvalidHandleError:
+            # Sync would have errored earlier for a handle that fails to
+            # parse; nothing to rewrite here.
+            continue
+        if parsed.repo is not None:
+            continue
+        # Dependency.identifier for a remote dep is its handle string, so
+        # ``resolved_repos`` is keyed by the shorthand written in agr.toml.
+        resolved_repo = resolved_repos.get(handle_str)
+        if not resolved_repo:
+            continue
+        item["handle"] = parsed.with_repo(resolved_repo).to_toml_handle()
+        changed = True
+
+    if changed:
+        output = tomlkit.dumps(doc)
+        if not output.endswith("\n"):
+            output += "\n"
+        _atomic_write_text(config_path, output)
+
+
 def _build_lockfile_from_results(
     config: AgrConfig,
     results: list[SyncResult],
@@ -1038,9 +1236,12 @@ def _build_lockfile_from_results(
         # capture failed (result.commit is None), we still drop the old
         # lockfile entry rather than carrying a stale commit forward.
         if result.status == SyncStatus.INSTALLED:
+            resolved_handle_str = _resolved_handle_for_dep(
+                dep, result, config.default_owner
+            )
             lockfile.update_entry(
                 LockedEntry(
-                    handle=dep.handle,
+                    handle=resolved_handle_str,
                     source=result.source_name,
                     commit=result.commit,
                     content_hash=result.content_hash,

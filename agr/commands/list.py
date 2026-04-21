@@ -21,6 +21,7 @@ def _get_installation_status(
     tools: list[ToolConfig],
     source: str | None = None,
     skills_dirs: dict[str, Path] | None = None,
+    default_repo: str | None = None,
 ) -> str:
     """Get installation status across all configured tools.
 
@@ -30,12 +31,14 @@ def _get_installation_status(
         tools: List of ToolConfig instances
         source: Source name for remote skills (optional)
         skills_dirs: Explicit skills directories per tool (optional)
+        default_repo: Configured default repo name, forwarded so the
+            existing-install lookup uses the user's configured default.
 
     Returns:
         Rich-formatted status string
     """
     tools_needing_install = filter_tools_needing_install(
-        handle, repo_root, tools, source, skills_dirs
+        handle, repo_root, tools, source, skills_dirs, default_repo=default_repo
     )
 
     if not tools_needing_install:
@@ -51,9 +54,10 @@ def _get_ralph_installation_status(
     handle: ParsedHandle,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> str:
     """Get installation status for a ralph dependency."""
-    if is_ralph_installed(handle, repo_root, source):
+    if is_ralph_installed(handle, repo_root, source, default_repo=default_repo):
         return "[green]installed[/green]"
     return "[yellow]not synced[/yellow]"
 
@@ -120,10 +124,17 @@ def run_list(global_install: bool = False) -> None:
                 config.default_source, config.default_owner
             )
             if dep.is_ralph:
-                status = _get_ralph_installation_status(handle, repo_root, source_name)
+                status = _get_ralph_installation_status(
+                    handle, repo_root, source_name, default_repo=config.default_repo
+                )
             else:
                 status = _get_installation_status(
-                    handle, repo_root, tools, source_name, skills_dirs
+                    handle,
+                    repo_root,
+                    tools,
+                    source_name,
+                    skills_dirs,
+                    default_repo=config.default_repo,
                 )
         except (InvalidHandleError, AgrError):
             status = "[red]invalid[/red]"

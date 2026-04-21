@@ -74,6 +74,7 @@ def run_upgrade(handles: list[str], global_install: bool = False) -> None:
         existing_lockfile,
         force_all=not handles,
         force_identifiers=force_identifiers,
+        config_path=config_path,
     )
 
 

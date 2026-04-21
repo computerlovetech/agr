@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'website/**'
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
@@ -27,12 +28,15 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv python install 3.12
       - run: uv sync --dev
-      - name: Build docs
-        run: uv run mkdocs build --strict
+      - name: Build combined site (landing page + docs)
+        run: |
+          mkdir -p _site
+          cp -r website/. _site/
+          uv run mkdocs build --strict --site-dir _site/docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./site
+          path: ./_site
 
   deploy:
     environment:

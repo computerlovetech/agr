@@ -133,6 +133,27 @@ class ParsedHandle:
         """True if this is a remote GitHub reference."""
         return not self.is_local and self.username is not None
 
+    def with_repo(self, repo: str | None) -> "ParsedHandle":
+        """Return a copy of this handle with ``repo`` populated.
+
+        Used to promote a 2-part remote handle (``owner/name``) to its
+        fully-resolved 3-part form (``owner/repo/name``) before persisting
+        to agr.toml, the lockfile, or installed metadata. Preserves an
+        explicit repo already on the handle — if ``self.repo`` is set, the
+        original is returned unchanged so callers can't accidentally
+        overwrite a user's explicit choice. Also a no-op on local handles
+        or when ``repo`` is None.
+        """
+        if not repo or self.is_local or self.repo is not None:
+            return self
+        return ParsedHandle(
+            username=self.username,
+            repo=repo,
+            name=self.name,
+            is_local=self.is_local,
+            local_path=self.local_path,
+        )
+
     def to_toml_handle(self) -> str:
         """Convert to agr.toml format.
 

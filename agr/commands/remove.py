@@ -48,6 +48,7 @@ def _uninstall_from_filesystem(
     repo_root: Path | None,
     source_name: str | None,
     skills_dirs: dict[str, Path] | None,
+    default_repo: str | None = None,
 ) -> bool:
     """Remove a dependency from the filesystem.
 
@@ -57,7 +58,7 @@ def _uninstall_from_filesystem(
     Returns True if anything was removed.
     """
     if is_ralph:
-        return uninstall_ralph(handle, repo_root, source_name)
+        return uninstall_ralph(handle, repo_root, source_name, default_repo=default_repo)
     removed = False
     for tool in tools:
         if uninstall_skill(
@@ -66,6 +67,7 @@ def _uninstall_from_filesystem(
             tool,
             source_name,
             skills_dir=lookup_skills_dir(skills_dirs, tool),
+            default_repo=default_repo,
         ):
             removed = True
     return removed
@@ -253,7 +255,13 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
             removed_fs = False
             if dep is None or not dep.is_package:
                 removed_fs = _uninstall_from_filesystem(
-                    fs_handle, is_ralph, tools, repo_root, source_name, skills_dirs
+                    fs_handle,
+                    is_ralph,
+                    tools,
+                    repo_root,
+                    source_name,
+                    skills_dirs,
+                    default_repo=config.default_repo,
                 )
 
             transitive_entries: list[tuple[str, LockedEntry]] = []
@@ -296,6 +304,7 @@ def run_remove(refs: list[str], global_install: bool = False) -> None:
                         repo_root,
                         entry.source,
                         skills_dirs,
+                        default_repo=config.default_repo,
                     ):
                         removed_fs = True
 

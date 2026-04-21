@@ -343,7 +343,11 @@ def sync_dependencies_to_tools(config: AgrConfig, tool_names: list[str]) -> int:
             )
 
             tools_needing_install = filter_tools_needing_install(
-                handle, repo_root, new_tools, source_name
+                handle,
+                repo_root,
+                new_tools,
+                source_name,
+                default_repo=config.default_repo,
             )
 
             if not tools_needing_install:

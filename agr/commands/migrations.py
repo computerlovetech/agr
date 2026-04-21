@@ -438,7 +438,9 @@ def migrate_flat_installed_names(
         matched_handle: tuple[ParsedHandle, str | None] | None = None
         if name_dir_meta:
             for handle, source_name in handles:
-                handle_ids = build_handle_ids(handle, repo_root, source_name)
+                handle_ids = build_handle_ids(
+                    handle, repo_root, source_name, default_repo=config.default_repo
+                )
                 if name_dir_meta.get(METADATA_KEY_ID) in handle_ids:
                     matched_handle = (handle, source_name)
                     break

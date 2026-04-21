@@ -4,6 +4,7 @@ Handles local and remote skill installation, repo preparation,
 destination resolution, and skill lifecycle management.
 """
 
+import logging
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
@@ -39,7 +40,12 @@ from agr.handle import (
     ParsedHandle,
     warn_legacy_repo,
 )
-from agr.metadata import compute_content_hash
+from agr.metadata import (
+    METADATA_KEY_ID,
+    build_handle_ids,
+    compute_content_hash,
+    read_resource_metadata,
+)
 from agr.skill import (
     SKILL_MARKER,
     discover_skills_in_repo_listing,
@@ -50,6 +56,8 @@ from agr.skill import (
 )
 from agr.source import SourceResolver
 from agr.tool import DEFAULT_TOOL, ToolConfig, lookup_skills_dir
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +91,7 @@ def _find_existing_skill_dir(
     tool: ToolConfig,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> Path | None:
     """Find an existing installed skill directory for this handle.
 
@@ -95,7 +104,12 @@ def _find_existing_skill_dir(
         return skill_path if is_valid_skill_dir(skill_path) else None
 
     return find_existing_flat_dir(
-        handle, skills_dir, repo_root, source, is_valid_skill_dir
+        handle,
+        skills_dir,
+        repo_root,
+        source,
+        is_valid_skill_dir,
+        default_repo=default_repo,
     )
 
 
@@ -105,6 +119,7 @@ def _resolve_skill_destination(
     tool: ToolConfig,
     repo_root: Path | None,
     source: str | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Resolve the destination path for installing a skill.
 
@@ -115,8 +130,57 @@ def _resolve_skill_destination(
         return skills_dir / handle.to_skill_path(tool)
 
     return resolve_flat_destination(
-        handle, skills_dir, repo_root, source, is_valid_skill_dir
+        handle,
+        skills_dir,
+        repo_root,
+        source,
+        is_valid_skill_dir,
+        default_repo=default_repo,
     )
+
+
+def _remove_stale_nested_installs(
+    original_handle: ParsedHandle,
+    resolved_handle: ParsedHandle,
+    tools: list[ToolConfig],
+    repo_root: Path | None,
+    skills_dirs: dict[str, Path] | None,
+    install_source: str | None,
+    default_repo: str | None,
+) -> None:
+    """Delete old 2-part-form installs for nested tools after repo promotion.
+
+    When a shorthand handle (``owner/name``) is promoted to its 3-part form
+    (``owner/repo/name``) on install, a nested tool's on-disk path changes
+    from ``skills/owner/name/`` to ``skills/owner/repo/name/``. The new
+    install lands at the new path but leaves the old directory in place —
+    which the agent would then load as a duplicate skill. Find and remove
+    it, verifying via metadata that the directory actually belongs to this
+    handle so we never delete an unrelated skill at the same path.
+    """
+    handle_ids = build_handle_ids(
+        resolved_handle, repo_root, install_source, default_repo=default_repo
+    )
+    for tool in tools:
+        if not tool.supports_nested:
+            continue
+        skills_dir = resolve_skills_dir(
+            lookup_skills_dir(skills_dirs, tool), repo_root, tool
+        )
+        old_path = skills_dir / original_handle.to_skill_path(tool)
+        new_path = skills_dir / resolved_handle.to_skill_path(tool)
+        if old_path == new_path or not is_valid_skill_dir(old_path):
+            continue
+        meta = read_resource_metadata(old_path)
+        if not meta or meta.get(METADATA_KEY_ID) not in handle_ids:
+            continue
+        try:
+            shutil.rmtree(old_path)
+            cleanup_empty_parents(old_path.parent, skills_dir)
+        except OSError as exc:
+            logger.warning(
+                "Failed to remove stale skill install at %s: %s", old_path, exc
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +282,7 @@ def install_skill_from_repo(
     overwrite: bool = False,
     install_source: str | None = None,
     skill_source: Path | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Install a skill from a downloaded repository.
 
@@ -247,7 +312,7 @@ def install_skill_from_repo(
         raise SkillNotFoundError(skill_not_found_message(skill_name))
 
     skill_dest = _resolve_skill_destination(
-        handle, dest_dir, tool, repo_root, install_source
+        handle, dest_dir, tool, repo_root, install_source, default_repo=default_repo
     )
 
     return _copy_skill_to_destination(
@@ -264,6 +329,7 @@ def install_skill_from_repo_to_tools(
     overwrite: bool = False,
     install_source: str | None = None,
     skill_source: Path | None = None,
+    default_repo: str | None = None,
 ) -> dict[str, Path]:
     """Install a skill from a downloaded repo to multiple tools.
 
@@ -285,6 +351,7 @@ def install_skill_from_repo_to_tools(
                 overwrite,
                 install_source=install_source,
                 skill_source=skill_source,
+                default_repo=default_repo,
             )
             installed[tool.name] = path
 
@@ -388,12 +455,13 @@ def install_remote_skill(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     install_name: str | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Install a remote skill to a specific tool directory."""
     if handle.is_local:
         raise InvalidHandleError("install_remote_skill requires a remote handle")
 
-    with _locate_remote_skill(handle, resolver, source) as loc:
+    with _locate_remote_skill(handle, resolver, source, default_repo) as loc:
         install_handle = (
             ParsedHandle(
                 username=handle.username,
@@ -415,6 +483,7 @@ def install_remote_skill(
             overwrite,
             install_source=loc.source_config.name,
             skill_source=loc.source_path,
+            default_repo=default_repo,
         )
 
 
@@ -426,6 +495,7 @@ def fetch_and_install(
     resolver: SourceResolver | None = None,
     source: str | None = None,
     skills_dir: Path | None = None,
+    default_repo: str | None = None,
 ) -> Path:
     """Fetch and install a skill.
 
@@ -468,6 +538,7 @@ def fetch_and_install(
         overwrite=overwrite,
         resolver=resolver,
         source=source,
+        default_repo=default_repo,
     )
 
 
@@ -515,6 +586,7 @@ def fetch_and_install_to_tools(
                     resolver,
                     source,
                     skills_dir=lookup_skills_dir(skills_dirs, tool),
+                    default_repo=default_repo,
                 )
         return installed, InstallResult()
 
@@ -526,20 +598,22 @@ def fetch_and_install_to_tools(
         rollback_on_failure() as installed,
         _locate_remote_skill(handle, resolver, source, default_repo) as loc,
     ):
+        resolved_handle = handle.with_repo(loc.resolved_repo)
         for tool in tools:
             skills_dir = resolve_skills_dir(
                 lookup_skills_dir(skills_dirs, tool), repo_root, tool
             )
             path = install_skill_from_repo(
                 loc.repo_dir,
-                handle.name,
-                handle,
+                resolved_handle.name,
+                resolved_handle,
                 skills_dir,
                 tool,
                 repo_root,
                 overwrite,
                 install_source=loc.source_config.name,
                 skill_source=loc.source_path,
+                default_repo=default_repo,
             )
             installed[tool.name] = path
         # Warn after successful install so the user sees it once,
@@ -555,6 +629,22 @@ def fetch_and_install_to_tools(
             commit=loc.commit,
             content_hash=content_hash,
             source_name=loc.source_config.name,
+            resolved_repo=loc.resolved_repo,
+        )
+    # After a successful install to the resolved 3-part path, clean up any
+    # stale 2-part install that a previous (pre-migration) run left behind
+    # at a different on-disk location. Nested tools (Cursor) put the repo
+    # segment in the path, so promotion changes where the skill lives —
+    # the new install alone doesn't displace the old one.
+    if handle.repo is None and resolved_handle.repo is not None:
+        _remove_stale_nested_installs(
+            handle,
+            resolved_handle,
+            tools,
+            repo_root,
+            skills_dirs,
+            loc.source_config.name,
+            default_repo,
         )
     return installed, install_result
 
@@ -570,6 +660,7 @@ def uninstall_skill(
     tool: ToolConfig = DEFAULT_TOOL,
     source: str | None = None,
     skills_dir: Path | None = None,
+    default_repo: str | None = None,
 ) -> bool:
     """Uninstall a skill.
 
@@ -579,12 +670,16 @@ def uninstall_skill(
         tool: Tool configuration for path structure
         source: Source name for metadata matching (optional)
         skills_dir: Explicit skills directory override (optional)
+        default_repo: Configured default repo name, forwarded to the
+            existing-install lookup.
 
     Returns:
         True if removed, False if not found
     """
     resolved_dir = resolve_skills_dir(skills_dir, repo_root, tool)
-    skill_path = _find_existing_skill_dir(handle, resolved_dir, tool, repo_root, source)
+    skill_path = _find_existing_skill_dir(
+        handle, resolved_dir, tool, repo_root, source, default_repo=default_repo
+    )
 
     if not skill_path:
         return False
@@ -604,6 +699,7 @@ def is_skill_installed(
     tool: ToolConfig = DEFAULT_TOOL,
     source: str | None = None,
     skills_dir: Path | None = None,
+    default_repo: str | None = None,
 ) -> bool:
     """Check if a skill is installed.
 
@@ -613,6 +709,8 @@ def is_skill_installed(
         tool: Tool configuration for path structure
         source: Source name for metadata matching (optional)
         skills_dir: Explicit skills directory override (optional)
+        default_repo: Configured default repo name, forwarded to the
+            existing-install lookup.
 
     Returns:
         True if installed
@@ -621,7 +719,9 @@ def is_skill_installed(
     # _find_existing_skill_dir already validates via is_valid_skill_dir
     # on every code path, so a non-None result is always valid.
     return (
-        _find_existing_skill_dir(handle, resolved_dir, tool, repo_root, source)
+        _find_existing_skill_dir(
+            handle, resolved_dir, tool, repo_root, source, default_repo=default_repo
+        )
         is not None
     )
 
@@ -632,6 +732,7 @@ def filter_tools_needing_install(
     tools: list[ToolConfig],
     source_name: str | None,
     skills_dirs: dict[str, Path] | None = None,
+    default_repo: str | None = None,
 ) -> list[ToolConfig]:
     """Return tools where the given skill is not yet installed.
 
@@ -641,6 +742,8 @@ def filter_tools_needing_install(
         tools: List of tool configurations to check
         source_name: Source name for remote skills
         skills_dirs: Optional mapping of tool name to explicit skills directory
+        default_repo: Configured default repo name, forwarded to the
+            existing-install lookup.
 
     Returns:
         Subset of tools where the skill still needs to be installed
@@ -654,5 +757,6 @@ def filter_tools_needing_install(
             tool,
             source_name,
             skills_dir=lookup_skills_dir(skills_dirs, tool),
+            default_repo=default_repo,
         )
     ]

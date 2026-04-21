@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agr.handle import ParsedHandle
+from agr.handle import ParsedHandle, iter_repo_candidates
 from agr.source import DEFAULT_SOURCE_NAME
 
 METADATA_FILENAME = ".agr.json"
@@ -47,7 +47,10 @@ def build_handle_id(
 
 
 def build_handle_ids(
-    handle: ParsedHandle, repo_root: Path | None, source: str | None
+    handle: ParsedHandle,
+    repo_root: Path | None,
+    source: str | None,
+    default_repo: str | None = None,
 ) -> list[str]:
     """Build all possible metadata IDs for a handle, including legacy variants.
 
@@ -56,14 +59,52 @@ def build_handle_ids(
     we generate both the current ID and the legacy variant:
     - source=None  → also check with DEFAULT_SOURCE_NAME ("github")
     - source="github" → also check without explicit source
+
+    ``default_repo`` must match the value that ``iter_repo_candidates`` would
+    have used at install time (i.e. ``AgrConfig.default_repo``). Otherwise a
+    user who configured a custom default repo will see spurious reinstalls
+    because the shorthand/resolved-handle back-off set won't include their
+    repo name.
     """
     if handle.is_local:
         return [build_handle_id(handle, repo_root)]
-    handle_ids = [build_handle_id(handle, repo_root, source)]
-    if source is None:
-        handle_ids.append(build_handle_id(handle, repo_root, DEFAULT_SOURCE_NAME))
-    if source == DEFAULT_SOURCE_NAME:
-        handle_ids.append(build_handle_id(handle, repo_root))
+
+    # Keep lookups stable across the shorthand-to-resolved-handle
+    # migration. Pre-fix installs stamped metadata with the 2-part form
+    # (``owner/name``); post-fix installs stamp the fully-resolved 3-part
+    # form (``owner/repo/name``). Emit both shapes when the repo is or
+    # would be a default candidate so either metadata form matches.
+    default_candidates = {
+        repo_name for repo_name, _ in iter_repo_candidates(None, default_repo)
+    }
+    handle_variants: list[ParsedHandle] = [handle]
+    if handle.repo is None:
+        for repo_name in default_candidates:
+            handle_variants.append(handle.with_repo(repo_name))
+    elif handle.repo in default_candidates:
+        # Shorthand variant — strip the default repo back off. Matches
+        # pre-fix metadata that was stamped before sync rewrote agr.toml.
+        handle_variants.append(
+            ParsedHandle(
+                username=handle.username,
+                repo=None,
+                name=handle.name,
+            )
+        )
+
+    seen: set[str] = set()
+    handle_ids: list[str] = []
+    for variant in handle_variants:
+        sources_to_try: list[str | None] = [source]
+        if source is None:
+            sources_to_try.append(DEFAULT_SOURCE_NAME)
+        elif source == DEFAULT_SOURCE_NAME:
+            sources_to_try.append(None)
+        for src in sources_to_try:
+            hid = build_handle_id(variant, repo_root, src)
+            if hid not in seen:
+                seen.add(hid)
+                handle_ids.append(hid)
     return handle_ids
 
 

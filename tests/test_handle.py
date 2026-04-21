@@ -465,6 +465,35 @@ class TestParsedHandle:
         h = ParsedHandle(is_local=True, name="my-skill")
         assert h.to_installed_name() == "local--my-skill"
 
+    def test_with_repo_promotes_shorthand(self):
+        """with_repo fills in a missing repo on a 2-part handle."""
+        h = ParsedHandle(username="computerlovetech", name="docs-audit")
+        assert h.repo is None
+        promoted = h.with_repo("skills")
+        assert promoted.repo == "skills"
+        assert promoted.to_toml_handle() == "computerlovetech/skills/docs-audit"
+        # Original is unchanged (returns a copy).
+        assert h.repo is None
+
+    def test_with_repo_preserves_explicit_repo(self):
+        """with_repo never overwrites an explicit repo."""
+        h = ParsedHandle(username="maragudk", repo="agent-resources", name="x")
+        promoted = h.with_repo("skills")
+        assert promoted is h
+        assert promoted.repo == "agent-resources"
+
+    def test_with_repo_none_returns_original(self):
+        """with_repo(None) returns the handle unchanged."""
+        h = ParsedHandle(username="owner", name="name")
+        assert h.with_repo(None) is h
+
+    def test_with_repo_local_returns_original(self):
+        """with_repo is a no-op on local handles."""
+        from pathlib import Path
+
+        h = ParsedHandle(is_local=True, name="x", local_path=Path("./x"))
+        assert h.with_repo("skills") is h
+
     def test_get_github_repo_simple(self):
         """get_github_repo for user/skill defaults repo."""
         h = ParsedHandle(username="vercel-labs", name="agent-browser")
