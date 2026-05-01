@@ -41,8 +41,8 @@ Do NOT use this skill for:
   authoring skill such as `anthropics/skills/skill-creator`.
 - Iterating on an existing skill based on session feedback or a retrospective.
   That's a separate workflow — listen, propose, edit, commit, re-install. If
-  the user has a dedicated improvement skill installed (e.g. `improve-skill`),
-  use it; otherwise just do the workflow directly.
+  the user has a dedicated debrief / improvement skill installed (e.g.
+  `skill-debrief`), use it; otherwise just do the workflow directly.
 
 ## Prerequisites
 

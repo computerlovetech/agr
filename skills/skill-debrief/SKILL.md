@@ -1,35 +1,36 @@
 ---
-name: improve-skill
+name: skill-debrief
 description: >
-  Iteratively improve an existing AI agent skill (SKILL.md) based on session
-  feedback or a retrospective after using it. Use whenever the user says:
-  "improve the X skill", "update the X skill", "let's revise X based on what
-  we just did", "the X skill should also handle Y", "X skill didn't trigger
-  when it should have", "feedback on X skill", "retrospective on X", or
-  otherwise wants to capture lessons from a session back into the skill that
-  drove it. Handles in-repo skills (under skills/) by editing the source,
-  committing, and re-installing via `agr upgrade`. Handles remote/upstream
-  skills by offering to fork them in-repo or to file a GitHub issue via `gh`.
-  Do NOT use for greenfield skill authoring (a separate concern — see
+  Debrief an AI agent skill (SKILL.md) after using it — capture session
+  feedback or a retrospective and fold it back into the skill. Use whenever
+  the user says: "debrief the X skill", "let's debrief X", "retrospective on
+  X", "feedback on X skill", "improve the X skill", "update the X skill",
+  "let's revise X based on what we just did", "the X skill should also
+  handle Y", "X didn't trigger when it should have", or otherwise wants to
+  capture lessons from a session back into the skill that drove it. Handles
+  in-repo skills (under skills/) by editing the source, committing, and
+  re-installing via `agr upgrade`. Handles remote/upstream skills by
+  offering to fork them in-repo or to file a GitHub issue via `gh`. Do NOT
+  use for greenfield skill authoring (a separate concern — see
   `anthropics/skills/skill-creator`) or for installing / syncing / removing
   skills (use the `agr` CLI directly).
 ---
 
-# Improve Skill
+# Skill Debrief
 
 Capture lessons from a session into the skill that drove it. The default
 shape is **listen → propose → align → apply → re-install**.
 
 ## When to use
 
-Trigger when the user wants to revise an existing SKILL.md based on what
+Trigger when the user wants to debrief an existing SKILL.md based on what
 happened in the session. Examples:
 
-- "improve the X skill"
-- "let's update X based on what we learned"
+- "debrief the X skill" / "let's debrief X"
+- "retrospective on X" / "feedback on X"
+- "improve the X skill" / "let's update X based on what we learned"
 - "X skill should also handle …"
 - "X didn't trigger when it should have"
-- "retrospective on X" / "feedback on X"
 
 Do NOT use this skill for:
 
