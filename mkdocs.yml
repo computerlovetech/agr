@@ -77,6 +77,9 @@ not_in_nav: |
   404.md
   includes/**
 
+exclude_docs: |
+  diary/**
+
 validation:
   nav:
     omitted_files: info
@@ -116,25 +119,6 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Home: index.md
-  - Getting Started:
-    - Tutorial: tutorial.md
-    - Core Concepts: concepts.md
-  - Guides:
-    - Supported Tools: tools.md
-    - Skill Directory: skills.md
-    - Ralph Directory: ralphs.md
-    - Teams: teams.md
-    - Configuration: configuration.md
-    - "agrx — Try Without Installing": agrx.md
-  - Building Resources:
-    - Creating Skills: creating.md
-    - Creating Ralphs: creating-ralphs.md
-    - Python SDK: sdk.md
-  - Contributing:
-    - contributing/index.md
-    - Architecture: contributing/architecture.md
-  - Reference:
-    - CLI Reference: reference.md
-    - Troubleshooting: troubleshooting.md
-    - What's New: changelog.md
+  - Get started: index.md
+  - Manage your skill environment: managing.md
+  - CLI reference: reference.md
