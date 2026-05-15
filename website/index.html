@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>agr — The package manager for AI agents</title>
+  <meta name="description" content="agr is the package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, and more — built for teams practicing Agentic Engineering.">
+  <meta name="author" content="Computerlove Technologies">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="agr — The package manager for AI agents">
+  <meta property="og:description" content="Install, share, and sync agent resources across every AI tool on your team. Built for Agentic Engineering.">
+  <meta property="og:url" content="https://agr.run/">
+  <meta property="og:site_name" content="agr">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="agr — The package manager for AI agents">
+  <meta name="twitter:description" content="Install, share, and sync agent resources across every AI tool on your team. Built for Agentic Engineering.">
+
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="canonical" href="https://agr.run/">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧩</text></svg>">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "agr",
+    "description": "The package manager for AI agents. Install, share, and sync agent resources across every AI tool on your team.",
+    "url": "https://agr.run/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": {
+      "@type": "Organization",
+      "name": "Computerlove Technologies",
+      "url": "https://github.com/computerlovetech"
+    },
+    "installUrl": "https://pypi.org/project/agr/",
+    "codeRepository": "https://github.com/computerlovetech/agr"
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo"><span class="logo-mark">🧩</span> agr</a>
+      <div class="nav-links">
+        <a href="docs/">Docs</a>
+        <a href="docs/skills/">Skills</a>
+        <a href="https://github.com/computerlovetech/agr" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Built for Agentic Engineering teams</p>
+      <h1>The package manager<br>for <span class="accent">AI agents</span>.</h1>
+      <p class="sub">
+        Install, share, and sync agent resources across Claude Code, Cursor,
+        Codex, OpenCode, Copilot, and Antigravity &mdash; with one command.
+      </p>
+
+      <div class="install">
+        <code>uv tool install agr</code>
+        <button class="copy-btn" aria-label="Copy install command" onclick="copyCmd(this, 'uv tool install agr')">Copy</button>
+      </div>
+
+      <div class="cta">
+        <a href="docs/tutorial/" class="btn btn-primary">Get started</a>
+        <a href="docs/" class="btn btn-ghost">Read the docs</a>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <h3>One manifest, every tool</h3>
+        <p>Commit <code>agr.toml</code>. Teammates run <code>agr sync</code> &mdash; same skills, same standards, every AI tool they use.</p>
+      </div>
+      <div class="feature">
+        <h3>Built for teams</h3>
+        <p>Agent resources belong in version control. Share skills across your team the way you share code.</p>
+      </div>
+      <div class="feature">
+        <h3>Tool-agnostic</h3>
+        <p>Install once. agr detects which AI tools you use and fans skills out to each one automatically.</p>
+      </div>
+    </section>
+
+    <section class="usage">
+      <div class="usage-inner">
+        <h2>Three commands.</h2>
+        <pre><code><span class="prompt">$</span> agr add anthropics/skills/frontend-design
+<span class="dim">✓ installed frontend-design</span>
+
+<span class="prompt">$</span> agr sync
+<span class="dim">✓ 7 skills up to date</span>
+
+<span class="prompt">$</span> agrx anthropics/skills/pdf -p <span class="str">"Extract tables from report.pdf"</span>
+<span class="dim">✓ done</span></code></pre>
+        <p class="usage-note">
+          <code>agr</code> installs skills into your project. <code>agrx</code>
+          runs a skill once without saving anything.
+        </p>
+      </div>
+    </section>
+
+    <section class="cta-bottom">
+      <h2>Start shipping with your team.</h2>
+      <div class="install">
+        <code>uv tool install agr</code>
+        <button class="copy-btn" aria-label="Copy install command" onclick="copyCmd(this, 'uv tool install agr')">Copy</button>
+      </div>
+      <div class="cta">
+        <a href="docs/tutorial/" class="btn btn-primary">Get started</a>
+        <a href="https://github.com/computerlovetech/agr" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-col">
+        <h4>agr</h4>
+        <ul>
+          <li><a href="docs/">Documentation</a></li>
+          <li><a href="docs/tutorial/">Tutorial</a></li>
+          <li><a href="docs/skills/">Skill Directory</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/computerlovetech/agr" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://pypi.org/project/agr/" target="_blank" rel="noopener">PyPI</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="copy">&copy; 2025&ndash;2026 Computerlove Technologies &middot; <a href="https://github.com/computerlovetech/agr/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+  </footer>
+
+  <script>
+    function copyCmd(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>
