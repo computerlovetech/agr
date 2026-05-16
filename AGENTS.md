@@ -26,10 +26,8 @@ uv run agrx --help
 
 Two CLI tools share a common core library:
 
-- **`agr`** — Main CLI (Typer app in `agr/main.py`). Commands: add, remove, sync, list, init, config.
+- **`agr`** — Main CLI (Typer app in `agr/main.py`). Commands: init, add, remove, sync, upgrade, list, run, config.
 - **`agrx`** — Ephemeral skill runner (`agrx/main.py`). Downloads and runs a skill without persisting it.
-
-For detailed architecture, contributing guides, code patterns, and recipes, see `docs/contributing/`.
 
 ## agr.toml Format
 
@@ -44,11 +42,11 @@ dependencies = [
 ```
 
 Each dependency has:
-- `type`: Always "skill" for now
+- `type`: `"skill"` or `"ralph"`. Skills install into each configured tool's skills dir; ralphs install once into `.agents/ralphs/<name>/` (project-scoped, no per-tool fan-out, no global installs).
 - `handle`: Remote GitHub reference (username/repo/skill or username/skill)
 - `path`: Local path (alternative to handle)
 
-Future: A `tools` section will configure which tools to sync to:
+The `tools` section configures which tools to sync to:
 ```toml
 tools = ["claude", "cursor"]
 ```

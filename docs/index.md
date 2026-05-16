@@ -40,8 +40,7 @@ cd my-project
 agr init
 ```
 
-Writes a starter `agr.toml` and adds the per-tool skill directories to
-`.gitignore`.
+Writes a starter `agr.toml`.
 
 ### 3. Add a skill
 
