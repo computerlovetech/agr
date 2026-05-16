@@ -80,7 +80,7 @@ Skill directories are built artifacts. Commit the manifest, ignore the build.
 .agents/skills/
 ```
 
-`agr init` writes these for you.
+Add these to your project's `.gitignore` manually.
 
 ## Multi-tool
 
