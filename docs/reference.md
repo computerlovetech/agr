@@ -27,12 +27,9 @@ agr init                    # write agr.toml
 agr init my-skill           # scaffold my-skill/SKILL.md
 ```
 
-| Flag                                             | Default | Description                                                              |
-|--------------------------------------------------|---------|--------------------------------------------------------------------------|
-| `--tools`                                        | `claude`| Comma-separated tool list (e.g. `claude,codex,opencode`).                |
-| `--default-tool`                                 |         | Default tool for `agr run`.                                              |
-| `--sync-instructions` / `--no-sync-instructions` | on      | Sync `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` on `agr sync`.                  |
-| `--canonical-instructions`                       |         | Canonical instruction file: `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`.    |
+| Flag      | Default  | Description                                               |
+|-----------|----------|-----------------------------------------------------------|
+| `--tools` | `claude` | Comma-separated tool list (e.g. `claude,codex,opencode`). |
 
 ## `agr add`
 
@@ -45,10 +42,9 @@ agr add ./my-skill
 agr add anthropics/skills/pdf maragudk/skills/code-review
 ```
 
-| Flag              | Default | Description                          |
-|-------------------|---------|--------------------------------------|
-| `-o, --overwrite` | false   | Overwrite existing skills.           |
-| `-s, --source`    |         | Source name to use for this install. |
+| Flag              | Default | Description                |
+|-------------------|---------|----------------------------|
+| `-o, --overwrite` | false   | Overwrite existing skills. |
 
 ## `agr remove`
 
@@ -118,16 +114,12 @@ agr config get tools
 agr config set default-tool claude
 ```
 
-| Subcommand              | Description                                |
-|-------------------------|--------------------------------------------|
-| `show`                  | Print the effective config.                |
-| `path`                  | Print the resolved `agr.toml` path.        |
-| `edit`                  | Open `agr.toml` in `$EDITOR`.              |
-| `get <key>`             | Read a config value.                       |
-| `set <key> <value>`     | Write a scalar or replace a list.          |
-| `unset <key>`           | Clear a value to default.                  |
-| `add <key> <value>`     | Append to a list value.                    |
-| `remove <key> <value>`  | Remove from a list value.                  |
+| Subcommand          | Description                      |
+|---------------------|----------------------------------|
+| `show`              | Print the effective config.      |
+| `edit`              | Open `agr.toml` in `$EDITOR`.    |
+| `get <key>`         | Read a config value.             |
+| `set <key> <value>` | Write a scalar or replace a list.|
 
 ## `agrx`
 
@@ -139,10 +131,8 @@ agrx anthropics/skills/pdf -p "Extract tables from report.pdf"
 agrx anthropics/skills/pdf -i
 ```
 
-| Flag                | Description                                          |
-|---------------------|------------------------------------------------------|
-| `-p, --prompt`      | Prompt to pass to the skill.                         |
-| `-i, --interactive` | Invoke the tool in interactive mode.                 |
-| `-t, --tool`        | Tool CLI to use.                                     |
-| `-s, --source`      | Source name to use for this run.                     |
-| `-g, --global`      | Install to global skills directory instead of temp.  |
+| Flag                | Description                          |
+|---------------------|--------------------------------------|
+| `-p, --prompt`      | Prompt to pass to the skill.         |
+| `-i, --interactive` | Invoke the tool in interactive mode. |
+| `-t, --tool`        | Tool CLI to use.                     |

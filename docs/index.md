@@ -1,83 +1,37 @@
-# agr — a package manager for AI agent skills
+# Get started
 
-`agr.toml` is your manifest. The per-tool skill directories
-(`.claude/skills/`, `.cursor/skills/`, …) are built artifacts — like `.venv/`.
-`agr sync` rebuilds them.
+Your team shouldn't be copying AI skill files around by hand. agr gives you a
+shared, versioned skill environment: one manifest, one sync command, the same
+setup on every machine and every tool.
 
-An open alternative to vendor plugin marketplaces. Install any skill from any
-GitHub repo, into any supported agent tool.
-
-```bash
-uv tool install agr
-agr init
-agr add anthropics/skills/pdf
-agr sync
-```
-
-Open Claude Code in the same directory — the `pdf` skill is now available.
-
-## Why agr
-
-- **Declarative.** `agr.toml` is the source of truth, like `pyproject.toml`.
-  Commit it. Run `agr sync` after `git pull`.
-- **Multi-tool.** One manifest. Syncs to Claude Code, Cursor, Codex, OpenCode,
-  Copilot, Antigravity.
-- **Open.** Install any skill from any GitHub repo. No marketplace, no
-  gatekeeper, no vendor lock-in.
-
-## 5-minute quickstart
-
-### 1. Install agr
+## Install
 
 ```bash
 uv tool install agr
 ```
 
-### 2. Initialize a project
-
-```bash
-cd my-project
-agr init
-```
-
-Writes a starter `agr.toml` and adds the per-tool skill directories to
-`.gitignore`.
-
-### 3. Add a skill
+## Add a skill
 
 ```bash
 agr add anthropics/skills/pdf
 ```
 
-Your `agr.toml` now looks like:
+Handles follow `owner/repo/skill` — a directory inside a GitHub repo.
+`anthropics/skills/pdf` is the `pdf/` directory in
+[github.com/anthropics/skills](https://github.com/anthropics/skills).
 
-```toml
-tools = ["claude"]
+Open Claude Code and type `/pdf` — the skill is there.
 
-dependencies = [
-  {handle = "anthropics/skills/pdf"},
-]
-```
+## Share with your team
 
-`agr add` already ran `sync` for you, so `.claude/skills/pdf/` exists. Open
-Claude Code in this directory and ask it to read a PDF.
-
-### 4. Sync on a fresh clone
-
-When a teammate clones the repo, they run:
+Commit `agr.toml` and `agr.lock`. When a teammate clones the repo:
 
 ```bash
 agr sync
 ```
 
-That's it. `agr.toml` + `agr.lock` → identical skill environment, every
-machine.
+Same skills. Every machine.
 
-## What now?
+---
 
-- [Manage your skill environment](managing.md) — `agr.toml` in depth,
-  multi-tool, the four commands you'll use.
-- [CLI reference](reference.md) — every command and flag.
-
-> **Ralphs?** agr also supports `ralphs` — an experimental project-scoped
-> agent primitive. Not covered here.
+[Manage your skill environment →](managing.md)

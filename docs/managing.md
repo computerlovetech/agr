@@ -1,14 +1,10 @@
 # Manage your skill environment
 
-`agr.toml` is the manifest. `agr.lock` is the lockfile. The per-tool skill
-directories (`.claude/skills/`, `.cursor/skills/`, …) are built artifacts —
-derived from the manifest and lockfile. They belong in `.gitignore`, like
-`.venv/`. `agr sync` rebuilds them.
+Skill directories (`.claude/skills/`, `.cursor/skills/`, …) are build artifacts —
+like `.venv/` or `node_modules/`. They belong in `.gitignore`. Commit `agr.toml`
+and `agr.lock` instead. `agr sync` rebuilds the skill environment from them.
 
-Commit `agr.toml` and `agr.lock`. Same toml on every machine → same skills
-everywhere.
-
-## `agr.toml`
+## agr.toml
 
 ```toml
 tools = ["claude", "cursor"]
@@ -20,80 +16,57 @@ dependencies = [
 ]
 ```
 
-### Top-level keys
+`tools` sets which agent tools to sync into. `dependencies` lists the skills —
+each with a remote `handle` or local `path`.
 
-| Key            | Type       | Description                                       |
-|----------------|------------|---------------------------------------------------|
-| `tools`        | `string[]` | Which agent tools to sync into. See below.        |
-| `dependencies` | `table[]`  | Skills to install. Each entry needs `handle` or `path`. |
-
-### Dependency keys
-
-| Key      | Type   | Description                                                 |
-|----------|--------|-------------------------------------------------------------|
-| `handle` | string | GitHub reference: `user/repo/skill` or `user/skill`.        |
-| `path`   | string | Local path to a skill directory. Alternative to `handle`.   |
+Handles follow `owner/repo/skill-name` — the `skill-name/` directory inside
+`github.com/owner/repo`. `anthropics/skills/pdf` is the `pdf/` directory in
+[github.com/anthropics/skills](https://github.com/anthropics/skills).
 
 ## Commands
 
-### `agr add <handle>`
-
-Adds a skill to `agr.toml`, updates `agr.lock`, and syncs.
+### Add and remove
 
 ```bash
-agr add anthropics/skills/pdf
+agr add anthropics/skills/pdf       # adds to agr.toml and syncs
+agr remove anthropics/skills/pdf    # removes from agr.toml and syncs
 ```
 
-### `agr remove <handle>`
+### Sync
 
-Removes a skill from `agr.toml`, updates `agr.lock`, and syncs.
-
-```bash
-agr remove anthropics/skills/pdf
-```
-
-### `agr sync`
-
-Reads `agr.toml` and `agr.lock`, rebuilds the per-tool skill directories.
-Idempotent. Run after `git pull` or any manual edit to `agr.toml`.
+Rebuilds all skill directories from `agr.toml` and `agr.lock`. Idempotent —
+run it after `git pull` or any manual edit to `agr.toml`.
 
 ```bash
 agr sync
 ```
 
-### `agr list`
+### Upgrade
 
-Shows what's installed and which tool directories each skill lives in.
+Re-fetches skills at their latest upstream versions and refreshes `agr.lock`.
+
+```bash
+agr upgrade            # all skills
+agr upgrade pdf        # one skill (short name)
+```
+
+### List
 
 ```bash
 agr list
 ```
 
-## `.gitignore`
-
-Skill directories are built artifacts. Commit the manifest, ignore the build.
-
-```gitignore
-.claude/skills/
-.cursor/skills/
-.codex/skills/
-.agents/skills/
-```
-
-`agr init` writes these for you.
-
 ## Multi-tool
 
-Set `tools` in `agr.toml` to pick which agent tools `agr sync` writes to:
+`tools` in `agr.toml` controls which agent tools agr syncs into at once:
 
 ```toml
 tools = ["claude", "cursor", "codex"]
 ```
 
-Supported keys: `claude`, `cursor`, `codex`, `opencode`, `copilot`,
-`antigravity`. Each maps to that tool's expected skill directory.
+Supported: `claude`, `cursor`, `codex`, `opencode`, `copilot`, `antigravity`.
+Each maps to that tool's expected skill directory.
 
-## What now?
+---
 
-- [CLI reference](reference.md) — every command and flag.
-- [Get started](index.md) — the 5-minute quickstart.
+[CLI reference →](reference.md)
