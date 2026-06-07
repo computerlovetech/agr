@@ -1,5 +1,6 @@
 """Git operations for downloading and preparing repositories."""
 
+import base64
 import hashlib
 import os
 import re
@@ -10,6 +11,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from collections.abc import Generator
+from agr.auth import StoredGitHubCredential, read_stored_github_credential
 from agr.exceptions import (
     AgrError,
     AuthenticationError,
@@ -52,18 +54,19 @@ def _build_github_auth_env() -> dict[str, str]:
     Returns:
         Dict of env var overrides.  Empty when no token is available.
     """
-    token = get_github_token()
-    if not token:
+    credential = get_github_credential()
+    if not credential:
         return {}
 
     try:
         existing_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
     except ValueError:
         existing_count = 0
+    basic_token = _build_basic_auth_token(credential)
     return {
         "GIT_CONFIG_COUNT": str(existing_count + 1),
         f"GIT_CONFIG_KEY_{existing_count}": ("http.https://github.com/.extraheader"),
-        f"GIT_CONFIG_VALUE_{existing_count}": (f"AUTHORIZATION: bearer {token}"),
+        f"GIT_CONFIG_VALUE_{existing_count}": (f"AUTHORIZATION: basic {basic_token}"),
     }
 
 
@@ -87,7 +90,7 @@ def _run_git(cmd: list[str]) -> subprocess.CompletedProcess[str]:
         AgrError: If git cannot be executed (e.g., not installed).
     """
     auth_env = _build_github_auth_env()
-    env = {**os.environ, **auth_env} if auth_env else None
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", **auth_env}
     try:
         return subprocess.run(
             cmd,
@@ -125,19 +128,28 @@ def _run_git_checked(
     return result
 
 
-def get_github_token() -> str | None:
-    """Get GitHub token from environment.
-
-    Checks GITHUB_TOKEN first, then falls back to GH_TOKEN (used by gh CLI).
-
-    Returns:
-        Token string if set and non-empty, None otherwise.
-    """
+def get_github_credential() -> StoredGitHubCredential | None:
     for env_var in ("GITHUB_TOKEN", "GH_TOKEN"):
         token = os.environ.get(env_var, "")
         if token.strip():
-            return token.strip()
-    return None
+            return StoredGitHubCredential(
+                method="env",
+                token=token.strip(),
+                username="x-access-token",
+            )
+    return read_stored_github_credential()
+
+
+def get_github_token() -> str | None:
+    credential = get_github_credential()
+    return credential.token if credential else None
+
+
+def _build_basic_auth_token(credential: StoredGitHubCredential) -> str:
+    username = credential.username if credential.method == "username_password" else "x-access-token"
+    if credential.method == "username_password" and not username:
+        return ""
+    return base64.b64encode(f"{username}:{credential.token}".encode()).decode()
 
 
 def short_commit(commit: str) -> str:
@@ -366,16 +378,19 @@ def _raise_clone_error(
         if token_missing:
             raise AuthenticationError(
                 f"Authentication failed for source '{source.name}'. "
-                "Repository not found or requires authentication."
+                "Repository not found or requires authentication. "
+                "Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN."
             ) from None
         raise AuthenticationError(
-            f"Authentication failed for source '{source.name}'."
+            f"Authentication failed for source '{source.name}'. "
+            "Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN."
         ) from None
 
     # 2. Explicit "not found" responses from the server
     if _is_repo_not_found(lowered):
         raise RepoNotFoundError(
-            f"Repository '{owner}/{repo_name}' not found in source '{source.name}'."
+            f"Repository '{owner}/{repo_name}' not found in source '{source.name}'. "
+            "If this is a private repository, run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN."
         ) from None
 
     # 3. DNS / network failures
@@ -389,7 +404,8 @@ def _raise_clone_error(
     # user toward setting GITHUB_TOKEN.
     if token_missing and _is_ambiguous_auth_hint(lowered):
         raise RepoNotFoundError(
-            f"Repository '{owner}/{repo_name}' not found in source '{source.name}'."
+            f"Repository '{owner}/{repo_name}' not found in source '{source.name}'. "
+            "Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN for private repositories."
         ) from None
 
     # 5. Catch-all for unrecognized errors
