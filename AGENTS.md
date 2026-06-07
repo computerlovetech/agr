@@ -66,3 +66,4 @@ tools = ["claude", "cursor"]
 - agr and agrx should always be unified and synced.
 - include in the plan to write tests for what is implemented
 - Save all skills in `skills/` directory (not `.claude/skills/` which is gitignored)
+- Run all checks and tests before creating PR or commiting any code.
