@@ -138,6 +138,15 @@ def config_remove(
     run_config_remove(key, values, global_scope)
 
 
+def print_auth_status(result: agr_auth.AuthStatus) -> None:
+    console = get_console()
+    if result.source == "stored":
+        method = f" ({result.method})" if result.method else ""
+        console.print(f"Authenticated with stored agr GitHub token{method}.")
+        return
+    console.print(f"Authenticated with {result.source} environment token.")
+
+
 @auth_app.command("login")
 def auth_login(
     oauth: Annotated[
@@ -147,6 +156,11 @@ def auth_login(
 ) -> None:
     """Authenticate with GitHub."""
     console = get_console()
+    result = agr_auth.GitHubAuthStatusChecker().get_status()
+    if result.authenticated:
+        print_auth_status(result)
+        console.print("Already logged in.")
+        return
 
     def show_device_prompt(authorization: agr_auth.DeviceAuthorization) -> None:
         console.print("Open this URL to authenticate with GitHub:")
@@ -185,11 +199,7 @@ def auth_status() -> None:
     if not result.authenticated:
         console.print("Not authenticated. Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN.")
         raise typer.Exit(1)
-    if result.source == "stored":
-        method = f" ({result.method})" if result.method else ""
-        console.print(f"Authenticated with stored agr GitHub token{method}.")
-        return
-    console.print(f"Authenticated with {result.source} environment token.")
+    print_auth_status(result)
 
 
 @auth_app.command("logout")

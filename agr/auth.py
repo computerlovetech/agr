@@ -63,6 +63,10 @@ class DeviceOAuthClient(Protocol):
     def poll_for_token(self, authorization: DeviceAuthorization) -> str: ...
 
 
+class AuthStatusChecker(Protocol):
+    def get_status(self) -> AuthStatus: ...
+
+
 DevicePromptHandler = Callable[[DeviceAuthorization], None]
 StringPrompt = Callable[[], str]
 
@@ -129,6 +133,27 @@ class FileTokenStore:
         except FileNotFoundError:
             return False
         return True
+
+
+class GitHubAuthStatusChecker:
+    def __init__(
+        self,
+        store: CredentialStore | None = None,
+        env: dict[str, str] | None = None,
+    ) -> None:
+        self.store = store or FileTokenStore()
+        self.env = env
+
+    def get_status(self) -> AuthStatus:
+        environ = self.env if self.env is not None else os.environ
+        for env_var in ("GITHUB_TOKEN", "GH_TOKEN"):
+            token = environ.get(env_var, "")
+            if token.strip():
+                return AuthStatus(authenticated=True, source=env_var, method="env")
+        credential = self.store.read_credential()
+        if credential:
+            return AuthStatus(authenticated=True, source="stored", method=credential.method)
+        return AuthStatus(authenticated=False, source=None, method=None)
 
 
 class UsernamePasswordGitHubLoginStrategy:
@@ -212,15 +237,7 @@ def login(
 
 
 def status(store: CredentialStore | None = None, env: dict[str, str] | None = None) -> AuthStatus:
-    environ = env if env is not None else os.environ
-    for env_var in ("GITHUB_TOKEN", "GH_TOKEN"):
-        token = environ.get(env_var, "")
-        if token.strip():
-            return AuthStatus(authenticated=True, source=env_var, method="env")
-    credential = (store or FileTokenStore()).read_credential()
-    if credential:
-        return AuthStatus(authenticated=True, source="stored", method=credential.method)
-    return AuthStatus(authenticated=False, source=None, method=None)
+    return GitHubAuthStatusChecker(store, env).get_status()
 
 
 def logout(store: CredentialStore | None = None) -> bool:

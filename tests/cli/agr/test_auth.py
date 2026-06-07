@@ -33,6 +33,32 @@ def test_auth_login_oauth_uses_device_flow_flag(tmp_path: Path) -> None:
     assert "GitHub username" not in result.stdout
 
 
+def test_auth_login_skips_prompt_when_stored_oauth_token_exists(tmp_path: Path) -> None:
+    auth_dir = tmp_path / ".agr"
+    auth_dir.mkdir()
+    (auth_dir / "auth.json").write_text(
+        json.dumps({"github_token": "stored-token", "method": "oauth"})
+    )
+
+    result = run_cli(
+        ["agr", "auth", "login"],
+        env={"HOME": str(tmp_path), "GITHUB_TOKEN": "", "GH_TOKEN": ""},
+    )
+
+    assert_cli(result).succeeded().stdout_contains("Already logged in")
+    assert "GitHub username" not in result.stdout
+
+
+def test_auth_login_skips_prompt_when_environment_token_exists(tmp_path: Path) -> None:
+    result = run_cli(
+        ["agr", "auth", "login"],
+        env={"HOME": str(tmp_path), "GITHUB_TOKEN": "github-token"},
+    )
+
+    assert_cli(result).succeeded().stdout_contains("Already logged in")
+    assert "GitHub username" not in result.stdout
+
+
 def test_auth_status_reports_environment_token(tmp_path: Path) -> None:
     result = run_cli(
         ["agr", "auth", "status"],

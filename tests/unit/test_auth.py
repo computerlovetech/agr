@@ -8,6 +8,7 @@ from agr.auth import (
     AuthStatus,
     DeviceAuthorization,
     FileTokenStore,
+    GitHubAuthStatusChecker,
     OAuthGitHubLoginStrategy,
     StoredGitHubCredential,
     UsernamePasswordGitHubLoginStrategy,
@@ -146,6 +147,15 @@ def test_file_token_store_rejects_username_password_without_username(tmp_path: P
         store.write_credential(
             StoredGitHubCredential(method="username_password", token="token")
         )
+
+
+def test_auth_status_checker_prefers_environment_tokens() -> None:
+    store = MemoryTokenStore(StoredGitHubCredential(method="oauth", token="stored-token"))
+    checker = GitHubAuthStatusChecker(store, {"GITHUB_TOKEN": " github-token ", "GH_TOKEN": "gh-token"})
+
+    result = checker.get_status()
+
+    assert result == AuthStatus(authenticated=True, source="GITHUB_TOKEN", method="env")
 
 
 def test_status_prefers_environment_tokens() -> None:

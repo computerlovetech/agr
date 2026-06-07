@@ -42,6 +42,7 @@ class TestGitAuthentication:
         """None returned when no token env vars are set."""
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         monkeypatch.delenv("GH_TOKEN", raising=False)
+        monkeypatch.setattr("agr.git.read_stored_github_credential", lambda: None)
         assert get_github_token() is None
 
     def test_get_github_token_prefers_github_token(self, monkeypatch):
