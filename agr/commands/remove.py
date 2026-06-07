@@ -58,7 +58,9 @@ def _uninstall_from_filesystem(
     Returns True if anything was removed.
     """
     if is_ralph:
-        return uninstall_ralph(handle, repo_root, source_name, default_repo=default_repo)
+        return uninstall_ralph(
+            handle, repo_root, source_name, default_repo=default_repo
+        )
     removed = False
     for tool in tools:
         if uninstall_skill(

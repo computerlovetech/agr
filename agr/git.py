@@ -146,7 +146,11 @@ def get_github_token() -> str | None:
 
 
 def _build_basic_auth_token(credential: StoredGitHubCredential) -> str:
-    username = credential.username if credential.method == "username_password" else "x-access-token"
+    username = (
+        credential.username
+        if credential.method == "username_password"
+        else "x-access-token"
+    )
     if credential.method == "username_password" and not username:
         return ""
     return base64.b64encode(f"{username}:{credential.token}".encode()).decode()

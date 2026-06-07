@@ -121,7 +121,9 @@ def test_file_token_store_delete_removes_file(tmp_path: Path) -> None:
     assert store.delete_token() is False
 
 
-def test_file_token_store_ignores_missing_invalid_and_empty_files(tmp_path: Path) -> None:
+def test_file_token_store_ignores_missing_invalid_and_empty_files(
+    tmp_path: Path,
+) -> None:
     auth_file = tmp_path / ".agr" / "auth.json"
     store = FileTokenStore(auth_file)
 
@@ -140,7 +142,9 @@ def test_file_token_store_rejects_empty_token(tmp_path: Path) -> None:
         store.write_token("   ")
 
 
-def test_file_token_store_rejects_username_password_without_username(tmp_path: Path) -> None:
+def test_file_token_store_rejects_username_password_without_username(
+    tmp_path: Path,
+) -> None:
     store = FileTokenStore(tmp_path / ".agr" / "auth.json")
 
     with pytest.raises(AgrError, match="username"):
@@ -150,8 +154,12 @@ def test_file_token_store_rejects_username_password_without_username(tmp_path: P
 
 
 def test_auth_status_checker_prefers_environment_tokens() -> None:
-    store = MemoryTokenStore(StoredGitHubCredential(method="oauth", token="stored-token"))
-    checker = GitHubAuthStatusChecker(store, {"GITHUB_TOKEN": " github-token ", "GH_TOKEN": "gh-token"})
+    store = MemoryTokenStore(
+        StoredGitHubCredential(method="oauth", token="stored-token")
+    )
+    checker = GitHubAuthStatusChecker(
+        store, {"GITHUB_TOKEN": " github-token ", "GH_TOKEN": "gh-token"}
+    )
 
     result = checker.get_status()
 
@@ -159,7 +167,9 @@ def test_auth_status_checker_prefers_environment_tokens() -> None:
 
 
 def test_status_prefers_environment_tokens() -> None:
-    store = MemoryTokenStore(StoredGitHubCredential(method="oauth", token="stored-token"))
+    store = MemoryTokenStore(
+        StoredGitHubCredential(method="oauth", token="stored-token")
+    )
 
     result = status(store, {"GITHUB_TOKEN": " github-token ", "GH_TOKEN": "gh-token"})
 
@@ -167,7 +177,9 @@ def test_status_prefers_environment_tokens() -> None:
 
 
 def test_status_uses_gh_token_before_stored_token() -> None:
-    store = MemoryTokenStore(StoredGitHubCredential(method="oauth", token="stored-token"))
+    store = MemoryTokenStore(
+        StoredGitHubCredential(method="oauth", token="stored-token")
+    )
 
     result = status(store, {"GH_TOKEN": "gh-token"})
 
@@ -258,7 +270,9 @@ def test_login_calls_strategy_and_saves_credential() -> None:
 
 
 def test_logout_deletes_token() -> None:
-    store = MemoryTokenStore(StoredGitHubCredential(method="oauth", token="stored-token"))
+    store = MemoryTokenStore(
+        StoredGitHubCredential(method="oauth", token="stored-token")
+    )
 
     assert logout(store) is True
     assert store.read_token() is None

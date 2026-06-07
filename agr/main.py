@@ -197,7 +197,9 @@ def auth_status() -> None:
     result = agr_auth.status()
     console = get_console()
     if not result.authenticated:
-        console.print("Not authenticated. Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN.")
+        console.print(
+            "Not authenticated. Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN."
+        )
         raise typer.Exit(1)
     print_auth_status(result)
 

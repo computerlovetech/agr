@@ -173,6 +173,7 @@ url = "{base_dir.as_posix()}/{{owner}}/{{repo}}"
         dep = config.dependencies[0]
         assert dep.handle == "acme/skills/test-skill"
 
+
 class TestAgrSyncRalph:
     """Tests for agr sync with ralph dependencies."""
 

@@ -87,8 +87,12 @@ class FileTokenStore:
             return None
         method = data.get("method")
         username = data.get("username")
-        normalized_method = method if isinstance(method, str) and method.strip() else "oauth"
-        normalized_username = username.strip() if isinstance(username, str) and username.strip() else None
+        normalized_method = (
+            method if isinstance(method, str) and method.strip() else "oauth"
+        )
+        normalized_username = (
+            username.strip() if isinstance(username, str) and username.strip() else None
+        )
         return StoredGitHubCredential(
             method=normalized_method.strip(),
             token=token.strip(),
@@ -104,7 +108,9 @@ class FileTokenStore:
         if not method:
             raise AgrError("Cannot store a GitHub credential without a method.")
         if method == "username_password" and not username:
-            raise AgrError("Cannot store a username/password credential without a username.")
+            raise AgrError(
+                "Cannot store a username/password credential without a username."
+            )
         data: dict[str, str] = {"github_token": token, "method": method}
         if username:
             data["username"] = username
@@ -152,7 +158,9 @@ class GitHubAuthStatusChecker:
                 return AuthStatus(authenticated=True, source=env_var, method="env")
         credential = self.store.read_credential()
         if credential:
-            return AuthStatus(authenticated=True, source="stored", method=credential.method)
+            return AuthStatus(
+                authenticated=True, source="stored", method=credential.method
+            )
         return AuthStatus(authenticated=False, source=None, method=None)
 
 
@@ -170,8 +178,12 @@ class UsernamePasswordGitHubLoginStrategy:
         self.password_prompt = password_prompt
 
     def login(self) -> StoredGitHubCredential:
-        username = self.username if self.username is not None else self._prompt_username()
-        password = self.password if self.password is not None else self._prompt_password()
+        username = (
+            self.username if self.username is not None else self._prompt_username()
+        )
+        password = (
+            self.password if self.password is not None else self._prompt_password()
+        )
         normalized_username = username.strip()
         normalized_password = password.strip()
         if not normalized_username:
@@ -236,7 +248,9 @@ def login(
     return credential
 
 
-def status(store: CredentialStore | None = None, env: dict[str, str] | None = None) -> AuthStatus:
+def status(
+    store: CredentialStore | None = None, env: dict[str, str] | None = None
+) -> AuthStatus:
     return GitHubAuthStatusChecker(store, env).get_status()
 
 

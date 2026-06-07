@@ -66,7 +66,9 @@ class TestGetGithubToken:
             patch.dict(os.environ, {}, clear=True),
             patch(
                 "agr.git.read_stored_github_credential",
-                return_value=StoredGitHubCredential(method="oauth", token="stored-token"),
+                return_value=StoredGitHubCredential(
+                    method="oauth", token="stored-token"
+                ),
             ),
         ):
             assert get_github_token() == "stored-token"
@@ -544,7 +546,9 @@ class TestRunGit:
 
         with (
             patch("agr.git.subprocess.run", side_effect=fake_run),
-            patch("agr.git._build_github_auth_env", return_value={"GIT_CONFIG_COUNT": "1"}),
+            patch(
+                "agr.git._build_github_auth_env", return_value={"GIT_CONFIG_COUNT": "1"}
+            ),
             patch.dict(os.environ, {}, clear=True),
         ):
             run_git(["git", "status"])

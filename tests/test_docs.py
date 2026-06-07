@@ -205,7 +205,6 @@ class TestToolDocumentation:
             )
 
 
-
 class TestContentQuality:
     """Test documentation content quality."""
 
