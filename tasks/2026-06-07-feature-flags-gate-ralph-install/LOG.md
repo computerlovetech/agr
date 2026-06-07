@@ -44,3 +44,43 @@ Note: the installer guard currently raises `RalphNotFoundError`, which the remot
 add fallback catches and then tries package — that is acceptable backstop
 behaviour, but the primary non-leaking semantics for AC 3–6 still need the
 decision-point gates above.
+
+## Iteration 2 — Decision-point gates (2026-06-07)
+
+**Shipped (the Option B remainder — primary gates at every ralph-install
+decision point):**
+
+- `agr/commands/add.py`:
+  - `_detect_local_type`: `has_ralph = is_valid_ralph_dir(...) and
+    feature_enabled("ralph")`. Off → a `RALPH.md` dir (and a both-markers dir)
+    resolves to skill and falls through to the existing not-a-skill error; no
+    "contains both" raise, no flag mention (AC 3).
+  - `_install_dependency`: remote skill→ralph fallback wrapped in
+    `if feature_enabled("ralph")`. Off → skill→package only, normal not-found
+    (AC 4).
+  - `_install_package`: `if dep.is_ralph and not feature_enabled("ralph"):
+    continue` before dispatch — ralph leaves dropped silently, non-ralph leaves
+    install as today (AC 5).
+- `agr/commands/sync.py`:
+  - `_classify_dependencies`: ralph dep with flag off → `SyncResult.up_to_date()`
+    and `continue` (never enters `pending_ralph`, prints nothing) (AC 6).
+  - `_sync_one_dependency` (locked path): ralph dep with flag off returns
+    `up_to_date()` before any clone/install work (AC 6).
+- Leakage audit (AC 9): no user-facing strings added; off-paths reuse existing
+  generic errors and silent up-to-date results. Only "gated"/"flag" words are
+  code comments.
+
+**Tests:**
+- `tests/unit/test_add.py`: `TestDetectLocalTypeFeatureGate` (ralph dir → skill
+  off / ralph on; both-markers no raise off) + off-path remote-fallback-skip and
+  package-ralph-leaf-skip tests asserting `fetch_and_install_ralph` not called.
+- `tests/unit/test_sync.py` (new): `_classify_dependencies` ralph skipped
+  silently + skill still queued when off; ralph queued when on.
+
+**Acceptance criteria covered:** 3, 4, 5, 6, 9, and the remainder of 10/11. With
+iteration 1 this closes the full task.
+
+**Verification:** `uv run ruff check .`, `uv run ruff format --check`, `uv run ty
+check` pass. `uv run pytest`: 1308 passed, 5 skipped. Same 6 pre-existing
+`tests/test_docs.py` failures (missing `docs/creating.md`/`llms.txt`), unrelated.
+`agr`/`agrx` both consume `agr.features`, so unification holds.

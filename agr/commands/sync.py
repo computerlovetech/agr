@@ -25,6 +25,7 @@ from agr.config import (
     find_config,
     require_repo_root,
 )
+from agr.features import feature_enabled
 from agr.package import ExpandedDeps, detect_conflicts, expand_packages
 from agr.console import error_exit, get_console, print_error
 from agr.exceptions import (
@@ -604,6 +605,11 @@ def _classify_dependencies(
                 results[index] = SyncResult.up_to_date()
                 continue
 
+            if dep.is_ralph and not feature_enabled("ralph"):
+                # Ralph install is gated off: skip silently as if absent.
+                results[index] = SyncResult.up_to_date()
+                continue
+
             if dep.is_ralph:
                 # Ralphs are tool-agnostic: check project-level ralphs dir.
                 if not forced and is_ralph_installed(
@@ -892,6 +898,10 @@ def _sync_dep_from_lockfile(
     """
     handle, source_name = dep.resolve(config.default_source, config.default_owner)
     is_ralph_dep = dep.is_ralph
+
+    # Ralph install is gated off: skip silently as if absent.
+    if is_ralph_dep and not feature_enabled("ralph"):
+        return SyncResult.up_to_date()
 
     # Check installation status — initialise tools_needing_install
     # unconditionally so it is always bound regardless of code path.

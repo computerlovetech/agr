@@ -14,6 +14,7 @@ from agr.config import (
     Dependency,
 )
 from agr.console import get_console
+from agr.features import feature_enabled
 from agr.exceptions import (
     INSTALL_ERROR_TYPES,
     AgrError,
@@ -68,7 +69,7 @@ def _detect_local_type(source_path: Path) -> str:
     If neither marker exists, checks for a [package] section in agr.toml.
     If nothing matches, defaults to skill (existing behaviour).
     """
-    has_ralph = is_valid_ralph_dir(source_path)
+    has_ralph = is_valid_ralph_dir(source_path) and feature_enabled("ralph")
     has_skill = is_valid_skill_dir(source_path)
 
     if has_ralph and has_skill:
@@ -192,20 +193,21 @@ def _install_dependency(
     except SkillNotFoundError:
         pass
 
-    try:
-        installed_path, install_result = fetch_and_install_ralph(
-            handle,
-            repo_root,
-            overwrite,
-            resolver=resolver,
-            source=source,
-            default_repo=default_repo,
-        )
-        return AddInstallResult(
-            [str(installed_path)], install_result, DEPENDENCY_TYPE_RALPH
-        )
-    except RalphNotFoundError:
-        pass
+    if feature_enabled("ralph"):
+        try:
+            installed_path, install_result = fetch_and_install_ralph(
+                handle,
+                repo_root,
+                overwrite,
+                resolver=resolver,
+                source=source,
+                default_repo=default_repo,
+            )
+            return AddInstallResult(
+                [str(installed_path)], install_result, DEPENDENCY_TYPE_RALPH
+            )
+        except RalphNotFoundError:
+            pass
 
     return _install_package(
         handle,
@@ -270,6 +272,8 @@ def _install_package(
         (DEPENDENCY_TYPE_PACKAGE, entry) for entry in expanded.package_entries
     ]
     for dep in expanded.dependencies:
+        if dep.is_ralph and not feature_enabled("ralph"):
+            continue
         sub_handle = dep.to_parsed_handle(config.default_owner)
         sub_source = dep.resolve_source_name(config.default_source)
         if dep.is_ralph:
