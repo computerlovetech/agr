@@ -110,3 +110,46 @@ class TestFetchAndInstallRalphRollback:
 
             # The installed path should be cleaned up by rollback
             assert not installed_path.exists()
+
+
+class TestFetchAndInstallRalphFeatureGate:
+    """Defense-in-depth: the installer refuses when the flag is off."""
+
+    def test_flag_off_blocks_install_without_leaking(
+        self, tmp_path, ralph_fixture, monkeypatch
+    ):
+        """With AGR_ENABLE_RALPH unset, no ralph is installed and the error
+        text reveals nothing about a feature flag."""
+        monkeypatch.delenv("AGR_ENABLE_RALPH", raising=False)
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        handle = ParsedHandle(
+            is_local=True, name=ralph_fixture.name, local_path=ralph_fixture
+        )
+
+        with pytest.raises(RalphNotFoundError) as exc_info:
+            fetch_and_install_ralph(handle, repo_root)
+
+        message = str(exc_info.value).lower()
+        assert "flag" not in message
+        assert "AGR_ENABLE_RALPH".lower() not in message
+        assert "feature" not in message
+        # Nothing should have been installed.
+        assert not get_ralphs_dir(repo_root).exists()
+
+    def test_flag_on_allows_install(self, tmp_path, ralph_fixture, monkeypatch):
+        """With the flag on, a local ralph installs as it does today."""
+        monkeypatch.setenv("AGR_ENABLE_RALPH", "1")
+        repo_root = tmp_path / "repo"
+        repo_root.mkdir()
+        (repo_root / ".git").mkdir()
+
+        handle = ParsedHandle(
+            is_local=True, name=ralph_fixture.name, local_path=ralph_fixture
+        )
+
+        path, _ = fetch_and_install_ralph(handle, repo_root)
+        assert path.exists()
+        assert (path / RALPH_MARKER).exists()

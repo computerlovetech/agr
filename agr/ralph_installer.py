@@ -31,6 +31,7 @@ from agr.exceptions import (
     InvalidLocalPathError,
     RalphNotFoundError,
 )
+from agr.features import feature_enabled
 from agr.handle import (
     INSTALLED_NAME_SEPARATOR,
     ParsedHandle,
@@ -273,6 +274,12 @@ def fetch_and_install_ralph(
     Returns:
         Tuple of (installed path, InstallResult with lockfile metadata).
     """
+    # Defense-in-depth: with the ralph feature off, no caller can install a
+    # ralph. Raise the same not-found error a missing ralph would, so nothing
+    # reveals that a feature flag is involved.
+    if not feature_enabled("ralph"):
+        raise RalphNotFoundError(handle.name)
+
     if repo_root is None:
         raise AgrError("repo_root is required for ralph installation")
 
