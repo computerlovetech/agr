@@ -13,6 +13,7 @@ def _raises_invalid_handle(repo_handle: str) -> None:
 
 # --- Control-character / whitespace rejection (SF-008) ---
 
+
 def test_list_skills_rejects_newline_in_owner():
     _raises_invalid_handle("owner\nevil/repo")
 
@@ -26,6 +27,7 @@ def test_list_skills_rejects_space_in_owner_single_part():
 
 
 # --- YAML character rejection (SF-010 / SF-011 / SF-012) ---
+
 
 def test_list_skills_rejects_bracket_in_owner():
     _raises_invalid_handle("[owner]/repo")
@@ -41,6 +43,7 @@ def test_list_skills_rejects_pipe_in_owner():
 
 # --- Path traversal rejection (SF-003) ---
 
+
 def test_list_skills_rejects_dotdot_owner():
     _raises_invalid_handle("../repo")
 
@@ -50,6 +53,7 @@ def test_list_skills_rejects_dotdot_repo():
 
 
 # --- Valid handles still work (no regression) ---
+
 
 def test_list_skills_valid_single_part_raises_network_not_handle(monkeypatch):
     """Valid owner should pass handle validation; network call is mocked to raise."""

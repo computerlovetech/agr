@@ -1,5 +1,6 @@
 """Unit tests for the git module's pure helper functions."""
 
+import base64
 import os
 import subprocess
 from pathlib import Path
@@ -7,8 +8,10 @@ from unittest.mock import patch
 
 import pytest
 
+from agr.auth import StoredGitHubCredential
 from agr.exceptions import AgrError, AuthenticationError, RepoNotFoundError
 from agr.git import fetch_and_checkout_commit, get_github_token, validate_commit_sha
+from agr.git import _run_git as run_git
 from agr.git import _is_github_source as is_github_source
 from agr.git import _partial_clone_unsupported as partial_clone_unsupported
 from agr.git import _build_github_auth_env as build_github_auth_env
@@ -20,7 +23,10 @@ class TestGetGithubToken:
     """Tests for get_github_token()."""
 
     def test_returns_none_when_no_env_vars(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=None),
+        ):
             assert get_github_token() is None
 
     def test_prefers_github_token_over_gh_token(self):
@@ -49,8 +55,23 @@ class TestGetGithubToken:
             assert get_github_token() == "my-token"
 
     def test_returns_none_when_both_empty(self):
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "", "GH_TOKEN": ""}, clear=True):
+        with (
+            patch.dict(os.environ, {"GITHUB_TOKEN": "", "GH_TOKEN": ""}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=None),
+        ):
             assert get_github_token() is None
+
+    def test_falls_back_to_stored_agr_token(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch(
+                "agr.git.read_stored_github_credential",
+                return_value=StoredGitHubCredential(
+                    method="oauth", token="stored-token"
+                ),
+            ),
+        ):
+            assert get_github_token() == "stored-token"
 
 
 class TestIsGithubSource:
@@ -109,6 +130,11 @@ class TestRaiseCloneError:
     This function classifies git clone stderr/stdout into specific exception
     types. The classification order matters and is tested here.
     """
+
+    @pytest.fixture(autouse=True)
+    def no_stored_token(self):
+        with patch("agr.git.read_stored_github_credential", return_value=None):
+            yield
 
     GITHUB_SOURCE = SourceConfig(
         name="github",
@@ -493,6 +519,44 @@ class TestValidateCommitSha:
             validate_commit_sha("refs/heads/main")
 
 
+class TestRunGit:
+    def test_disables_terminal_prompts(self):
+        captured = {}
+
+        def fake_run(*args, **kwargs):
+            captured.update(kwargs)
+            return subprocess.CompletedProcess(args[0], 0, "", "")
+
+        with (
+            patch("agr.git.subprocess.run", side_effect=fake_run),
+            patch("agr.git._build_github_auth_env", return_value={}),
+            patch.dict(os.environ, {}, clear=True),
+        ):
+            result = run_git(["git", "status"])
+
+        assert result.returncode == 0
+        assert captured["env"]["GIT_TERMINAL_PROMPT"] == "0"
+
+    def test_preserves_auth_env_when_disabling_prompts(self):
+        captured = {}
+
+        def fake_run(*args, **kwargs):
+            captured.update(kwargs)
+            return subprocess.CompletedProcess(args[0], 0, "", "")
+
+        with (
+            patch("agr.git.subprocess.run", side_effect=fake_run),
+            patch(
+                "agr.git._build_github_auth_env", return_value={"GIT_CONFIG_COUNT": "1"}
+            ),
+            patch.dict(os.environ, {}, clear=True),
+        ):
+            run_git(["git", "status"])
+
+        assert captured["env"]["GIT_TERMINAL_PROMPT"] == "0"
+        assert captured["env"]["GIT_CONFIG_COUNT"] == "1"
+
+
 class TestBuildGithubAuthEnv:
     """Tests for _build_github_auth_env().
 
@@ -501,7 +565,10 @@ class TestBuildGithubAuthEnv:
     """
 
     def test_returns_empty_when_no_token(self):
-        with patch.dict(os.environ, {}, clear=True):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=None),
+        ):
             assert build_github_auth_env() == {}
 
     def test_returns_auth_env_when_token_set(self):
@@ -509,7 +576,8 @@ class TestBuildGithubAuthEnv:
             env = build_github_auth_env()
             assert env["GIT_CONFIG_COUNT"] == "1"
             assert env["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
-            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer ghp_test123"
+            expected = base64.b64encode(b"x-access-token:ghp_test123").decode()
+            assert env["GIT_CONFIG_VALUE_0"] == f"AUTHORIZATION: basic {expected}"
 
     def test_token_value_not_in_config_keys(self):
         """Token must only appear in GIT_CONFIG_VALUE, never in keys."""
@@ -540,10 +608,38 @@ class TestBuildGithubAuthEnv:
     def test_uses_gh_token_fallback(self):
         with patch.dict(os.environ, {"GH_TOKEN": "gh_fallback"}, clear=True):
             env = build_github_auth_env()
-            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer gh_fallback"
+            expected = base64.b64encode(b"x-access-token:gh_fallback").decode()
+            assert env["GIT_CONFIG_VALUE_0"] == f"AUTHORIZATION: basic {expected}"
+
+    def test_uses_stored_oauth_credential(self):
+        credential = StoredGitHubCredential(method="oauth", token="stored-token")
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=credential),
+        ):
+            env = build_github_auth_env()
+            expected = base64.b64encode(b"x-access-token:stored-token").decode()
+            assert env["GIT_CONFIG_VALUE_0"] == f"AUTHORIZATION: basic {expected}"
+
+    def test_uses_stored_username_password_credential(self):
+        credential = StoredGitHubCredential(
+            method="username_password",
+            token="secret-token",
+            username="octocat",
+        )
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=credential),
+        ):
+            env = build_github_auth_env()
+            expected = base64.b64encode(b"octocat:secret-token").decode()
+            assert env["GIT_CONFIG_VALUE_0"] == f"AUTHORIZATION: basic {expected}"
 
     def test_whitespace_only_token_returns_empty(self):
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "  "}, clear=True):
+        with (
+            patch.dict(os.environ, {"GITHUB_TOKEN": "  "}, clear=True),
+            patch("agr.git.read_stored_github_credential", return_value=None),
+        ):
             assert build_github_auth_env() == {}
 
     def test_scoped_to_github_com(self):
@@ -564,4 +660,5 @@ class TestBuildGithubAuthEnv:
             env = build_github_auth_env()
             assert env["GIT_CONFIG_COUNT"] == "1"
             assert "GIT_CONFIG_KEY_0" in env
-            assert env["GIT_CONFIG_VALUE_0"] == "AUTHORIZATION: bearer tok"
+            expected = base64.b64encode(b"x-access-token:tok").decode()
+            assert env["GIT_CONFIG_VALUE_0"] == f"AUTHORIZATION: basic {expected}"

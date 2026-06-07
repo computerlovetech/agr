@@ -1,10 +1,12 @@
 """CLI entry point for agr."""
 
 from typing import Annotated
+import webbrowser
 
 import typer
 
 from agr import __version__
+from agr import auth as agr_auth
 from agr.commands.add import run_add
 from agr.commands.init import run_init
 from agr.commands.list import run_list
@@ -22,7 +24,8 @@ from agr.commands.config_cmd import (
     run_config_show,
     run_config_unset,
 )
-from agr.console import set_quiet
+from agr.console import get_console, set_quiet
+from agr.github_oauth import GitHubOAuthDeviceFlow
 from agr.tool import available_tools_string
 
 GlobalScope = Annotated[
@@ -44,6 +47,13 @@ config_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(config_app, name="config")
+
+auth_app = typer.Typer(
+    name="auth",
+    help="Manage GitHub authentication.",
+    no_args_is_help=True,
+)
+app.add_typer(auth_app, name="auth")
 
 # --- New unified config commands ---
 
@@ -126,6 +136,83 @@ def config_remove(
 ) -> None:
     """Remove from a list config value."""
     run_config_remove(key, values, global_scope)
+
+
+def print_auth_status(result: agr_auth.AuthStatus) -> None:
+    console = get_console()
+    if result.source == "stored":
+        method = f" ({result.method})" if result.method else ""
+        console.print(f"Authenticated with stored agr GitHub token{method}.")
+        return
+    console.print(f"Authenticated with {result.source} environment token.")
+
+
+@auth_app.command("login")
+def auth_login(
+    oauth: Annotated[
+        bool,
+        typer.Option("--oauth", help="Authenticate using GitHub OAuth device flow."),
+    ] = False,
+) -> None:
+    """Authenticate with GitHub."""
+    console = get_console()
+    result = agr_auth.GitHubAuthStatusChecker().get_status()
+    if result.authenticated:
+        print_auth_status(result)
+        console.print("Already logged in.")
+        return
+
+    def show_device_prompt(authorization: agr_auth.DeviceAuthorization) -> None:
+        console.print("Open this URL to authenticate with GitHub:")
+        console.print(authorization.verification_uri)
+        console.print(f"Enter code: [bold]{authorization.user_code}[/bold]")
+        webbrowser.open(authorization.verification_uri)
+        console.print("Waiting for GitHub authorization...")
+
+    if oauth:
+        strategy: agr_auth.GitHubLoginStrategy = agr_auth.OAuthGitHubLoginStrategy(
+            GitHubOAuthDeviceFlow(),
+            show_device_prompt,
+        )
+    else:
+        strategy = agr_auth.UsernamePasswordGitHubLoginStrategy(
+            username_prompt=lambda: typer.prompt("GitHub username"),
+            password_prompt=lambda: typer.prompt(
+                "GitHub password or token",
+                hide_input=True,
+            ),
+        )
+
+    try:
+        agr_auth.login(strategy)
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(1) from None
+    console.print("Authenticated with GitHub.")
+
+
+@auth_app.command("status")
+def auth_status() -> None:
+    """Show GitHub authentication status."""
+    result = agr_auth.status()
+    console = get_console()
+    if not result.authenticated:
+        console.print(
+            "Not authenticated. Run 'agr auth login' or set GITHUB_TOKEN/GH_TOKEN."
+        )
+        raise typer.Exit(1)
+    print_auth_status(result)
+
+
+@auth_app.command("logout")
+def auth_logout() -> None:
+    """Remove stored GitHub authentication."""
+    removed = agr_auth.logout()
+    console = get_console()
+    if removed:
+        console.print("Removed stored GitHub token.")
+        return
+    console.print("No stored GitHub token found.")
 
 
 def version_callback(value: bool) -> None:
