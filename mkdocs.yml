@@ -79,6 +79,7 @@ not_in_nav: |
 
 exclude_docs: |
   diary/**
+  contributing/**
 
 validation:
   nav:

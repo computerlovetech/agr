@@ -84,3 +84,24 @@ iteration 1 this closes the full task.
 check` pass. `uv run pytest`: 1308 passed, 5 skipped. Same 6 pre-existing
 `tests/test_docs.py` failures (missing `docs/creating.md`/`llms.txt`), unrelated.
 `agr`/`agrx` both consume `agr.features`, so unification holds.
+
+## Iteration 3 — Contributor doc for the feature-flag registry (2026-06-07)
+
+**Shipped (polish; the task's ACs were already fully covered by iterations 1–2):**
+
+- New `docs/contributing/feature-flags.md`: explains the env-var registry, the
+  truthy-value set, how to add a new gated feature (one-line registry entry +
+  decision-point gates + defense-in-depth guard), and the "keep a dark feature
+  dark" rules (no leakage, gate at the right altitude, silent skips). Uses ralph
+  as the worked example with links to the gated files.
+- `mkdocs.yml`: added `contributing/**` to `exclude_docs` so the note ships in
+  the repo for contributors but is **not** published to agr.run — keeping the
+  ralph feature dark for end users (no public mention of `AGR_ENABLE_RALPH`).
+
+**Verification:** `uv run mkdocs build --strict` succeeds; `site/contributing/`
+is absent, confirming the doc is excluded from the published site. No code
+changed, so the test suite is unaffected (the 6 pre-existing `tests/test_docs.py`
+failures remain out of scope).
+
+This makes the "adding a second flag is one line" promise discoverable for
+contributors and closes out the task.
