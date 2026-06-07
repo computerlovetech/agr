@@ -12,16 +12,16 @@ from agr.github_oauth import (
 )
 
 
-def make_client(responses: list[dict[str, object]]) -> httpx.Client:
+def make_client(
+    responses: list[dict[str, object]],
+) -> tuple[httpx.Client, list[httpx.Request]]:
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         return httpx.Response(200, json=responses.pop(0))
 
-    client = httpx.Client(transport=httpx.MockTransport(handler))
-    client.requests = requests
-    return client
+    return httpx.Client(transport=httpx.MockTransport(handler)), requests
 
 
 def test_request_device_authorization_requires_configured_client_id() -> None:
@@ -35,7 +35,7 @@ def test_request_device_authorization_requires_configured_client_id() -> None:
 
 def test_uses_client_id_environment_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGR_GITHUB_OAUTH_CLIENT_ID", "env-client-id")
-    client = make_client(
+    client, requests = make_client(
         [
             {
                 "device_code": "device-code",
@@ -50,7 +50,7 @@ def test_uses_client_id_environment_override(monkeypatch: pytest.MonkeyPatch) ->
 
     flow.request_device_authorization()
 
-    assert "client_id=env-client-id" in client.requests[0].content.decode()
+    assert "client_id=env-client-id" in requests[0].content.decode()
 
 
 def test_request_device_authorization_raises_friendly_http_error() -> None:
@@ -65,7 +65,7 @@ def test_request_device_authorization_raises_friendly_http_error() -> None:
 
 
 def test_request_device_authorization_returns_caller_facing_data() -> None:
-    client = make_client(
+    client, requests = make_client(
         [
             {
                 "device_code": "device-code",
@@ -87,12 +87,12 @@ def test_request_device_authorization_returns_caller_facing_data() -> None:
         expires_in=900,
         interval=5,
     )
-    assert str(client.requests[0].url) == GITHUB_DEVICE_CODE_URL
-    assert "client_id=client-id" in client.requests[0].content.decode()
+    assert str(requests[0].url) == GITHUB_DEVICE_CODE_URL
+    assert "client_id=client-id" in requests[0].content.decode()
 
 
 def test_poll_for_token_handles_pending_then_success() -> None:
-    client = make_client(
+    client, requests = make_client(
         [
             {"error": "authorization_pending"},
             {"access_token": " github-token "},
@@ -107,14 +107,14 @@ def test_poll_for_token_handles_pending_then_success() -> None:
 
     assert token == "github-token"
     assert sleeps == [1, 1]
-    assert [str(request.url) for request in client.requests] == [
+    assert [str(request.url) for request in requests] == [
         GITHUB_ACCESS_TOKEN_URL,
         GITHUB_ACCESS_TOKEN_URL,
     ]
 
 
 def test_poll_for_token_handles_slow_down() -> None:
-    client = make_client(
+    client, _ = make_client(
         [
             {"error": "slow_down"},
             {"access_token": "github-token"},
@@ -140,7 +140,7 @@ def test_poll_for_token_handles_slow_down() -> None:
     ],
 )
 def test_poll_for_token_raises_for_terminal_errors(error: str, message: str) -> None:
-    client = make_client([{"error": error}])
+    client, _ = make_client([{"error": error}])
     flow = GitHubOAuthDeviceFlow(
         client_id="client-id", client=client, sleep=lambda _: None
     )
@@ -150,7 +150,7 @@ def test_poll_for_token_raises_for_terminal_errors(error: str, message: str) -> 
 
 
 def test_poll_for_token_raises_for_unknown_error_description() -> None:
-    client = make_client(
+    client, _ = make_client(
         [{"error": "bad_verification_code", "error_description": "Bad code"}]
     )
     flow = GitHubOAuthDeviceFlow(
