@@ -44,17 +44,13 @@ class TestDocsExist:
         """Home page exists."""
         assert (DOCS_DIR / "index.md").exists()
 
-    def test_creating_exists(self):
-        """Creating skills page exists."""
-        assert (DOCS_DIR / "creating.md").exists()
+    def test_managing_exists(self):
+        """Managing skills page exists."""
+        assert (DOCS_DIR / "managing.md").exists()
 
     def test_reference_exists(self):
         """Reference page exists."""
         assert (DOCS_DIR / "reference.md").exists()
-
-    def test_llms_txt_exists(self):
-        """llms.txt exists."""
-        assert (DOCS_DIR / "llms.txt").exists()
 
 
 class TestInternalLinks:
@@ -189,33 +185,17 @@ class TestToolDocumentation:
 
     ALL_TOOL_NAMES = set(TOOLS.keys())
 
-    def test_configuration_mentions_all_tools(self):
-        """configuration.md tools table lists all supported tools."""
-        content = (DOCS_DIR / "configuration.md").read_text()
-        # Check the Multi-Tool Setup section which has the tools table.
-        section_marker = "## Multi-Tool Setup"
+    def test_managing_mentions_all_tools(self):
+        """managing.md Multi-tool section lists all supported tools."""
+        content = (DOCS_DIR / "managing.md").read_text()
+        section_marker = "## Multi-tool"
         assert section_marker in content, (
-            "configuration.md missing 'Multi-Tool Setup' section"
+            "managing.md missing 'Multi-tool' section"
         )
         section = content[content.index(section_marker) :]
         for tool in self.ALL_TOOL_NAMES:
             assert tool in section.lower(), (
-                f"Tool '{tool}' not in configuration.md Multi-Tool Setup section"
-            )
-
-    def test_agrx_cli_table_mentions_all_tools(self):
-        """agrx.md CLI Requirements table lists all supported tools."""
-        content = (DOCS_DIR / "agrx.md").read_text()
-        # Extract just the CLI Requirements section to ensure tools appear
-        # in the table, not just in passing mentions elsewhere on the page.
-        cli_section_marker = "## Tool CLI Requirements"
-        assert cli_section_marker in content, (
-            "agrx.md missing 'Tool CLI Requirements' section"
-        )
-        cli_section = content[content.index(cli_section_marker) :]
-        for tool in self.ALL_TOOL_NAMES:
-            assert tool in cli_section.lower(), (
-                f"Tool '{tool}' not in agrx.md CLI Requirements table"
+                f"Tool '{tool}' not in managing.md Multi-tool section"
             )
 
     def test_reference_agrx_section_mentions_all_tools(self):
@@ -226,25 +206,6 @@ class TestToolDocumentation:
                 f"Tool '{tool}' not mentioned in reference.md"
             )
 
-    def test_tools_page_detection_signals_match_code(self):
-        """tools.md Detection Signals table matches ToolConfig.detection_signals."""
-        content = (DOCS_DIR / "tools.md").read_text()
-        section_marker = "## Detection Signals"
-        assert section_marker in content, "tools.md missing 'Detection Signals' section"
-        section = content[content.index(section_marker) :]
-        # Stop at the next h2 section
-        next_h2 = section.find("\n## ", 1)
-        if next_h2 != -1:
-            section = section[:next_h2]
-
-        for name, tool in self.TOOLS.items():
-            for signal in tool.detection_signals:
-                assert signal in section, (
-                    f"Detection signal '{signal}' for tool '{name}' "
-                    f"missing from tools.md Detection Signals table"
-                )
-
-
 class TestContentQuality:
     """Test documentation content quality."""
 
@@ -252,13 +213,6 @@ class TestContentQuality:
         """Home page has a quick install example."""
         content = (DOCS_DIR / "index.md").read_text()
         assert "uvx agr add" in content or "uv tool install agr" in content
-
-    def test_creating_has_skill_example(self):
-        """Creating page has a complete skill example."""
-        content = (DOCS_DIR / "creating.md").read_text()
-        assert "SKILL.md" in content
-        assert "name:" in content
-        assert "description:" in content
 
     def test_reference_has_all_commands(self):
         """Reference page documents all main commands."""
