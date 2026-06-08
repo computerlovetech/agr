@@ -4,8 +4,9 @@
 
 **The package manager for AI agents.**
 
-Share AI agent skills across your team like code packages — from any Git repo,
-into Claude Code, Cursor, Codex, and more.
+For teams who want to manage agent skills like software packages — the way npm,
+PyPI, and uv manage code. Install skills from any Git repo into Claude Code,
+Cursor, Codex, and more, then share them across your team like real dependencies.
 
 [![PyPI](https://img.shields.io/pypi/v/agr?color=blue)](https://pypi.org/project/agr/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -19,25 +20,58 @@ into Claude Code, Cursor, Codex, and more.
 
 ---
 
-## Getting started
+## Why agr
 
-Install the CLI:
+agr is for **teams** who want to manage their agent skills as seriously as they
+manage their code — the way npm, PyPI, and uv manage software packages.
+
+Skills make AI agents better at your work. But today they're copied around by
+hand, drift between machines, and live in tool-specific folders. agr treats them
+like real dependencies: declared in one manifest, locked to a version, installed
+with one command, and identical for every teammate, on every machine, in every
+tool.
+
+That brings the same wins you already get from a package manager for code:
+
+- **Version & pin.** `agr.lock` records the exact version of every skill, so a
+  skill that works today keeps working tomorrow — no silent upstream changes
+  breaking your agents. Upgrade on purpose, when you choose, with `agr upgrade`.
+- **Distribute effortlessly.** Publishing a skill is just pushing to a Git repo;
+  installing one is `agr add owner/repo/skill`. No registry to set up, no files
+  to email around.
+- **One source of truth for the team.** The skills your agents use are part of
+  your repo — reviewed in PRs, versioned in Git, and shared like any other
+  dependency. Everyone runs the same skills, so your agents behave consistently
+  across the whole team.
+- **Onboard in one command.** A new teammate clones the repo, runs `agr sync`,
+  and their agents are set up exactly like everyone else's — same skills, same
+  standards, day one.
+
+## Install
 
 ```bash
 uv tool install agr
 ```
 
-Install your first skill:
+---
+
+## What you can do with it
+
+Five things. That's the whole tool.
+
+### 1. Install a skill from a Git repo
 
 ```bash
 agr add anthropics/skills/pdf
 ```
 
-Handles follow the pattern `owner/repo/skill` — pointing to a directory inside
-a GitHub repo. `anthropics/skills/pdf` means the `pdf/` directory inside
-[github.com/anthropics/skills](https://github.com/anthropics/skills).
+Handles are just a path into GitHub: **`owner/repo/skill`**. `anthropics/skills/pdf`
+is the `pdf/` directory inside
+[github.com/anthropics/skills](https://github.com/anthropics/skills). Any public
+repo works — no registry, no publishing step.
 
-Then invoke it in your AI tool:
+`agr add` auto-creates `agr.toml`, detects which AI tools you use, and installs
+the skill into each. Then invoke it in your tool:
 
 | Tool | Invoke with |
 |------|-------------|
@@ -48,17 +82,22 @@ Then invoke it in your AI tool:
 | GitHub Copilot | `/pdf` |
 | Antigravity | *(via IDE)* |
 
-No setup required — `agr add` auto-creates `agr.toml` and detects which tools
-you use.
+### 2. Use your own local skills
 
----
+Point at a directory on disk instead of a repo:
 
-## Built for teams
+```bash
+agr add ./skills/my-internal-skill
+```
 
-agr is opinionated: skill directories (`.claude/skills/`, `.cursor/skills/`, …)
-are build artifacts — like `.venv/` or `node_modules/`. Add them to `.gitignore`.
-Commit `agr.toml` and `agr.lock` instead. `agr sync` rebuilds the environment
-from the manifest on every machine.
+Great for skills you're still writing, or ones that never leave your codebase.
+They sync into every tool exactly like remote skills.
+
+### 3. Share one skill environment with your team
+
+`.claude/skills/`, `.cursor/skills/`, … are build artifacts — like `.venv/` or
+`node_modules/`. Add them to `.gitignore`. Commit **`agr.toml`** and
+**`agr.lock`** instead:
 
 ```toml
 tools = ["claude", "cursor"]
@@ -66,51 +105,51 @@ tools = ["claude", "cursor"]
 dependencies = [
     {handle = "anthropics/skills/pdf", type = "skill"},
     {handle = "anthropics/skills/frontend-design", type = "skill"},
+    {path = "./skills/my-internal-skill", type = "skill"},
 ]
 ```
 
+A new teammate clones the repo and runs:
+
 ```bash
-agr sync   # Like npm install, but for AI agents
+agr sync   # like `npm install`, but for AI agents
 ```
 
-New teammate? `agr sync` and they're productive on day one — same skills,
-same standards, every tool.
+Now everyone has the same skills, the same standards, in every tool.
 
----
-
-## Keep skills up to date
+### 4. Keep skills up to date
 
 ```bash
 agr upgrade            # all skills
-agr upgrade pdf        # one skill
+agr upgrade pdf        # just one
 ```
 
----
+Re-fetches skills at their latest upstream version and updates `agr.lock`.
 
-## Example skills
+### 5. Try a skill without installing it
 
 ```bash
-agr add anthropics/skills/pdf              # Read, extract, create PDFs
-agr add anthropics/skills/frontend-design  # Production-grade interfaces
-agr add anthropics/skills/claude-api       # Build apps with the Claude API
-agr add anthropics/skills/skill-creator    # Create, modify, and improve skills
+agrx anthropics/skills/pdf
 ```
+
+Downloads and runs a skill once, then throws it away — nothing added to
+`agr.toml`, nothing left behind.
 
 ---
 
 ## All commands
 
-| Command | Description |
-|---------|-------------|
-| `agr add <handle>` | Install a skill |
+| Command | What it does |
+|---------|--------------|
+| `agr add <handle\|path>` | Install a skill and add it to `agr.toml` |
 | `agr remove <handle>` | Uninstall a skill |
-| `agr sync` | Install all from `agr.toml` |
-| `agr upgrade [handle...]` | Re-fetch deps at latest version |
+| `agr sync` | Install everything in `agr.toml` |
+| `agr upgrade [handle...]` | Re-fetch skills at their latest version |
 | `agr list` | Show installed skills |
-| `agrx <handle>` | Run a skill temporarily without installing |
+| `agrx <handle>` | Run a skill once, without installing |
 
-Add `-g` to `add`, `remove`, `sync`, or `list` for global skills (available in
-all projects).
+Add `-g` to `add`, `remove`, `sync`, or `list` to manage **global** skills,
+available across all your projects.
 
 ---
 
