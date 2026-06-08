@@ -14,6 +14,17 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def enable_ralph_feature(monkeypatch):
+    """Enable the ralph feature flag by default for the test suite.
+
+    Ralph install is gated behind AGR_ENABLE_RALPH. Most tests assume the
+    feature is on (today's behaviour), so enable it globally. Tests that
+    exercise the flag-off path unset it explicitly via monkeypatch.
+    """
+    monkeypatch.setenv("AGR_ENABLE_RALPH", "1")
+
+
+@pytest.fixture(autouse=True)
 def skip_e2e_in_ci(request):
     """Auto-skip E2E tests in CI based on SKIP_E2E env var."""
     if request.node.get_closest_marker("e2e") and os.environ.get(

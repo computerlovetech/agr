@@ -6,11 +6,17 @@ from agr._install_common import InstallResult
 from agr.exceptions import RalphNotFoundError, SkillNotFoundError
 from agr.commands.add import (
     AddInstallResult,
+    _detect_local_type,
     _install_dependency,
     _install_package,
     _update_lockfile_for_adds,
 )
-from agr.config import AgrConfig, Dependency
+from agr.config import (
+    DEPENDENCY_TYPE_RALPH,
+    DEPENDENCY_TYPE_SKILL,
+    AgrConfig,
+    Dependency,
+)
 from agr.handle import ParsedHandle
 from agr.lockfile import LockedEntry, load_lockfile
 from agr.package import ExpandedDeps
@@ -94,6 +100,88 @@ class TestInstallPackage:
         assert entries[("ralph", "owner/repo/child-ralph")].parent == (
             "owner/repo/bundle"
         )
+
+    def test_remote_ralph_fallback_skipped_when_flag_off(self, monkeypatch):
+        """Off-path: remote add goes skill->package, never trying ralph."""
+        monkeypatch.delenv("AGR_ENABLE_RALPH", raising=False)
+        with (
+            patch(
+                "agr.commands.add.fetch_and_install_to_tools",
+                side_effect=SkillNotFoundError("no skill"),
+            ),
+            patch(
+                "agr.commands.add.fetch_and_install_ralph",
+            ) as fetch_ralph,
+            patch(
+                "agr.commands.add._install_package",
+                return_value=AddInstallResult([], InstallResult(), "package"),
+            ) as install_package,
+        ):
+            result = _install_dependency(
+                ParsedHandle(username="owner", repo="repo", name="bundle"),
+                "skill",
+                MagicMock(),
+                [],
+                False,
+                MagicMock(),
+                None,
+                None,
+                "skills",
+                config=AgrConfig(),
+            )
+
+        assert result.dep_type == "package"
+        install_package.assert_called_once()
+        fetch_ralph.assert_not_called()
+
+    def test_package_ralph_leaf_skipped_when_flag_off(self, monkeypatch):
+        """Off-path: ralph leaves are silently dropped, skill leaves install."""
+        monkeypatch.delenv("AGR_ENABLE_RALPH", raising=False)
+        expanded = ExpandedDeps(
+            dependencies=[
+                Dependency(type="skill", handle="owner/repo/child-skill"),
+                Dependency(type="ralph", handle="owner/repo/child-ralph"),
+            ],
+            parents={
+                "owner/repo/child-skill": "owner/repo/bundle",
+                "owner/repo/child-ralph": "owner/repo/bundle",
+            },
+            package_entries=[],
+        )
+
+        with (
+            patch("agr.commands.add.expand_packages", return_value=expanded),
+            patch(
+                "agr.commands.add.detect_conflicts",
+                side_effect=lambda deps, parents, direct_ids: deps,
+            ),
+            patch(
+                "agr.commands.add.fetch_and_install_to_tools",
+                return_value=(
+                    {"claude": MagicMock()},
+                    InstallResult(
+                        commit="a" * 40,
+                        content_hash="sha256:aaa",
+                        source_name="github",
+                    ),
+                ),
+            ) as fetch_skill,
+            patch("agr.commands.add.fetch_and_install_ralph") as fetch_ralph,
+        ):
+            _install_package(
+                ParsedHandle(username="owner", repo="repo", name="bundle"),
+                MagicMock(),
+                [MagicMock()],
+                False,
+                MagicMock(),
+                None,
+                None,
+                "skills",
+                config=AgrConfig(),
+            )
+
+        fetch_skill.assert_called_once()
+        fetch_ralph.assert_not_called()
 
     def test_remote_dependency_falls_back_to_package(self):
         with (
@@ -300,3 +388,27 @@ class TestUpdateLockfileForAdds:
         assert lockfile is not None
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].handle == "owner/skills/my-skill"
+
+
+class TestDetectLocalTypeFeatureGate:
+    """Off-path: a local RALPH.md dir is invisible when the flag is off."""
+
+    def test_ralph_dir_detected_as_skill_when_flag_off(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("AGR_ENABLE_RALPH", raising=False)
+        (tmp_path / "RALPH.md").write_text("# ralph\n")
+
+        assert _detect_local_type(tmp_path) == DEPENDENCY_TYPE_SKILL
+
+    def test_ralph_dir_detected_as_ralph_when_flag_on(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AGR_ENABLE_RALPH", "1")
+        (tmp_path / "RALPH.md").write_text("# ralph\n")
+
+        assert _detect_local_type(tmp_path) == DEPENDENCY_TYPE_RALPH
+
+    def test_both_markers_does_not_raise_when_flag_off(self, tmp_path, monkeypatch):
+        """With ralph gated off, a both-markers dir is just a skill (no error)."""
+        monkeypatch.delenv("AGR_ENABLE_RALPH", raising=False)
+        (tmp_path / "RALPH.md").write_text("# ralph\n")
+        (tmp_path / "SKILL.md").write_text("# skill\n")
+
+        assert _detect_local_type(tmp_path) == DEPENDENCY_TYPE_SKILL
