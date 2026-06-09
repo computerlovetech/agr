@@ -46,7 +46,7 @@
     "@type": "SoftwareApplication",
     "name": "agr",
     "alternateName": "Agent Resources",
-    "description": "The package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity. Built for teams practicing Agentic Engineering.",
+    "description": "The package manager for AI agents. Install, share, and sync agent resources across Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi. Built for teams practicing Agentic Engineering.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Cross-platform",
     "url": "https://computerlovetech.github.io/agr/",
@@ -65,7 +65,7 @@
     },
     "featureList": [
       "Install AI agent resources from GitHub with one command",
-      "Multi-tool support: Claude Code, Cursor, Codex, OpenCode, Copilot, Antigravity",
+      "Multi-tool support: Claude Code, Cursor, Codex, OpenCode, Copilot, Pi",
       "Team sync via agr.toml",
       "Ephemeral skill runner (agrx)",
       "Python SDK for programmatic access"
@@ -78,7 +78,7 @@
       "OpenAI Codex",
       "OpenCode",
       "GitHub Copilot",
-      "Antigravity",
+      "Pi",
       "skills",
       "developer tools"
     ]
@@ -273,7 +273,7 @@
         "name": "How do I fix \"Unknown tool\" in agr?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Check your agr.toml for typos in the tools list. Available tools are: claude (Claude Code), cursor (Cursor), codex (OpenAI Codex), opencode (OpenCode), copilot (GitHub Copilot), and antigravity (Antigravity)."
+          "text": "Check your agr.toml for typos in the tools list. Available tools are: claude (Claude Code), cursor (Cursor), codex (OpenAI Codex), opencode (OpenCode), copilot (GitHub Copilot), and pi (Pi)."
         }
       },
       {
@@ -281,7 +281,7 @@
         "name": "Why does agr init detect a tool I don't use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Some detection signals are shared between tools. For example, the .agents/ directory detects both OpenAI Codex and Antigravity because both tools use that path. Override detection with: agr init --tools claude,codex — or remove unwanted tools after setup with: agr config remove tools antigravity."
+          "text": "Some detection signals are shared between tools. For example, the .agents/ directory detects both OpenAI Codex and Pi because both tools read skills from that path. Override detection with: agr init --tools claude,codex — or remove unwanted tools after setup with: agr config remove tools pi."
         }
       },
       {
@@ -358,10 +358,10 @@
       },
       {
         "@type": "Question",
-        "name": "Why can't I use agrx with Antigravity?",
+        "name": "Where does agr install Pi skills?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Antigravity does not have a standalone CLI, so agrx cannot run skills with it. Use agr add to install skills permanently, then invoke them through the Antigravity IDE interface."
+          "text": "agr installs Pi skills into .pi/skills/ in your project (and ~/.pi/agent/skills/ for global installs). Pi also reads the shared .agents/skills/ path, and agr detects Pi from a .pi/ or .agents/ directory. Pi has a CLI, so agrx --tool pi can run skills ephemerally too."
         }
       },
       {
@@ -430,10 +430,10 @@
       },
       {
         "@type": "Question",
-        "name": "How do I fix \"canonical_instructions must be 'AGENTS.md', 'CLAUDE.md', or 'GEMINI.md'\" in agr?",
+        "name": "How do I fix \"canonical_instructions must be 'AGENTS.md' or 'CLAUDE.md'\" in agr?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Only three instruction file names are supported for syncing: AGENTS.md, CLAUDE.md, and GEMINI.md. Other filenames like README.md or INSTRUCTIONS.md won't work. Set it with: agr config set canonical_instructions CLAUDE.md."
+          "text": "Only two instruction file names are supported for syncing: AGENTS.md and CLAUDE.md. Other filenames like README.md or INSTRUCTIONS.md won't work. Set it with: agr config set canonical_instructions CLAUDE.md."
         }
       },
       {
@@ -561,7 +561,7 @@
         "name": "How do I fix \"Unknown tool(s)\" from agr config?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "You passed an unrecognized tool name to agr config set tools, agr config add tools, or agr config remove tools. Check for typos — valid names are: claude, cursor, codex, opencode, copilot, antigravity."
+          "text": "You passed an unrecognized tool name to agr config set tools, agr config add tools, or agr config remove tools. Check for typos — valid names are: claude, cursor, codex, opencode, copilot, pi."
         }
       },
       {
@@ -719,7 +719,7 @@
       {
         "@type": "DefinedTerm",
         "name": "agrx errors",
-        "description": "Fix tool CLI not found, Antigravity not supported, and running agrx outside a git repository"
+        "description": "Fix tool CLI not found and running agrx outside a git repository"
       }
     ],
     "keywords": ["agr troubleshooting", "agr errors", "fix agr", "agr sync not working", "GitHub authentication agr", "skill not found agr"]
@@ -743,7 +743,7 @@
       },
       {
         "@type": "HowToTool",
-        "name": "An AI coding tool (Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity)"
+        "name": "An AI coding tool (Claude Code, Cursor, Codex, OpenCode, Copilot, or Pi)"
       },
       {
         "@type": "HowToTool",
@@ -793,7 +793,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "Get Started with agr: Install, Add, and Share AI Agent Skills",
-    "description": "Step-by-step guide to installing agr, adding AI agent skills to Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity, syncing skills across a team, and creating your own.",
+    "description": "Step-by-step guide to installing agr, adding AI agent skills to Claude Code, Cursor, Codex, OpenCode, Copilot, or Pi, syncing skills across a team, and creating your own.",
     "totalTime": "PT10M",
     "tool": [
       {
@@ -852,7 +852,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "Share AI Agent Skills Across a Team with agr",
-    "description": "Set up agr so your team shares the same AI coding agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — with agr.toml as a single source of truth.",
+    "description": "Set up agr so your team shares the same AI coding agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi — with agr.toml as a single source of truth.",
     "totalTime": "PT10M",
     "tool": [
       {
@@ -907,7 +907,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "Try AI Agent Skills Without Installing — agrx",
-    "description": "Use agrx to download and run AI agent skills ephemerally in Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity — no agr.toml changes, no cleanup needed.",
+    "description": "Use agrx to download and run AI agent skills ephemerally in Claude Code, Cursor, Codex, OpenCode, Copilot, or Pi — no agr.toml changes, no cleanup needed.",
     "totalTime": "PT2M",
     "tool": [
       {
@@ -956,7 +956,7 @@
     "@context": "https://schema.org",
     "@type": "HowTo",
     "name": "Configure agr for Multi-Tool Setup, Sources, and Instruction Syncing",
-    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.",
+    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi — custom Git sources, instruction syncing, and global installs.",
     "totalTime": "PT5M",
     "tool": [
       {
@@ -980,7 +980,7 @@
       {
         "@type": "HowToStep",
         "name": "Enable instruction syncing",
-        "text": "Run agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md to keep CLAUDE.md, AGENTS.md, and GEMINI.md in sync across tools.",
+        "text": "Run agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md to keep CLAUDE.md and AGENTS.md in sync across tools.",
         "url": "https://computerlovetech.github.io/agr/configuration/#instruction-syncing"
       },
       {
@@ -1006,7 +1006,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "Configure agr.toml — Multi-Tool Setup, Sources, and Instruction Syncing",
-    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity — custom Git sources, instruction syncing, and global installs.",
+    "description": "Configure agr.toml for multi-tool setup across Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi — custom Git sources, instruction syncing, and global installs.",
     "url": "https://computerlovetech.github.io/agr/configuration/",
     "author": {
       "@type": "Person",
@@ -1022,7 +1022,7 @@
       {
         "@type": "DefinedTerm",
         "name": "tools",
-        "description": "List of AI coding tools to install skills into — claude, cursor, codex, opencode, copilot, antigravity"
+        "description": "List of AI coding tools to install skills into — claude, cursor, codex, opencode, copilot, pi"
       },
       {
         "@type": "DefinedTerm",
@@ -1037,7 +1037,7 @@
       {
         "@type": "DefinedTerm",
         "name": "sync_instructions",
-        "description": "When true, agr sync copies the canonical instruction file (CLAUDE.md, AGENTS.md, or GEMINI.md) to other tools' instruction files"
+        "description": "When true, agr sync copies the canonical instruction file (CLAUDE.md or AGENTS.md) to other tools' instruction files"
       },
       {
         "@type": "DefinedTerm",
@@ -1061,8 +1061,8 @@
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "Install AI Skills Across Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity",
-    "description": "Configure agr to install AI agent skills into multiple coding tools at once — Claude Code, Cursor, OpenAI Codex, OpenCode, GitHub Copilot, and Antigravity.",
+    "name": "Install AI Skills Across Claude Code, Cursor, Codex, Copilot, OpenCode, and Pi",
+    "description": "Configure agr to install AI agent skills into multiple coding tools at once — Claude Code, Cursor, OpenAI Codex, OpenCode, GitHub Copilot, and Pi.",
     "totalTime": "PT5M",
     "tool": [
       {
@@ -1086,7 +1086,7 @@
       {
         "@type": "HowToStep",
         "name": "Sync instruction files",
-        "text": "Enable instruction syncing with agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md. On agr sync, the canonical file is copied to AGENTS.md and GEMINI.md as needed.",
+        "text": "Enable instruction syncing with agr config set sync_instructions true and agr config set canonical_instructions CLAUDE.md. On agr sync, the canonical file is copied to AGENTS.md as needed.",
         "url": "https://computerlovetech.github.io/agr/tools/#keep-instruction-files-in-sync-across-tools"
       }
     ]
@@ -1098,8 +1098,8 @@
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "headline": "Install AI Skills in Claude Code, Cursor, Codex, Copilot, OpenCode, and Antigravity",
-    "description": "How agr installs skills into Claude Code, Cursor, Codex, GitHub Copilot, OpenCode, and Antigravity — directories, detection signals, and multi-tool setup.",
+    "headline": "Install AI Skills in Claude Code, Cursor, Codex, Copilot, OpenCode, and Pi",
+    "description": "How agr installs skills into Claude Code, Cursor, Codex, GitHub Copilot, OpenCode, and Pi — directories, detection signals, and multi-tool setup.",
     "url": "https://computerlovetech.github.io/agr/tools/",
     "author": {
       "@type": "Person",
@@ -1139,11 +1139,11 @@
       },
       {
         "@type": "DefinedTerm",
-        "name": "Antigravity",
-        "description": "Google's AI coding agent — skills in .gemini/skills/, no CLI available, detected by .gemini/ and .agents/"
+        "name": "Pi",
+        "description": "Minimal terminal coding agent (pi.dev) — skills in .pi/skills/ (global ~/.pi/agent/skills/), pi CLI available, detected by .pi/ and .agents/"
       }
     ],
-    "keywords": ["agr supported tools", "Claude Code skills", "Cursor skills", "Codex skills", "OpenCode skills", "GitHub Copilot skills", "Antigravity skills", "multi-tool AI setup"]
+    "keywords": ["agr supported tools", "Claude Code skills", "Cursor skills", "Codex skills", "OpenCode skills", "GitHub Copilot skills", "Pi skills", "multi-tool AI setup"]
   }
   </script>
   {% endif %}
@@ -1269,7 +1269,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "CLI Reference — All agr and agrx Commands, Flags, and Options",
-    "description": "Complete CLI reference for agr and agrx — all commands, flags, and handle formats for managing AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity.",
+    "description": "Complete CLI reference for agr and agrx — all commands, flags, and handle formats for managing AI agent skills across Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi.",
     "url": "https://computerlovetech.github.io/agr/reference/",
     "author": {
       "@type": "Person",
@@ -1351,7 +1351,7 @@
       {
         "@type": "DefinedTerm",
         "name": "Tool",
-        "description": "An AI coding agent (Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity) that reads and executes skills"
+        "description": "An AI coding agent (Claude Code, Cursor, Codex, OpenCode, Copilot, or Pi) that reads and executes skills"
       },
       {
         "@type": "DefinedTerm",
@@ -1391,8 +1391,8 @@
     "about": [
       {
         "@type": "DefinedTerm",
-        "name": "Antigravity .gemini/ migration",
-        "description": "Skills now install to .gemini/skills/ with automatic migration from .agent/skills/"
+        "name": "Pi support",
+        "description": "Skills install to .pi/skills/ (global ~/.pi/agent/skills/) with pi CLI support"
       },
       {
         "@type": "DefinedTerm",
@@ -1407,7 +1407,7 @@
       {
         "@type": "DefinedTerm",
         "name": "Multi-tool support",
-        "description": "Skills install to Claude Code, Cursor, Codex, OpenCode, Copilot, and Antigravity simultaneously"
+        "description": "Skills install to Claude Code, Cursor, Codex, OpenCode, Copilot, and Pi simultaneously"
       },
       {
         "@type": "DefinedTerm",
@@ -1427,7 +1427,7 @@
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "name": "AI Agent Skill Directory — Browse and Install Skills for Claude Code, Cursor, Codex, and More",
-    "description": "Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Antigravity with one command.",
+    "description": "Browse official and community AI agent skills available for agr — PDF, frontend design, API integration, Go, Drupal, and more. Install into Claude Code, Cursor, Codex, OpenCode, Copilot, or Pi with one command.",
     "url": "https://computerlovetech.github.io/agr/skills/",
     "mainEntity": {
       "@type": "ItemList",

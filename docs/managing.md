@@ -64,7 +64,7 @@ agr list
 tools = ["claude", "cursor", "codex"]
 ```
 
-Supported: `claude`, `cursor`, `codex`, `opencode`, `copilot`, `antigravity`.
+Supported: `claude`, `cursor`, `codex`, `opencode`, `copilot`, `pi`.
 Each maps to that tool's expected skill directory.
 
 ---

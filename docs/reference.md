@@ -100,7 +100,7 @@ agr run pdf --tool cursor
 
 | Flag                | Default    | Description                                                                          |
 |---------------------|------------|--------------------------------------------------------------------------------------|
-| `-t, --tool`        | configured | Tool CLI: `claude`, `cursor`, `codex`, `opencode`, `copilot`, `antigravity`.         |
+| `-t, --tool`        | configured | Tool CLI: `claude`, `cursor`, `codex`, `opencode`, `copilot`, `pi`.                  |
 | `-i, --interactive` | false      | Invoke the tool in interactive mode with the skill prefilled.                        |
 | `-p, --prompt`      |            | Extra prompt text appended after the skill reference.                                |
 

@@ -2,7 +2,7 @@
 name: agr-cli
 description: >
   Install, share, sync, and create AI agent skills across coding tools (Claude
-  Code, Cursor, Codex, OpenCode, Copilot, Antigravity) using the agr CLI. Use
+  Code, Cursor, Codex, OpenCode, Copilot, Pi) using the agr CLI. Use
   whenever the user mentions agr, agr.toml, agr.lock, agrx, or asks to: add a
   skill ("install the pdf skill", "agr add ..."), sync agent resources across
   tools, share skills with their team, scaffold a new SKILL.md, run a skill
@@ -16,7 +16,7 @@ description: >
 
 agr is the package manager for AI agent skills. It installs, shares, and syncs
 SKILL.md folders across Claude Code, Cursor, Codex, OpenCode, GitHub Copilot,
-and Antigravity. This skill helps you operate the `agr` CLI on the user's
+and Pi. This skill helps you operate the `agr` CLI on the user's
 behalf — set up new repos, install and sync skills, manage `agr.toml` /
 `agr.lock`, and scaffold in-repo skills under `skills/`.
 
@@ -84,11 +84,11 @@ When the user wants to start using agr in a project that has none configured:
 
 1. Run `agr init`. agr auto-detects which AI tools the repo uses
    (`.claude/`, `CLAUDE.md`, `.cursor/`, `.cursorrules`, `.codex/`, `.opencode/`,
-   `.github/copilot-instructions.md`, `.gemini/`) and writes `agr.toml`.
+   `.github/copilot-instructions.md`, `.pi/`, `.agents/`) and writes `agr.toml`.
 2. Confirm or adjust the detected tools. For multi-tool:
    `agr config set tools claude codex opencode`.
 3. If the user maintains a canonical instruction file (e.g. `CLAUDE.md`) and
-   wants it mirrored to others (`AGENTS.md`, `GEMINI.md`), enable instruction
+   wants it mirrored to others (`AGENTS.md`), enable instruction
    syncing: `agr config set sync_instructions true` then
    `agr config set canonical_instructions CLAUDE.md`.
 4. Commit `agr.toml`. (`agr.lock` will appear after the first `agr add` or

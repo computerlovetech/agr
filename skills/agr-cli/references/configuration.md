@@ -26,7 +26,7 @@ Add `-g` / `--global` to operate on `~/.agr/agr.toml` instead of `./agr.toml`.
 | `default_owner` | string | `computerlovetech` | GitHub owner for 1-part handles (`agr add setup` → `<owner>/skills/setup`) |
 | `default_source` | string | `github` | Source used when `--source` is not specified |
 | `sync_instructions` | bool | `false` | Mirror canonical instruction file to other tools on `agr sync` |
-| `canonical_instructions` | string | derived from `default_tool` | Source of truth: `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` |
+| `canonical_instructions` | string | derived from `default_tool` | Source of truth: `CLAUDE.md` or `AGENTS.md` |
 | `sources` | list | `[github]` | Git URL templates (see [Sources](#sources)) |
 
 ## Common operations
@@ -119,8 +119,8 @@ For GitLab, use `GITLAB_TOKEN`; for self-hosted Git, see your host's docs.
 ## Instruction syncing
 
 When the user maintains a canonical instructions file (e.g. `CLAUDE.md`) and
-wants the same content in the other tools' equivalents (`AGENTS.md`,
-`GEMINI.md`), enable instruction syncing:
+wants the same content in the other tools' equivalents (`AGENTS.md`),
+enable instruction syncing:
 
 ```bash
 agr config set sync_instructions true
@@ -132,8 +132,7 @@ Then `agr sync` copies the canonical file to the others. Mappings:
 | Tool | Instruction file |
 |---|---|
 | Claude Code | `CLAUDE.md` |
-| Codex / OpenCode / Copilot | `AGENTS.md` |
-| Antigravity / Gemini | `GEMINI.md` |
+| Codex / OpenCode / Copilot / Pi | `AGENTS.md` |
 
 Only fires when 2+ tools are configured. With one tool, it's a no-op.
 

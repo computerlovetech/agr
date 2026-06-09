@@ -80,7 +80,7 @@ the skill into each. Then invoke it in your tool:
 | OpenAI Codex | `$pdf` |
 | OpenCode | `pdf` |
 | GitHub Copilot | `/pdf` |
-| Antigravity | *(via IDE)* |
+| Pi | `/pdf` |
 
 ### 2. Use your own local skills
 
