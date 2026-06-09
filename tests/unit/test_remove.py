@@ -8,6 +8,8 @@ from agr.commands._tool_helpers import LoadedConfig
 from agr.commands.remove import (
     _identifier_candidates,
     _find_dep_by_candidates,
+    _process_ref,
+    _resolve_package_cleanup,
     run_remove,
 )
 from agr.config import AgrConfig, Dependency
@@ -431,3 +433,140 @@ class TestRemovePackage:
         assert [entry.handle for entry in lockfile.packages] == ["alice/repo/bundle-b"]
         assert len(lockfile.skills) == 1
         assert lockfile.skills[0].parent_ids == {"alice/repo/bundle-b"}
+
+
+class TestResolvePackageCleanup:
+    """Tests for _resolve_package_cleanup() — package child resolution seam."""
+
+    def test_collects_transitive_leaf_children(self):
+        dep = Dependency(type="package", handle="alice/repo/bundle")
+        config = AgrConfig(dependencies=[dep])
+        lockfile = Lockfile(
+            packages=[LockedEntry(handle="alice/repo/bundle", installed_name="bundle")],
+            skills=[
+                LockedEntry(
+                    handle="alice/repo/child",
+                    installed_name="child",
+                    parent="alice/repo/bundle",
+                )
+            ],
+        )
+
+        nested, transitive = _resolve_package_cleanup(dep, config, lockfile)
+
+        assert nested == []
+        assert [entry.handle for _kind, entry in transitive] == ["alice/repo/child"]
+
+    def test_collects_nested_package_entries(self):
+        dep = Dependency(type="package", handle="alice/repo/top")
+        config = AgrConfig(dependencies=[dep])
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="alice/repo/top", installed_name="top"),
+                LockedEntry(
+                    handle="alice/repo/nested",
+                    installed_name="nested",
+                    parent="alice/repo/top",
+                ),
+            ],
+        )
+
+        nested, transitive = _resolve_package_cleanup(dep, config, lockfile)
+
+        assert [entry.handle for _kind, entry in nested] == ["alice/repo/nested"]
+        assert transitive == []
+
+    def test_keeps_child_shared_with_other_package(self):
+        dep = Dependency(type="package", handle="alice/repo/bundle-a")
+        config = AgrConfig(
+            dependencies=[
+                dep,
+                Dependency(type="package", handle="alice/repo/bundle-b"),
+            ]
+        )
+        lockfile = Lockfile(
+            packages=[
+                LockedEntry(handle="alice/repo/bundle-a", installed_name="bundle-a"),
+                LockedEntry(handle="alice/repo/bundle-b", installed_name="bundle-b"),
+            ],
+            skills=[
+                LockedEntry(
+                    handle="alice/repo/shared",
+                    installed_name="shared",
+                    parents=["alice/repo/bundle-a", "alice/repo/bundle-b"],
+                )
+            ],
+        )
+
+        nested, transitive = _resolve_package_cleanup(dep, config, lockfile)
+
+        # Shared child still required by bundle-b is NOT scheduled for removal.
+        assert nested == []
+        assert transitive == []
+
+    def test_no_lockfile_returns_empty(self):
+        dep = Dependency(type="package", handle="alice/repo/bundle")
+        config = AgrConfig(dependencies=[dep])
+
+        nested, transitive = _resolve_package_cleanup(dep, config, None)
+
+        assert nested == []
+        assert transitive == []
+
+
+class TestProcessRef:
+    """Tests for _process_ref() — per-ref orchestration seam."""
+
+    def test_not_found_returns_failure(self, tmp_path):
+        config = AgrConfig(dependencies=[])
+
+        removal = _process_ref(
+            "alice/repo/missing", config, [CLAUDE], tmp_path, None, None, False
+        )
+
+        assert removal.result.success is False
+        assert removal.result.message == "Not found"
+        assert removal.removed_candidates == []
+        assert removal.removed_kinds == []
+
+    def test_leaf_removal_drops_from_config_and_reports_candidate(self, tmp_path):
+        dep = Dependency(type="skill", handle="alice/repo/widget")
+        config = AgrConfig(dependencies=[dep])
+
+        # No filesystem footprint; config removal alone makes it a success.
+        with patch(
+            "agr.commands.remove._uninstall_from_filesystem", return_value=False
+        ):
+            removal = _process_ref(
+                "alice/repo/widget", config, [CLAUDE], tmp_path, None, None, False
+            )
+
+        assert removal.result.success is True
+        assert removal.removed_kinds == ["skill"]
+        assert config.dependencies == []
+
+    def test_package_removal_schedules_transitive_child(self, tmp_path):
+        dep = Dependency(type="package", handle="alice/repo/bundle")
+        config = AgrConfig(dependencies=[dep])
+        lockfile = Lockfile(
+            packages=[LockedEntry(handle="alice/repo/bundle", installed_name="bundle")],
+            skills=[
+                LockedEntry(
+                    handle="alice/repo/child",
+                    installed_name="child",
+                    parent="alice/repo/bundle",
+                )
+            ],
+        )
+
+        with patch(
+            "agr.commands.remove._uninstall_from_filesystem", return_value=False
+        ):
+            removal = _process_ref(
+                "bundle", config, [CLAUDE], tmp_path, None, lockfile, False
+            )
+
+        assert removal.result.success is True
+        assert removal.removed_kinds[0] == "package"
+        # The transitive child is appended for lockfile cleanup.
+        assert ["alice/repo/child"] in removal.removed_candidates
