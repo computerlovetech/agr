@@ -3,12 +3,12 @@
 from pathlib import Path
 
 from agr.tool import (
-    ANTIGRAVITY,
     CLAUDE,
     CODEX,
     COPILOT,
     CURSOR,
     OPENCODE,
+    PI,
     TOOLS,
     available_tools_string,
     build_global_skills_dirs,
@@ -27,7 +27,7 @@ class TestToolConfig:
         assert CODEX.cli_command == "codex"
         assert OPENCODE.cli_command == "opencode"
         assert COPILOT.cli_command == "copilot"
-        assert ANTIGRAVITY.cli_command is None
+        assert PI.cli_command == "pi"
 
     def test_tool_config_has_cli_flags(self):
         """ToolConfig includes CLI flag fields."""
@@ -37,7 +37,7 @@ class TestToolConfig:
         assert CODEX.cli_prompt_flag is None
         assert OPENCODE.cli_prompt_flag is None
         assert COPILOT.cli_prompt_flag == "-p"
-        assert ANTIGRAVITY.cli_prompt_flag is None
+        assert PI.cli_prompt_flag == "-p"
 
         # Each tool has its own force flag
         assert CLAUDE.cli_force_flag == "--dangerously-skip-permissions"
@@ -45,7 +45,7 @@ class TestToolConfig:
         assert CODEX.cli_force_flag == "--full-auto"
         assert OPENCODE.cli_force_flag is None
         assert COPILOT.cli_force_flag == "--allow-all-tools"
-        assert ANTIGRAVITY.cli_force_flag is None
+        assert PI.cli_force_flag == "-a"
 
         # All tools have continue flag
         assert CLAUDE.cli_continue_flag == "--continue"
@@ -53,7 +53,7 @@ class TestToolConfig:
         assert CODEX.cli_continue_flag is None
         assert OPENCODE.cli_continue_flag == "--continue"
         assert COPILOT.cli_continue_flag == "--continue"
-        assert ANTIGRAVITY.cli_continue_flag is None
+        assert PI.cli_continue_flag == "--continue"
 
     def test_tool_config_has_cli_commands(self):
         """ToolConfig includes CLI command fields."""
@@ -62,14 +62,14 @@ class TestToolConfig:
         assert CODEX.cli_exec_command == ["codex", "exec"]
         assert OPENCODE.cli_exec_command == ["opencode", "run"]
         assert COPILOT.cli_exec_command is None
-        assert ANTIGRAVITY.cli_exec_command is None
+        assert PI.cli_exec_command is None
 
         assert CLAUDE.cli_continue_command is None
         assert CURSOR.cli_continue_command is None
         assert CODEX.cli_continue_command == ["codex", "resume", "--last"]
         assert OPENCODE.cli_continue_command is None
         assert COPILOT.cli_continue_command is None
-        assert ANTIGRAVITY.cli_continue_command is None
+        assert PI.cli_continue_command is None
 
     def test_tool_config_has_output_handling(self):
         """ToolConfig includes non-interactive output controls."""
@@ -78,7 +78,7 @@ class TestToolConfig:
         assert CODEX.suppress_stderr_non_interactive is True
         assert OPENCODE.suppress_stderr_non_interactive is False
         assert COPILOT.suppress_stderr_non_interactive is False
-        assert ANTIGRAVITY.suppress_stderr_non_interactive is False
+        assert PI.suppress_stderr_non_interactive is False
 
     def test_tool_config_has_interactive_prompt_mode(self):
         """ToolConfig includes interactive prompt mode controls."""
@@ -87,19 +87,19 @@ class TestToolConfig:
         assert CODEX.cli_interactive_prompt_positional is True
         assert OPENCODE.cli_interactive_prompt_positional is False
         assert COPILOT.cli_interactive_prompt_positional is False
-        assert ANTIGRAVITY.cli_interactive_prompt_positional is False
+        assert PI.cli_interactive_prompt_positional is True
         assert CLAUDE.cli_interactive_prompt_flag is None
         assert CURSOR.cli_interactive_prompt_flag is None
         assert CODEX.cli_interactive_prompt_flag is None
         assert OPENCODE.cli_interactive_prompt_flag == "--prompt"
         assert COPILOT.cli_interactive_prompt_flag == "-i"
-        assert ANTIGRAVITY.cli_interactive_prompt_flag is None
+        assert PI.cli_interactive_prompt_flag is None
         assert CLAUDE.skill_prompt_prefix == "/"
         assert CURSOR.skill_prompt_prefix == "/"
         assert CODEX.skill_prompt_prefix == "$"
         assert OPENCODE.skill_prompt_prefix == ""
         assert COPILOT.skill_prompt_prefix == "/"
-        assert ANTIGRAVITY.skill_prompt_prefix == ""
+        assert PI.skill_prompt_prefix == "/"
 
     def test_tool_config_has_install_hint(self):
         """ToolConfig includes install_hint field."""
@@ -108,7 +108,7 @@ class TestToolConfig:
         assert CODEX.install_hint is not None
         assert OPENCODE.install_hint is not None
         assert COPILOT.install_hint is not None
-        assert ANTIGRAVITY.install_hint is None
+        assert PI.install_hint is not None
 
     def test_all_tools_have_cli_config(self):
         """All registered tools have CLI configuration."""
@@ -157,7 +157,7 @@ class TestGetTool:
         assert get_tool("codex") == CODEX
         assert get_tool("opencode") == OPENCODE
         assert get_tool("copilot") == COPILOT
-        assert get_tool("antigravity") == ANTIGRAVITY
+        assert get_tool("pi") == PI
 
     def test_get_tool_unknown_raises(self):
         """get_tool raises AgrError for unknown tool."""
@@ -210,14 +210,12 @@ class TestSkillsDirPaths:
         """Copilot uses ~/.copilot/skills/ (asymmetric from .github project path)."""
         assert COPILOT.get_global_skills_dir() == (Path.home() / ".copilot" / "skills")
 
-    def test_antigravity_project_skills_dir(self, tmp_path):
-        assert ANTIGRAVITY.get_skills_dir(tmp_path) == (tmp_path / ".gemini" / "skills")
+    def test_pi_project_skills_dir(self, tmp_path):
+        assert PI.get_skills_dir(tmp_path) == (tmp_path / ".pi" / "skills")
 
-    def test_antigravity_global_skills_dir(self):
-        """Antigravity uses ~/.gemini/skills/ for personal skills."""
-        assert ANTIGRAVITY.get_global_skills_dir() == (
-            Path.home() / ".gemini" / "skills"
-        )
+    def test_pi_global_skills_dir(self):
+        """Pi uses ~/.pi/agent/skills/ for personal skills."""
+        assert PI.get_global_skills_dir() == (Path.home() / ".pi" / "agent" / "skills")
 
 
 class TestDetectionSignals:
@@ -251,8 +249,8 @@ class TestDetectionSignals:
             ".github/instructions",
         )
 
-    def test_antigravity_detection_signals(self):
-        assert ANTIGRAVITY.detection_signals == (".gemini", ".agents")
+    def test_pi_detection_signals(self):
+        assert PI.detection_signals == (".pi", ".agents")
 
 
 class TestInstructionFiles:
@@ -273,8 +271,8 @@ class TestInstructionFiles:
     def test_copilot_instruction_file(self):
         assert COPILOT.instruction_file == "AGENTS.md"
 
-    def test_antigravity_instruction_file(self):
-        assert ANTIGRAVITY.instruction_file == "GEMINI.md"
+    def test_pi_instruction_file(self):
+        assert PI.instruction_file == "AGENTS.md"
 
 
 class TestUtilityFunctions:

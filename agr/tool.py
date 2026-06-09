@@ -2,7 +2,7 @@
 
 All tool-specific paths and configuration are isolated in this module.
 Supports Claude Code, Cursor, OpenAI Codex, OpenCode,
-GitHub Copilot, and Antigravity. All tools use flat naming.
+GitHub Copilot, and Pi. All tools use flat naming.
 """
 
 from dataclasses import dataclass
@@ -39,7 +39,9 @@ class ToolConfig:
     skill_prompt_prefix: str = "/"  # Prefix for invoking a skill
     install_hint: str | None = None  # Help text for installation
     detection_signals: tuple[str, ...] = ()  # Paths that indicate tool presence
-    instruction_file: str = DEFAULT_INSTRUCTION_FILE  # Canonical instruction file for this tool
+    instruction_file: str = (
+        DEFAULT_INSTRUCTION_FILE  # Canonical instruction file for this tool
+    )
 
     def get_skills_dir(self, repo_root: Path) -> Path:
         """Get the skills directory for this tool in a repo."""
@@ -136,19 +138,22 @@ COPILOT = ToolConfig(
     ),
 )
 
-# Antigravity tool configuration (flat naming: <skill-name>)
-# Skill paths based on Gemini CLI documentation:
-# - Workspace: .gemini/skills/  (primary; .agents/skills/ is an alias)
-# - User: ~/.gemini/skills/     (primary; ~/.agents/skills/ is an alias)
-# No CLI support — only fields that differ from ToolConfig defaults are set.
-ANTIGRAVITY = ToolConfig(
-    name="antigravity",
-    config_dir=".gemini",
-    cli_prompt_flag=None,
-    cli_continue_flag=None,
-    skill_prompt_prefix="",
-    detection_signals=(".gemini", ".agents"),
-    instruction_file="GEMINI.md",
+# Pi tool configuration (flat naming: <skill-name>)
+# Skill paths based on Pi documentation (https://pi.dev):
+# - Project: .pi/skills/        (primary; .agents/skills/ is an alias)
+# - User: ~/.pi/agent/skills/   (primary; ~/.agents/skills/ is an alias)
+# CLI `pi`: one-shot `-p/--print`, auto-approve `-a/--approve`, resume `--continue`.
+PI = ToolConfig(
+    name="pi",
+    config_dir=".pi",
+    global_config_dir=".pi/agent",  # global -> ~/.pi/agent/skills/
+    cli_command="pi",
+    cli_prompt_flag="-p",  # pi -p "<prompt>"
+    cli_force_flag="-a",  # pi -a (trust project-local files)
+    cli_interactive_prompt_positional=True,
+    install_hint="Install Pi (https://pi.dev)",
+    detection_signals=(".pi", ".agents"),
+    instruction_file="AGENTS.md",
 )
 
 # All tool configurations — order here determines iteration order in TOOLS.
@@ -158,7 +163,7 @@ _ALL_TOOLS: tuple[ToolConfig, ...] = (
     CODEX,
     OPENCODE,
     COPILOT,
-    ANTIGRAVITY,
+    PI,
 )
 
 # Registry of all supported tools, keyed by ToolConfig.name.

@@ -60,11 +60,12 @@ class TestAgrxToolFlag:
 
         assert_cli(result).failed().stdout_contains("opencode CLI not found")
 
-    def test_agrx_tool_no_cli_antigravity(self, agrx):
-        """agrx --tool antigravity fails when no CLI is configured."""
-        result = agrx("user/skill", "--tool", "antigravity")
+    @pytest.mark.skipif(shutil.which("pi") is not None, reason="pi CLI is installed")
+    def test_agrx_tool_cli_not_found_pi(self, agrx):
+        """agrx --tool pi fails when pi CLI not found."""
+        result = agrx("user/skill", "--tool", "pi")
 
-        assert_cli(result).failed().stdout_contains("has no CLI command configured")
+        assert_cli(result).failed().stdout_contains("pi CLI not found")
 
 
 class TestAgrxToolFromConfig:

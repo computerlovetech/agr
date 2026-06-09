@@ -23,7 +23,7 @@ from agr.metadata import (
     stamp_resource_metadata,
 )
 from agr.skill import SKILL_MARKER, is_valid_skill_dir, update_skill_md_name
-from agr.tool import ANTIGRAVITY, CODEX, CURSOR, OPENCODE, ToolConfig
+from agr.tool import CODEX, CURSOR, OPENCODE, ToolConfig
 
 
 def _print_migrated(label: str, old_name: str, new_name: str) -> None:
@@ -163,24 +163,6 @@ def run_tool_migrations(
             base / opencode_dir / "skill",
             base / opencode_dir / tool.skills_subdir,
             cleanup_parent=False,
-        )
-
-    # Antigravity migration: .agent/skills/ -> .gemini/skills/
-    # Gemini CLI moved from .agent/ to .gemini/ as the primary skills path.
-    if ANTIGRAVITY.name in tool_by_name:
-        _migrate_skills_directory(
-            base / ".agent" / "skills",
-            ANTIGRAVITY.get_skills_dir(base),
-            cleanup_parent=True,
-        )
-
-    # Antigravity global migration: .gemini/antigravity/skills/ -> .gemini/skills/
-    # Older versions used a nested .gemini/antigravity/ subdir for global skills.
-    if ANTIGRAVITY.name in tool_by_name and global_install:
-        _migrate_skills_directory(
-            base / ".gemini" / "antigravity" / "skills",
-            ANTIGRAVITY.get_skills_dir(base),
-            cleanup_parent=True,
         )
 
     # Cursor migration: flatten nested skill dirs to flat naming.

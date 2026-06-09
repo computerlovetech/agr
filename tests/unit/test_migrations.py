@@ -14,7 +14,7 @@ from agr.config import AgrConfig, Dependency
 from agr.handle import INSTALLED_NAME_SEPARATOR, LEGACY_SEPARATOR
 from agr.metadata import METADATA_FILENAME
 from agr.skill import SKILL_MARKER
-from agr.tool import ANTIGRAVITY, CLAUDE, CODEX, CURSOR, OPENCODE
+from agr.tool import CLAUDE, CODEX, CURSOR, OPENCODE
 
 
 def _make_skill(path, *, metadata=None):
@@ -431,30 +431,6 @@ class TestRunToolMigrations:
         assert (tmp_path / ".opencode" / "skills" / "my-skill" / SKILL_MARKER).exists()
         assert not (tmp_path / ".opencode" / "skill").exists()
 
-    def test_antigravity_migration(self, tmp_path):
-        """Antigravity skills are migrated from .agent/ to .gemini/."""
-        _make_skill(tmp_path / ".agent" / "skills" / "my-skill")
-
-        run_tool_migrations([ANTIGRAVITY], tmp_path)
-
-        assert (tmp_path / ".gemini" / "skills" / "my-skill" / SKILL_MARKER).exists()
-        # Old .agent dir should be cleaned up
-        assert not (tmp_path / ".agent").exists()
-
-    def test_antigravity_global_subdir_migration(self, tmp_path):
-        """Antigravity legacy .gemini/antigravity/skills/ is migrated to .gemini/skills/."""
-        _make_skill(tmp_path / ".gemini" / "antigravity" / "skills" / "my-skill")
-
-        _migrate_skills_directory(
-            tmp_path / ".gemini" / "antigravity" / "skills",
-            tmp_path / ".gemini" / "skills",
-            cleanup_parent=True,
-        )
-
-        assert (tmp_path / ".gemini" / "skills" / "my-skill" / SKILL_MARKER).exists()
-        # Old .gemini/antigravity dir should be cleaned up
-        assert not (tmp_path / ".gemini" / "antigravity").exists()
-
     def test_noop_when_repo_root_none(self):
         """No-op when repo_root is None and not global."""
         run_tool_migrations([CLAUDE], None)  # Should not raise
@@ -482,16 +458,6 @@ class TestRunToolMigrations:
         ).exists()
         assert not (tmp_path / ".config" / "opencode" / "skill").exists()
 
-    def test_antigravity_global_migration(self, tmp_path, monkeypatch):
-        """Antigravity global migration moves .gemini/antigravity/skills/ to .gemini/skills/."""
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-        _make_skill(tmp_path / ".gemini" / "antigravity" / "skills" / "my-skill")
-
-        run_tool_migrations([ANTIGRAVITY], None, global_install=True)
-
-        assert (tmp_path / ".gemini" / "skills" / "my-skill" / SKILL_MARKER).exists()
-        assert not (tmp_path / ".gemini" / "antigravity").exists()
-
     def test_codex_global_migration(self, tmp_path, monkeypatch):
         """Codex global migration moves ~/.codex/skills/ to ~/.agents/skills/."""
         monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
@@ -511,16 +477,6 @@ class TestRunToolMigrations:
 
         assert (tmp_path / ".cursor" / "skills" / "my-skill" / SKILL_MARKER).exists()
         assert not (tmp_path / ".cursor" / "skills" / "user").exists()
-
-    def test_antigravity_global_agent_to_gemini_migration(self, tmp_path, monkeypatch):
-        """Antigravity global migration moves ~/.agent/skills/ to ~/.gemini/skills/."""
-        monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-        _make_skill(tmp_path / ".agent" / "skills" / "my-skill")
-
-        run_tool_migrations([ANTIGRAVITY], None, global_install=True)
-
-        assert (tmp_path / ".gemini" / "skills" / "my-skill" / SKILL_MARKER).exists()
-        assert not (tmp_path / ".agent").exists()
 
     def test_skips_unconfigured_tools(self, tmp_path):
         """Only migrates tools that are in the tools list."""

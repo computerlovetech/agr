@@ -9,8 +9,8 @@ For the canonical CLI reference, run `agr init --help` or
 - `agr --version` works (install with `uv tool install agr` if not).
 - The repo has at least one supported AI tool's marker — `.claude/`,
   `CLAUDE.md`, `.cursor/`, `.cursorrules`, `.codex/`, `.opencode/`,
-  `.github/copilot-instructions.md`, `.gemini/`, etc. agr auto-detects from
-  these.
+  `.github/copilot-instructions.md`, `.pi/`, `.agents/`, etc. agr auto-detects
+  from these.
 
 ## Initialize
 
@@ -33,7 +33,7 @@ Flags:
 | `--tools` | Comma-separated list of tools (override auto-detect) |
 | `--default-tool` | Tool used by `agrx` and instruction sync (defaults to first in `tools`) |
 | `--sync-instructions` / `--no-sync-instructions` | Mirror canonical instruction file to others on `agr sync` |
-| `--canonical-instructions` | Source of truth for instructions: `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md` |
+| `--canonical-instructions` | Source of truth for instructions: `CLAUDE.md` or `AGENTS.md` |
 
 Anything you skip can be set later with `agr config`.
 
@@ -54,7 +54,7 @@ Skills install into each configured tool's directory:
 | Codex | `.agents/skills/<name>/` (older repos: `.codex/`) |
 | OpenCode | `.opencode/skills/<name>/` (older: `.opencode/skill/`) |
 | GitHub Copilot | `.github/skills/<name>/` |
-| Antigravity / Gemini | `.gemini/skills/<name>/` (older: `.agent/`) |
+| Pi | `.pi/skills/<name>/` (global: `~/.pi/agent/skills/`) |
 
 `agr sync` runs migrations automatically when it sees old layouts.
 
@@ -81,7 +81,7 @@ Mappings:
 
 - `CLAUDE.md` ↔ `.claude/CLAUDE.md`
 - `AGENTS.md` ↔ Codex / OpenCode
-- `GEMINI.md` ↔ Antigravity
+- `AGENTS.md` ↔ Pi
 
 `agr sync` copies the canonical file to the others. Only fires when 2+ tools
 are configured. If only one tool is configured, instruction syncing is a no-op.

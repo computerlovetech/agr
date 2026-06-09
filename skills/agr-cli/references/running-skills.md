@@ -104,7 +104,7 @@ Both commands shell out to the tool's CLI:
 | Codex | `codex` |
 | OpenCode | `opencode` |
 | Copilot | `gh copilot` |
-| Antigravity | (IDE-driven) |
+| Pi | `pi` |
 
 If the tool's CLI isn't installed, both commands will fail with a "command
 not found" error. Surface that clearly to the user — agr can't help install

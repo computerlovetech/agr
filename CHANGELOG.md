@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+- Pi (pi.dev) tool support — skills install to `.pi/skills/<name>/` (global `~/.pi/agent/skills/`), with `pi` CLI support for `agr run` / `agrx --tool pi` and detection from `.pi/`/`.agents/`.
+
+### Removed
+- Antigravity tool support.
+
+### Changed
+- `canonical_instructions = "GEMINI.md"` (the former Antigravity instruction file) is no longer a valid value, but existing configs are coerced to `AGENTS.md` on load so they keep working. Update your `agr.toml` to `AGENTS.md` (or `CLAUDE.md`) when convenient.
+
 ## [0.8.4] - 2026-04-15
 
 ### Added

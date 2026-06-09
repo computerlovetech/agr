@@ -189,9 +189,7 @@ class TestToolDocumentation:
         """managing.md Multi-tool section lists all supported tools."""
         content = (DOCS_DIR / "managing.md").read_text()
         section_marker = "## Multi-tool"
-        assert section_marker in content, (
-            "managing.md missing 'Multi-tool' section"
-        )
+        assert section_marker in content, "managing.md missing 'Multi-tool' section"
         section = content[content.index(section_marker) :]
         for tool in self.ALL_TOOL_NAMES:
             assert tool in section.lower(), (
@@ -205,6 +203,7 @@ class TestToolDocumentation:
             assert tool in content.lower(), (
                 f"Tool '{tool}' not mentioned in reference.md"
             )
+
 
 class TestContentQuality:
     """Test documentation content quality."""

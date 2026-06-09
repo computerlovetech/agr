@@ -47,14 +47,14 @@ dependencies = []
             cli_project / "CLAUDE.md"
         ).read_text()
 
-    def test_sync_instructions_creates_gemini_for_antigravity(
+    def test_sync_instructions_creates_agents_for_pi(
         self, agr, cli_project, cli_config
     ):
-        """agr sync creates GEMINI.md from CLAUDE.md when antigravity is configured."""
+        """agr sync creates AGENTS.md from CLAUDE.md when pi is configured."""
         (cli_project / "CLAUDE.md").write_text("Claude instructions\n")
         cli_config(
             """
-tools = ["claude", "antigravity"]
+tools = ["claude", "pi"]
 sync_instructions = true
 canonical_instructions = "CLAUDE.md"
 dependencies = []
@@ -64,8 +64,8 @@ dependencies = []
         result = agr("sync")
 
         assert_cli(result).succeeded()
-        assert (cli_project / "GEMINI.md").exists()
-        assert (cli_project / "GEMINI.md").read_text() == "Claude instructions\n"
+        assert (cli_project / "AGENTS.md").exists()
+        assert (cli_project / "AGENTS.md").read_text() == "Claude instructions\n"
 
     def test_sync_instructions_creates_agents_for_cursor(
         self, agr, cli_project, cli_config
@@ -172,6 +172,7 @@ url = "{base_dir.as_posix()}/{{owner}}/{{repo}}"
         config = AgrConfig.load(config_path)
         dep = config.dependencies[0]
         assert dep.handle == "acme/skills/test-skill"
+
 
 class TestAgrSyncRalph:
     """Tests for agr sync with ralph dependencies."""

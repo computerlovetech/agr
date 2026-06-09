@@ -12,7 +12,7 @@ agr sync
 Runs four stages in order:
 
 1. **Instruction sync** — copies the canonical instruction file
-   (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md`) to the others. Fires only when
+   (`CLAUDE.md` / `AGENTS.md`) to the others. Fires only when
    `sync_instructions = true` and 2+ tools are configured.
 2. **Migrations** — renames legacy skill directories
    (`.codex/skills/` → `.agents/skills/`, `.opencode/skill/` →
