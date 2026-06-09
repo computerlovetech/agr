@@ -150,22 +150,22 @@ class TestAgrInit:
         assert config.sync_instructions is True
         assert config.canonical_instructions == "CLAUDE.md"
 
-    def test_init_detects_antigravity_tools(self, agr, cli_project):
-        """agr init detects Antigravity tools when .gemini/ exists."""
-        (cli_project / ".gemini").mkdir()
+    def test_init_detects_pi_tools(self, agr, cli_project):
+        """agr init detects Pi tools when .pi/ exists."""
+        (cli_project / ".pi").mkdir()
 
         result = agr("init")
 
         assert_cli(result).succeeded()
         config = AgrConfig.load(cli_project / "agr.toml")
-        assert "antigravity" in config.tools
+        assert "pi" in config.tools
 
-    def test_init_detects_antigravity_from_agents_dir(self, agr, cli_project):
-        """agr init detects Antigravity from .agents/ directory (shared with Codex)."""
+    def test_init_detects_pi_from_agents_dir(self, agr, cli_project):
+        """agr init detects Pi from .agents/ directory (shared with Codex)."""
         (cli_project / ".agents").mkdir()
 
         result = agr("init")
 
         assert_cli(result).succeeded()
         config = AgrConfig.load(cli_project / "agr.toml")
-        assert "antigravity" in config.tools
+        assert "pi" in config.tools

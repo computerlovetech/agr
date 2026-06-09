@@ -80,15 +80,6 @@ class TestAgrRunBasic:
 
         assert_cli(result).failed().stdout_contains("agent CLI not found")
 
-    def test_run_tool_no_cli_configured(self, agr, cli_config, cli_project):
-        """agr run with a tool that has no CLI command (antigravity) errors."""
-        cli_config('tools = ["antigravity"]\ndependencies = []')
-        _install_skill(cli_project, ".gemini", "demo")
-
-        result = agr("run", "demo")
-
-        assert_cli(result).failed().stdout_contains("has no CLI command configured")
-
     @pytest.mark.skipif(
         shutil.which("agent") is not None, reason="agent CLI is installed"
     )

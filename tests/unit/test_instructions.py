@@ -26,8 +26,8 @@ class TestCanonicalInstructionFile:
     def test_opencode_tool(self) -> None:
         assert canonical_instruction_file("opencode") == "AGENTS.md"
 
-    def test_antigravity_tool(self) -> None:
-        assert canonical_instruction_file("antigravity") == "GEMINI.md"
+    def test_pi_tool(self) -> None:
+        assert canonical_instruction_file("pi") == "AGENTS.md"
 
     def test_unknown_tool_returns_agents_md(self) -> None:
         assert canonical_instruction_file("nonexistent") == "AGENTS.md"

@@ -522,6 +522,11 @@ class AgrConfig:
         canonical_instructions = doc.get("canonical_instructions")
         if canonical_instructions is not None:
             canonical_instructions = str(canonical_instructions)
+            # Legacy compatibility: GEMINI.md was the Antigravity canonical file.
+            # Antigravity is no longer supported, so coerce old configs to
+            # AGENTS.md instead of erroring on every command.
+            if canonical_instructions == "GEMINI.md":
+                canonical_instructions = "AGENTS.md"
             validate_canonical_instructions(canonical_instructions)
             config.canonical_instructions = canonical_instructions
 

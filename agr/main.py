@@ -193,7 +193,7 @@ def init(
         str | None,
         typer.Option(
             "--canonical-instructions",
-            help="Canonical instruction file (AGENTS.md, CLAUDE.md, or GEMINI.md).",
+            help="Canonical instruction file (AGENTS.md or CLAUDE.md).",
         ),
     ] = None,
 ) -> None:

@@ -356,14 +356,14 @@ dependencies = [
         config = AgrConfig.load(config_path)
         assert config.canonical_instructions == "AGENTS.md"
 
-    def test_load_canonical_instructions_gemini(self, tmp_path):
-        """Load config with GEMINI.md as canonical_instructions."""
+    def test_load_canonical_instructions_legacy_gemini_coerced(self, tmp_path):
+        """Legacy GEMINI.md (Antigravity) coerces to AGENTS.md instead of erroring."""
         config_path = tmp_path / "agr.toml"
         config_path.write_text(
             'canonical_instructions = "GEMINI.md"\ndependencies = []\n'
         )
         config = AgrConfig.load(config_path)
-        assert config.canonical_instructions == "GEMINI.md"
+        assert config.canonical_instructions == "AGENTS.md"
 
     def test_load_invalid_canonical_instructions_raises(self, tmp_path):
         """Invalid canonical_instructions raises ConfigError."""

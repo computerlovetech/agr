@@ -96,37 +96,37 @@ class TestDetectTools:
 
         assert "opencode" in result
 
-    def test_antigravity_detected_from_gemini_dir(self, tmp_path):
-        """detect_tools finds antigravity from .gemini/ directory."""
-        (tmp_path / ".gemini").mkdir()
+    def test_pi_detected_from_pi_dir(self, tmp_path):
+        """detect_tools finds pi from .pi/ directory."""
+        (tmp_path / ".pi").mkdir()
 
         result = detect_tools(tmp_path)
 
-        assert "antigravity" in result
+        assert "pi" in result
 
-    def test_antigravity_detected_from_agents_dir(self, tmp_path):
-        """detect_tools finds antigravity from .agents/ directory (shared with Codex)."""
+    def test_pi_detected_from_agents_dir(self, tmp_path):
+        """detect_tools finds pi from .agents/ directory (shared with Codex)."""
         (tmp_path / ".agents").mkdir()
 
         result = detect_tools(tmp_path)
 
-        assert "antigravity" in result
+        assert "pi" in result
 
-    def test_agents_dir_detects_both_codex_and_antigravity(self, tmp_path):
-        """The .agents/ directory is a shared signal that detects both Codex and Antigravity.
+    def test_agents_dir_detects_both_codex_and_pi(self, tmp_path):
+        """The .agents/ directory is a shared signal that detects both Codex and Pi.
 
         The .agents/ path is the Agent Skills spec standard directory.
-        Both Codex (primary skill path) and Antigravity (alias for .gemini/)
-        declare it as a detection signal.  Other tools (Cursor, Claude,
-        OpenCode, Copilot) do NOT use .agents/ as a detection signal, even
-        though some of them read skills from that path at runtime.
+        Both Codex (primary skill path) and Pi (alias for .pi/) declare it as
+        a detection signal.  Other tools (Cursor, Claude, OpenCode, Copilot)
+        do NOT use .agents/ as a detection signal, even though some of them
+        read skills from that path at runtime.
         """
         (tmp_path / ".agents").mkdir()
 
         result = detect_tools(tmp_path)
 
         assert "codex" in result
-        assert "antigravity" in result
+        assert "pi" in result
         # Other tools must NOT be detected from .agents/ alone
         assert "claude" not in result
         assert "cursor" not in result
@@ -174,7 +174,7 @@ class TestDetectTools:
         (tmp_path / ".agents").mkdir()
         (tmp_path / ".opencode").mkdir()
         (tmp_path / ".github" / "copilot").mkdir(parents=True)
-        (tmp_path / ".gemini").mkdir()
+        (tmp_path / ".pi").mkdir()
 
         result = detect_tools(tmp_path)
 
