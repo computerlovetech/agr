@@ -76,3 +76,4 @@ skill-repos/
 .ruff_cache
 .ralphify
 .playwright-cli
+.worktrees/
