@@ -84,11 +84,19 @@ for every tool in `tools`.
 Edit `skills/my-skill/SKILL.md`, then reinstall:
 
 ```bash
-agr add ./skills/my-skill --overwrite
+agr upgrade my-skill
 ```
 
-Or just `agr sync` — but `--overwrite` is more explicit when you've made local
-edits.
+`agr upgrade` reinstalls a fresh on-disk copy of the local skill into every
+configured tool and refreshes `agr.lock` — the canonical re-sync after editing
+an already-registered in-repo skill.
+
+Alternatives:
+
+- `agr add ./skills/my-skill --overwrite` — path-based; reach for it when the
+  skill's path changed or you're re-adding it, not for plain edits.
+- `agr sync` — only installs what's missing, so it won't pick up edits to an
+  already-installed skill. Use `agr upgrade` to force the refresh.
 
 To test ephemerally (no permanent install) on a path:
 
