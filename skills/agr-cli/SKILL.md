@@ -125,8 +125,11 @@ mkdir -p skills && mv my-skill skills/
 agr add ./skills/my-skill          # records {path = "./skills/my-skill", type = "skill"} in agr.toml
 ```
 
-Iterate: edit `skills/my-skill/SKILL.md`, then
-`agr add ./skills/my-skill --overwrite` to reinstall into each configured tool.
+Iterate: edit `skills/my-skill/SKILL.md`, then `agr upgrade my-skill` to
+reinstall the fresh on-disk copy into each configured tool and refresh
+`agr.lock`. (`agr add ./skills/my-skill --overwrite` also works, but reach for
+it when you've changed the dependency's path or are re-adding it — for plain
+edits to an already-registered skill, `agr upgrade` is shorter and lock-aware.)
 
 Teammates pick it up with `agr sync` after pulling. The local `path` dependency
 travels with the repo, so contributors don't need network access to use it.
